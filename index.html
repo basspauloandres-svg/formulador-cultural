@@ -22,13 +22,20 @@
       <strong id="authTitle">Sincronización en la nube</strong>
       <div class="auth-help" id="authHelp">Puedes seguir trabajando localmente o iniciar sesión para sincronizar el proyecto.</div>
     </div>
-    <div class="auth-actions" id="authSignedOut">
+    <div class="auth-actions auth-stack" id="authSignedOut">
       <input id="email" type="email" inputmode="email" autocomplete="email" placeholder="correo@ejemplo.com" aria-label="Correo electrónico" />
-      <button id="loginBtn" class="primary">Enviar enlace de acceso</button>
+      <input id="password" type="password" autocomplete="current-password" placeholder="Contraseña" aria-label="Contraseña" minlength="8" />
+      <div class="auth-button-row">
+        <button id="passwordLoginBtn" class="primary">Entrar con contraseña</button>
+        <button id="signupBtn">Crear cuenta</button>
+      </div>
+      <div class="auth-divider"><span>o</span></div>
+      <button id="loginBtn">Enviar enlace de acceso</button>
     </div>
     <div class="auth-actions hidden" id="authSignedIn">
       <span id="userLabel"></span>
       <button id="syncBtn">Sincronizar proyecto</button>
+      <button id="setPasswordBtn">Definir o cambiar contraseña</button>
       <button id="logoutBtn">Cerrar sesión</button>
     </div>
   </section>
