@@ -32,12 +32,11 @@ function saveLocal(){collect();localStorage.setItem(storeKey,JSON.stringify(draf
 async function ensureProject(){
   if(!session||!sb)return null;
   if(cloudProject)return cloudProject;
-  const uid=session.user.id;
-  const {data,error}=await sb.from('projects').select('*').eq('user_id',uid).order('updated_at',{ascending:false}).limit(1);
+  const {data,error}=await sb.from('projects').select('*').order('updated_at',{ascending:false}).limit(1);
   if(error)throw error;
   if(data?.length){cloudProject=data[0];return cloudProject}
   const title=draft.S01?.nombre_del_proyecto?.trim()||'Proyecto cultural';
-  const created=await sb.from('projects').insert({user_id:uid,title}).select().single();
+  const created=await sb.from('projects').insert({title}).select().single();
   if(created.error)throw created.error;
   cloudProject=created.data;
   return cloudProject;
@@ -47,7 +46,7 @@ async function syncSection(code=active){
   if(!session||!sb)return false;
   collect();
   const project=await ensureProject();
-  const payload={project_id:project.id,user_id:session.user.id,code,data:draft[code]||{},updated_at:new Date().toISOString()};
+  const payload={project_id:project.id,code,data:draft[code]||{},updated_at:new Date().toISOString()};
   const {error}=await sb.from('sections').upsert(payload,{onConflict:'project_id,code'});
   if(error)throw error;
   const title=draft.S01?.nombre_del_proyecto?.trim();
