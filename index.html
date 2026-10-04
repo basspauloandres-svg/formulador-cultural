@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Formulador Cultural · Prototipo S01–S08</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#17202a;background:#f4f6f8;line-height:1.45}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1100px;margin:auto;padding:18px}.hero{background:#fff;border:1px solid #dfe4ea;border-radius:18px;padding:22px;margin-bottom:14px}.hero h1{margin:0 0 6px;font-size:clamp(1.55rem,4vw,2.25rem)}.hero p{margin:4px 0;color:#52606d}.badge{display:inline-block;border:1px solid #9aa5b1;border-radius:999px;padding:4px 9px;font-size:.78rem;margin-top:9px}.nav{display:flex;gap:8px;overflow:auto;padding:4px 0 14px}.nav button{border:1px solid #c9d2dc;background:#fff;border-radius:999px;padding:9px 13px;white-space:nowrap;cursor:pointer}.nav button.active{border:2px solid #17202a;font-weight:700}.panel{background:#fff;border:1px solid #dfe4ea;border-radius:18px;padding:20px}.panel h2{margin:0 0 4px}.question{font-size:1.05rem;margin:4px 0 8px}.meaning{color:#52606d;margin-bottom:18px}.field{border-top:1px solid #edf0f2;padding:16px 0}.field:first-of-type{border-top:0}.field label{font-weight:700;display:block;margin-bottom:6px}.required{font-size:.78rem;font-weight:600;color:#7b1e1e}.help{font-size:.88rem;color:#52606d;margin:6px 0}.questions{font-size:.84rem;color:#66737f;margin:6px 0 9px;padding-left:18px}.field textarea,.field input{width:100%;border:1px solid #b8c2cc;border-radius:10px;padding:11px;font:inherit;background:#fff;min-height:44px}.field textarea{min-height:92px;resize:vertical}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.toolbar button{border:1px solid #aeb8c2;background:#fff;border-radius:10px;padding:9px 12px;cursor:pointer}.toolbar button.primary{background:#17202a;color:#fff;border-color:#17202a}.status{margin-top:14px;background:#f8fafb;border:1px solid #dfe4ea;border-radius:12px;padding:12px;font-size:.9rem}.sources{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}.source{border:1px solid #dfe4ea;border-radius:10px;padding:9px;text-align:center;font-size:.78rem;background:#fff}.foot{font-size:.82rem;color:#687580;padding:16px 2px}.counter{font-size:.84rem;color:#52606d;margin-bottom:10px}@media(max-width:720px){.wrap{padding:10px}.hero,.panel{border-radius:14px;padding:15px}.sources{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <h1>Formulador Cultural</h1>
+    <p>Primer prototipo web navegable · Ruta metodológica S01–S08</p>
+    <p>Los datos sin respaldo deben conservarse como <strong>[POR VERIFICAR]</strong>.</p>
+    <span class="badge">Fase 1 · núcleo metodológico alineado con v4.6.3</span>
+  </section>
+  <nav class="nav" id="nav" aria-label="Secciones"></nav>
+  <main class="panel">
+    <div class="counter" id="counter"></div>
+    <h2 id="title"></h2>
+    <div class="question" id="question"></div>
+    <div class="meaning" id="meaning"></div>
+    <div id="fields"></div>
+    <div class="toolbar">
+      <button id="prev">← Anterior</button>
+      <button class="primary" id="save">Guardar borrador</button>
+      <button id="next">Siguiente →</button>
+      <button id="clear">Limpiar sección</button>
+    </div>
+    <div class="status" id="status">El borrador se almacena únicamente en este navegador. Todavía no existe cuenta de usuario ni sincronización remota.</div>
+    <div class="sources">
+      <div class="source">Proyecto</div><div class="source">Biblioteca · Fase 2</div><div class="source">Web · Fase 2</div><div class="source">Propuesta IA · Fase 2</div>
+    </div>
+  </main>
+  <div class="foot">Prototipo de validación. Vester, árbol asistido, autenticación, persistencia multiusuario, RAG, búsqueda web e IA requieren backend y se incorporarán en la siguiente fase.</div>
+</div>
+<script>
+const sections={
+S01:{title:'Identificación general',question:'¿Qué proyecto quieres construir y dónde se desarrollará?',meaning:'Ubica el proyecto: nombre, territorio, entidad, responsables y duración preliminar.',fields:[['nombre_del_proyecto','Nombre del proyecto',1],['entidad_u_organizacion','Entidad u organización'],['pais','País'],['departamento','Departamento'],['municipio','Municipio'],['institucion_o_sede','Institución o sede'],['responsable','Responsable'],['sector_o_campo_cultural','Sector o campo cultural'],['duracion_preliminar','Duración preliminar']]},
+S02:{title:'Contexto territorial, cultural y social',question:'¿Qué características del territorio y de la comunidad ayudan a comprender el proyecto?',meaning:'Describe el territorio y el proceso cultural antes de explicar el problema.',fields:[['territorio_o_lugar_de_intervencion','Territorio o lugar de intervención',1],['caracteristicas_culturales','Características culturales'],['principales_dinamicas_sociales','Principales dinámicas sociales'],['antecedentes','Antecedentes']]},
+S03:{title:'Población',question:'¿Quiénes participan o son afectados por la situación que aborda el proyecto?',meaning:'Diferencia población afectada, participantes y otros grupos pertinentes sin inventar cifras.',fields:[['poblacion_afectada','Población afectada',1],['poblacion_participante','Población participante'],['caracterizacion','Caracterización'],['cantidad_estimada','Cantidad estimada']]},
+S04:{title:'Evidencia',question:'¿Qué datos, hechos o fuentes respaldan la necesidad identificada?',meaning:'Separa evidencia disponible, origen de la información y vacíos por verificar.',fields:[['evidencia_disponible','Evidencia disponible',1],['fuentes','Fuentes'],['datos_por_verificar','Datos por verificar'],['observaciones','Observaciones']]},
+S05:{title:'Situaciones problemáticas',question:'¿Qué situaciones observables expresan el problema en el territorio o población?',meaning:'Registra situaciones concretas y diferenciadas antes de ordenar sus relaciones.',fields:[['situaciones_observables','Situaciones observables',1],['descripcion','Descripción'],['evidencia_asociada','Evidencia asociada'],['prioridad_preliminar','Prioridad preliminar']]},
+S06:{title:'Matriz Vester',question:'¿Qué situaciones influyen directamente sobre otras y con qué intensidad?',meaning:'Vester organiza juicios de influencia. La valoración 0–3 corresponde a decisión humana y requiere justificación.',fields:[['variables_vester','Variables Vester',1],['relaciones_causales','Relaciones causales'],['valoracion_0_3','Valoración 0–3'],['justificacion','Justificación']]},
+S07:{title:'Árbol de problemas',question:'¿Cuáles son las causas, el problema central y sus efectos?',meaning:'Organiza causas, problema y efectos manteniendo la lógica causal identificada y la revisión humana.',fields:[['causas_indirectas','Causas indirectas',1],['causas_directas','Causas directas'],['problema_central','Problema central'],['efectos_directos','Efectos directos'],['efectos_indirectos','Efectos indirectos']]},
+S08:{title:'Problema central',question:'¿Cómo expresarías el problema principal de manera concreta y verificable?',meaning:'Describe una condición negativa existente sin anticipar la solución.',fields:[['enunciado','Enunciado del problema',1],['poblacion_afectada','Población afectada'],['evidencia_soporte','Evidencia soporte'],['alcance','Alcance']]}
+};
+const order=Object.keys(sections); let active=localStorage.getItem('fc_active')||'S01';
+const storeKey='formulador-cultural-prototipo-v1'; const draft=JSON.parse(localStorage.getItem(storeKey)||'{}');
+function questions(label){return [`¿Qué información concreta corresponde a «${label}»?`,`¿Qué datos están confirmados?`,`¿Qué falta por verificar?`]}
+function render(){const s=sections[active]; localStorage.setItem('fc_active',active); document.querySelector('#counter').textContent=`${active} · ${order.indexOf(active)+1} de ${order.length}`;document.querySelector('#title').textContent=s.title;document.querySelector('#question').textContent=s.question;document.querySelector('#meaning').textContent=s.meaning;
+ document.querySelector('#nav').innerHTML=order.map(k=>`<button data-k="${k}" class="${k===active?'active':''}">${k} · ${sections[k].title.replace('Contexto territorial, cultural y social','Contexto').replace('Situaciones problemáticas','Situaciones').replace('Matriz Vester','Vester').replace('Árbol de problemas','Árbol')}</button>`).join('');
+ document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{active=b.dataset.k;render()});
+ const d=draft[active]||{};document.querySelector('#fields').innerHTML=s.fields.map(([id,label,req])=>`<div class="field"><label for="${id}">${label} ${req?'<span class="required">· requerido</span>':''}</label><div class="help">Registre únicamente información pertinente a este campo. Mantenga explícitos los vacíos.</div><ul class="questions">${questions(label).map(q=>`<li>${q}</li>`).join('')}</ul><textarea id="${id}" data-field="${id}" placeholder="Escriba aquí o use [POR VERIFICAR] cuando corresponda.">${(d[id]||'').replaceAll('&','&amp;').replaceAll('<','&lt;')}</textarea></div>`).join('');
+ document.querySelector('#prev').disabled=order.indexOf(active)===0;document.querySelector('#next').disabled=order.indexOf(active)===order.length-1;
+}
+function collect(){draft[active]=draft[active]||{};document.querySelectorAll('[data-field]').forEach(el=>draft[active][el.dataset.field]=el.value)}
+document.querySelector('#save').onclick=()=>{collect();localStorage.setItem(storeKey,JSON.stringify(draft));document.querySelector('#status').textContent=`Borrador de ${active} guardado en este navegador.`};
+document.querySelector('#next').onclick=()=>{collect();active=order[Math.min(order.length-1,order.indexOf(active)+1)];render()};
+document.querySelector('#prev').onclick=()=>{collect();active=order[Math.max(0,order.indexOf(active)-1)];render()};
+document.querySelector('#clear').onclick=()=>{if(confirm(`¿Limpiar los campos de ${active}?`)){draft[active]={};localStorage.setItem(storeKey,JSON.stringify(draft));render()}};
+render();
+</script>
+</body>
+</html>
