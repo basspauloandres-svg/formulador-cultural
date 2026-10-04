@@ -8,16 +8,118 @@ S06:{title:'Matriz Vester',question:'¿Qué situaciones influyen directamente so
 S07:{title:'Árbol de problemas',question:'¿Cuáles son las causas, el problema central y sus efectos?',meaning:'Organiza causas, problema y efectos manteniendo la lógica causal identificada y la revisión humana.',fields:[['causas_indirectas','Causas indirectas',1],['causas_directas','Causas directas'],['problema_central','Problema central'],['efectos_directos','Efectos directos'],['efectos_indirectos','Efectos indirectos']]},
 S08:{title:'Problema central',question:'¿Cómo expresarías el problema principal de manera concreta y verificable?',meaning:'Describe una condición negativa existente sin anticipar la solución.',fields:[['enunciado','Enunciado del problema',1],['poblacion_afectada','Población atendida'],['evidencia_soporte','Evidencia soporte'],['alcance','Alcance']]}
 };
-const order=Object.keys(sections);let active=localStorage.getItem('fc_active')||'S01';const storeKey='formulador-cultural-prototipo-v1';const draft=JSON.parse(localStorage.getItem(storeKey)||'{}');let dirty=false;const q=s=>document.querySelector(s);
+
+const SUPABASE_URL='https://rmaevwlxcuqimxdzxdmq.supabase.co';
+const SUPABASE_KEY='sb_publishable_YYXIMlsNUfi5RhZfhevMJw_6DovU9RK';
+const sb=window.supabase?.createClient(SUPABASE_URL,SUPABASE_KEY);
+const order=Object.keys(sections);
+let active=localStorage.getItem('fc_active')||'S01';
+const storeKey='formulador-cultural-prototipo-v1';
+const draft=JSON.parse(localStorage.getItem(storeKey)||'{}');
+let dirty=false;
+let session=null;
+let cloudProject=null;
+const q=s=>document.querySelector(s);
+
 function guide(label){return [`¿Qué información concreta corresponde a «${label}»?`,`¿Qué datos están confirmados?`,`¿Qué falta por verificar?`]}
 function shortTitle(t){return t.replace('Identificación general','Identificación').replace('Contexto territorial, cultural y social','Contexto').replace('Situaciones problemáticas','Situaciones').replace('Matriz Vester','Vester').replace('Árbol de problemas','Árbol').replace('Problema central','Problema')}
 function esc(v){return String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}
 function collect(){draft[active]=draft[active]||{};document.querySelectorAll('[data-field]').forEach(el=>draft[active][el.dataset.field]=el.value)}
-function setSaved(ok){const dot=q('#savedDot');if(dot)dot.classList.toggle('ok',ok)}
-function save(){collect();localStorage.setItem(storeKey,JSON.stringify(draft));dirty=false;setSaved(true);q('#status').innerHTML=`<span class="saved-dot ok" id="savedDot"></span>Borrador de ${active} guardado en este navegador.`}
-function render(){const s=sections[active],idx=order.indexOf(active);localStorage.setItem('fc_active',active);q('#counter').textContent=`${active} · ${idx+1} de ${order.length}`;q('#title').textContent=s.title;q('#question').textContent=s.question;q('#meaning').textContent=s.meaning;q('#progressBar').style.width=`${((idx+1)/order.length)*100}%`;
-q('#nav').innerHTML=order.map(k=>`<button data-k="${k}" class="${k===active?'active':''}">${k} · ${shortTitle(sections[k].title)}</button>`).join('');q('#nav .active')?.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{collect();active=b.dataset.k;render();q('#panel').scrollIntoView({behavior:'smooth',block:'start'})});
-const d=draft[active]||{};q('#fields').innerHTML=s.fields.map(([id,label,req])=>`<div class="field"><label for="${id}">${label} ${req?'<span class="required">· requerido</span>':''}</label><div class="help">Registre información pertinente y mantenga explícitos los vacíos.</div><details class="guide"><summary>Preguntas orientadoras</summary><ul class="questions">${guide(label).map(x=>`<li>${x}</li>`).join('')}</ul></details><textarea id="${id}" data-field="${id}" placeholder="Escriba aquí o use [POR VERIFICAR] cuando corresponda.">${esc(d[id]||'')}</textarea></div>`).join('');
-document.querySelectorAll('[data-field]').forEach(el=>{el.addEventListener('input',()=>{dirty=true;setSaved(false)});el.addEventListener('blur',()=>{if(dirty)save()})});['#prev','#mPrev'].forEach(sel=>q(sel).disabled=idx===0);['#next','#mNext'].forEach(sel=>q(sel).disabled=idx===order.length-1);setSaved(true)}
+function setSaved(ok,cloud=false){const dot=q('#savedDot');if(dot){dot.classList.toggle('ok',ok&&!cloud);dot.classList.toggle('cloud',ok&&cloud)}}
+function setStatus(text,cloud=false){q('#status').innerHTML=`<span class="saved-dot ${cloud?'cloud':'ok'}" id="savedDot"></span>${text}`}
+function saveLocal(){collect();localStorage.setItem(storeKey,JSON.stringify(draft));dirty=false;setSaved(true,false);setStatus(`Borrador de ${active} guardado en este navegador.`)}
+
+async function ensureProject(){
+  if(!session||!sb)return null;
+  if(cloudProject)return cloudProject;
+  const uid=session.user.id;
+  const {data,error}=await sb.from('projects').select('*').eq('user_id',uid).order('updated_at',{ascending:false}).limit(1);
+  if(error)throw error;
+  if(data?.length){cloudProject=data[0];return cloudProject}
+  const title=draft.S01?.nombre_del_proyecto?.trim()||'Proyecto cultural';
+  const created=await sb.from('projects').insert({user_id:uid,title}).select().single();
+  if(created.error)throw created.error;
+  cloudProject=created.data;
+  return cloudProject;
+}
+
+async function syncSection(code=active){
+  if(!session||!sb)return false;
+  collect();
+  const project=await ensureProject();
+  const payload={project_id:project.id,user_id:session.user.id,code,data:draft[code]||{},updated_at:new Date().toISOString()};
+  const {error}=await sb.from('sections').upsert(payload,{onConflict:'project_id,code'});
+  if(error)throw error;
+  const title=draft.S01?.nombre_del_proyecto?.trim();
+  if(title&&title!==project.title){await sb.from('projects').update({title,updated_at:new Date().toISOString()}).eq('id',project.id);project.title=title}
+  return true;
+}
+
+async function save(){
+  saveLocal();
+  if(!session){setStatus(`Borrador de ${active} guardado localmente. Inicia sesión para sincronizar.`);return}
+  try{await syncSection(active);setStatus(`${active} guardada y sincronizada en la nube.`,true)}catch(e){console.error(e);setStatus(`Guardado local correcto. La sincronización falló: ${e.message||'error desconocido'}`)}
+}
+
+async function loadCloud(){
+  if(!session||!sb)return;
+  try{
+    const project=await ensureProject();
+    const {data,error}=await sb.from('sections').select('code,data').eq('project_id',project.id);
+    if(error)throw error;
+    for(const row of data||[])draft[row.code]={...(draft[row.code]||{}),...(row.data||{})};
+    localStorage.setItem(storeKey,JSON.stringify(draft));
+    render();
+    setStatus(`Proyecto «${project.title}» cargado desde la nube.`,true);
+  }catch(e){console.error(e);setStatus(`No fue posible cargar la nube: ${e.message||'error desconocido'}`)}
+}
+
+function renderAuth(){
+  const out=q('#authSignedOut'),inside=q('#authSignedIn');
+  if(session){out.classList.add('hidden');inside.classList.remove('hidden');q('#userLabel').textContent=session.user.email||'Sesión activa';q('#authHelp').textContent='El proyecto puede sincronizarse entre dispositivos.'}
+  else{inside.classList.add('hidden');out.classList.remove('hidden');q('#authHelp').textContent='Puedes seguir trabajando localmente o iniciar sesión para sincronizar el proyecto.'}
+}
+
+async function sendMagicLink(){
+  const email=q('#email').value.trim();
+  if(!email){q('#authHelp').textContent='Escribe un correo válido.';return}
+  q('#loginBtn').disabled=true;
+  q('#authHelp').textContent='Enviando enlace de acceso…';
+  const redirectTo=location.origin+location.pathname;
+  const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:redirectTo}});
+  q('#loginBtn').disabled=false;
+  q('#authHelp').textContent=error?`No se pudo enviar: ${error.message}`:'Revisa tu correo y abre el enlace de acceso en este dispositivo.';
+}
+
+async function initAuth(){
+  if(!sb){q('#authHelp').textContent='Conexión de nube no disponible.';return}
+  const {data}=await sb.auth.getSession();
+  session=data.session;
+  renderAuth();
+  if(session)await loadCloud();
+  sb.auth.onAuthStateChange(async(_event,newSession)=>{session=newSession;cloudProject=null;renderAuth();if(session)await loadCloud()});
+}
+
+function render(){
+  const s=sections[active],idx=order.indexOf(active);
+  localStorage.setItem('fc_active',active);
+  q('#counter').textContent=`${active} · ${idx+1} de ${order.length}`;
+  q('#title').textContent=s.title;q('#question').textContent=s.question;q('#meaning').textContent=s.meaning;q('#progressBar').style.width=`${((idx+1)/order.length)*100}%`;
+  q('#nav').innerHTML=order.map(k=>`<button data-k="${k}" class="${k===active?'active':''}">${k} · ${shortTitle(sections[k].title)}</button>`).join('');
+  q('#nav .active')?.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
+  document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{collect();active=b.dataset.k;render();q('#panel').scrollIntoView({behavior:'smooth',block:'start'})});
+  const d=draft[active]||{};
+  q('#fields').innerHTML=s.fields.map(([id,label,req])=>`<div class="field"><label for="${id}">${label} ${req?'<span class="required">· requerido</span>':''}</label><div class="help">Registre información pertinente y mantenga explícitos los vacíos.</div><details class="guide"><summary>Preguntas orientadoras</summary><ul class="questions">${guide(label).map(x=>`<li>${x}</li>`).join('')}</ul></details><textarea id="${id}" data-field="${id}" placeholder="Escriba aquí o use [POR VERIFICAR] cuando corresponda.">${esc(d[id]||'')}</textarea></div>`).join('');
+  document.querySelectorAll('[data-field]').forEach(el=>{el.addEventListener('input',()=>{dirty=true;setSaved(false)});el.addEventListener('blur',()=>{if(dirty)saveLocal()})});
+  ['#prev','#mPrev'].forEach(sel=>q(sel).disabled=idx===0);['#next','#mNext'].forEach(sel=>q(sel).disabled=idx===order.length-1);setSaved(true,false)
+}
+
 function move(delta){collect();const idx=Math.max(0,Math.min(order.length-1,order.indexOf(active)+delta));active=order[idx];render();q('#panel').scrollIntoView({behavior:'smooth',block:'start'})}
-q('#save').onclick=save;q('#mSave').onclick=save;q('#next').onclick=()=>move(1);q('#mNext').onclick=()=>move(1);q('#prev').onclick=()=>move(-1);q('#mPrev').onclick=()=>move(-1);q('#clear').onclick=()=>{if(confirm(`¿Limpiar los campos de ${active}?`)){draft[active]={};localStorage.setItem(storeKey,JSON.stringify(draft));render()}};window.addEventListener('beforeunload',()=>{if(dirty)save()});render();
+
+q('#save').onclick=save;q('#mSave').onclick=save;q('#next').onclick=()=>move(1);q('#mNext').onclick=()=>move(1);q('#prev').onclick=()=>move(-1);q('#mPrev').onclick=()=>move(-1);
+q('#clear').onclick=()=>{if(confirm(`¿Limpiar los campos de ${active}?`)){draft[active]={};localStorage.setItem(storeKey,JSON.stringify(draft));render()}};
+q('#loginBtn').onclick=sendMagicLink;
+q('#logoutBtn').onclick=async()=>{await sb.auth.signOut();session=null;cloudProject=null;renderAuth();setStatus('Sesión cerrada. El borrador local permanece en este navegador.')};
+q('#syncBtn').onclick=async()=>{try{saveLocal();for(const code of order){if(draft[code])await syncSection(code)}setStatus('Proyecto completo sincronizado en la nube.',true)}catch(e){setStatus(`Sincronización incompleta: ${e.message||'error desconocido'}`)}};
+window.addEventListener('beforeunload',()=>{if(dirty)saveLocal()});
+render();initAuth();
