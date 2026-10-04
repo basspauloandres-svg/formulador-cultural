@@ -19,6 +19,7 @@ const draft=JSON.parse(localStorage.getItem(storeKey)||'{}');
 let dirty=false;
 let session=null;
 let cloudProject=null;
+let loginCooldownTimer=null;
 const q=s=>document.querySelector(s);
 
 function guide(label){return [`¿Qué información concreta corresponde a «${label}»?`,`¿Qué datos están confirmados?`,`¿Qué falta por verificar?`]}
@@ -28,6 +29,18 @@ function collect(){draft[active]=draft[active]||{};document.querySelectorAll('[d
 function setSaved(ok,cloud=false){const dot=q('#savedDot');if(dot){dot.classList.toggle('ok',ok&&!cloud);dot.classList.toggle('cloud',ok&&cloud)}}
 function setStatus(text,cloud=false){q('#status').innerHTML=`<span class="saved-dot ${cloud?'cloud':'ok'}" id="savedDot"></span>${text}`}
 function saveLocal(){collect();localStorage.setItem(storeKey,JSON.stringify(draft));dirty=false;setSaved(true,false);setStatus(`Borrador de ${active} guardado en este navegador.`)}
+function startLoginCooldown(seconds=60){
+  const btn=q('#loginBtn');
+  if(loginCooldownTimer)clearInterval(loginCooldownTimer);
+  let remaining=seconds;
+  btn.disabled=true;
+  btn.textContent=`Espera ${remaining} s`;
+  loginCooldownTimer=setInterval(()=>{
+    remaining-=1;
+    if(remaining<=0){clearInterval(loginCooldownTimer);loginCooldownTimer=null;btn.disabled=false;btn.textContent='Enviar enlace de acceso';return}
+    btn.textContent=`Espera ${remaining} s`;
+  },1000);
+}
 
 async function ensureProject(){
   if(!session||!sb)return null;
@@ -76,7 +89,7 @@ async function loadCloud(){
 function renderAuth(){
   const out=q('#authSignedOut'),inside=q('#authSignedIn');
   if(session){out.classList.add('hidden');inside.classList.remove('hidden');q('#userLabel').textContent=session.user.email||'Sesión activa';q('#authHelp').textContent='El proyecto puede sincronizarse entre dispositivos.'}
-  else{inside.classList.add('hidden');out.classList.remove('hidden');q('#authHelp').textContent='Puedes seguir trabajando localmente o iniciar sesión para sincronizar el proyecto.'}
+  else{inside.classList.add('hidden');out.classList.remove('hidden');if(!q('#authHelp').textContent.includes('límite'))q('#authHelp').textContent='Puedes seguir trabajando localmente o iniciar sesión para sincronizar el proyecto.'}
 }
 
 async function sendMagicLink(){
@@ -86,8 +99,14 @@ async function sendMagicLink(){
   q('#authHelp').textContent='Enviando enlace de acceso…';
   const redirectTo=location.origin+location.pathname;
   const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:redirectTo}});
-  q('#loginBtn').disabled=false;
-  q('#authHelp').textContent=error?`No se pudo enviar: ${error.message}`:'Revisa tu correo y abre el enlace de acceso en este dispositivo.';
+  if(error){
+    const rateLimited=/rate limit|too many/i.test(error.message||'');
+    if(rateLimited){q('#authHelp').textContent='Se alcanzó temporalmente el límite de correos de acceso. Espera antes de solicitar otro enlace; tu borrador local permanece guardado.';startLoginCooldown(60)}
+    else{q('#loginBtn').disabled=false;q('#authHelp').textContent=`No se pudo enviar: ${error.message}`}
+    return;
+  }
+  q('#authHelp').textContent='Enlace enviado. Revisa tu correo y evita solicitar otro mientras llega este mensaje.';
+  startLoginCooldown(60);
 }
 
 async function initAuth(){
