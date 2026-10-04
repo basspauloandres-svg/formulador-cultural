@@ -13,9 +13,26 @@
     <h1>Formulador Cultural</h1>
     <p>Prototipo web navegable · Ruta metodológica S01–S08</p>
     <p>Los datos sin respaldo deben conservarse como <strong>[POR VERIFICAR]</strong>.</p>
-    <span class="badge">Fase 1 validada · transición a Fase 2</span>
+    <span class="badge">Fase 2 · persistencia multiusuario en conexión</span>
     <div class="progress" aria-label="Progreso"><span id="progressBar"></span></div>
   </section>
+
+  <section class="auth-card" id="authCard">
+    <div>
+      <strong id="authTitle">Sincronización en la nube</strong>
+      <div class="auth-help" id="authHelp">Puedes seguir trabajando localmente o iniciar sesión para sincronizar el proyecto.</div>
+    </div>
+    <div class="auth-actions" id="authSignedOut">
+      <input id="email" type="email" inputmode="email" autocomplete="email" placeholder="correo@ejemplo.com" aria-label="Correo electrónico" />
+      <button id="loginBtn" class="primary">Enviar enlace de acceso</button>
+    </div>
+    <div class="auth-actions hidden" id="authSignedIn">
+      <span id="userLabel"></span>
+      <button id="syncBtn">Sincronizar proyecto</button>
+      <button id="logoutBtn">Cerrar sesión</button>
+    </div>
+  </section>
+
   <div class="nav-wrap"><nav class="nav" id="nav" aria-label="Secciones"></nav></div>
   <main class="panel" id="panel">
     <div class="counter" id="counter"></div>
@@ -29,16 +46,17 @@
       <button id="next">Siguiente →</button>
       <button id="clear">Limpiar sección</button>
     </div>
-    <div class="status" id="status"><span class="saved-dot ok" id="savedDot"></span>El borrador se almacena únicamente en este navegador. La sincronización multiusuario se incorpora en Fase 2.</div>
+    <div class="status" id="status"><span class="saved-dot ok" id="savedDot"></span>El borrador se almacena en este navegador.</div>
     <div class="sources">
-      <div class="source">Proyecto</div><div class="source">Biblioteca · Fase 2</div><div class="source">Web · Fase 2</div><div class="source">Propuesta IA · Fase 2</div>
+      <div class="source">Proyecto</div><div class="source">Biblioteca · siguiente bloque</div><div class="source">Web · siguiente bloque</div><div class="source">Propuesta IA · siguiente bloque</div>
     </div>
   </main>
-  <div class="foot">Prototipo de validación. Vester determinístico, árbol asistido, autenticación, persistencia multiusuario, RAG, búsqueda web e IA se conectarán mediante backend desacoplado.</div>
+  <div class="foot">Fase 2 en curso. La persistencia multiusuario usa Supabase con aislamiento por usuario. RAG, búsqueda web e IA se conectarán después sobre el mismo núcleo.</div>
 </div>
 <div class="mobile-actions">
   <button id="mPrev">←</button><button class="primary" id="mSave">Guardar</button><button id="mNext">→</button>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
 </body>
 </html>
