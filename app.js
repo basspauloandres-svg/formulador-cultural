@@ -35,10 +35,38 @@ async function syncSection(code=active){if(!session||!sb)return false;collect();
 async function save(){saveLocal();if(!session){setStatus(`Borrador de ${active} guardado localmente. Inicia sesión para sincronizar.`);return}try{await syncSection(active);setStatus(`${active} guardada y sincronizada en la nube.`,true)}catch(e){console.error(e);setStatus(`Guardado local correcto. La sincronización falló: ${e.message||'error desconocido'}`)}}
 async function loadCloud(){if(!session||!sb)return;try{const project=await ensureProject();const {data,error}=await sb.from('sections').select('code,data').eq('project_id',project.id);if(error)throw error;for(const row of data||[])draft[row.code]={...(draft[row.code]||{}),...(row.data||{})};localStorage.setItem(storeKey,JSON.stringify(draft));render();setStatus(`Proyecto «${project.title}» cargado desde la nube.`,true)}catch(e){console.error(e);setStatus(`No fue posible cargar la nube: ${e.message||'error desconocido'}`)}}
 
-function renderAuth(){const out=q('#authSignedOut'),inside=q('#authSignedIn');if(session){out.classList.add('hidden');inside.classList.remove('hidden');q('#userLabel').textContent=session.user.email||'Sesión activa';q('#authHelp').textContent='Sesión activa. El proyecto puede sincronizarse entre dispositivos.'}else{inside.classList.add('hidden');out.classList.remove('hidden');if(!/límite|contraseña|correo|cuenta|credenciales/i.test(q('#authHelp').textContent))q('#authHelp').textContent='Puedes entrar con correo y contraseña. El enlace por correo queda como alternativa.'}}
+function renderAuth(){const out=q('#authSignedOut'),inside=q('#authSignedIn');if(session){out.classList.add('hidden');inside.classList.remove('hidden');q('#userLabel').textContent=session.user.email||'Sesión activa';q('#authHelp').textContent='Sesión activa. El proyecto puede sincronizarse entre dispositivos.'}else{inside.classList.add('hidden');out.classList.remove('hidden');if(!/límite|contraseña|correo|cuenta|credenciales|registrado/i.test(q('#authHelp').textContent))q('#authHelp').textContent='Puedes entrar con correo y contraseña. El enlace por correo queda como alternativa.'}}
 
 async function passwordLogin(){const creds=validateCredentials();if(!creds)return;q('#passwordLoginBtn').disabled=true;q('#authHelp').textContent='Iniciando sesión…';const {error}=await sb.auth.signInWithPassword(creds);q('#passwordLoginBtn').disabled=false;if(error){q('#authHelp').textContent=`No fue posible iniciar sesión: ${error.message}`;return}q('#authHelp').textContent='Sesión iniciada correctamente.'}
-async function signupWithPassword(){const creds=validateCredentials();if(!creds)return;q('#signupBtn').disabled=true;q('#authHelp').textContent='Creando cuenta…';const redirectTo=location.origin+location.pathname;const {data,error}=await sb.auth.signUp({...creds,options:{emailRedirectTo:redirectTo}});q('#signupBtn').disabled=false;if(error){q('#authHelp').textContent=`No fue posible crear la cuenta: ${error.message}`;return}if(data.session){q('#authHelp').textContent='Cuenta creada y sesión iniciada.'}else{q('#authHelp').textContent='Cuenta creada. Supabase requiere confirmar el correo antes del primer ingreso.'}}
+async function signupWithPassword(){
+  const creds=validateCredentials();
+  if(!creds)return;
+  q('#signupBtn').disabled=true;
+  q('#authHelp').textContent='Creando cuenta…';
+  const redirectTo=location.origin+location.pathname;
+  const {data,error}=await sb.auth.signUp({...creds,options:{emailRedirectTo:redirectTo}});
+  q('#signupBtn').disabled=false;
+  if(error){
+    const msg=error.message||'';
+    if(/rate limit|too many/i.test(msg)){
+      q('#authHelp').textContent='Supabase alcanzó temporalmente el límite de correos de confirmación. La cuenta no puede completarse hasta que se libere el envío de email.';
+    }else if(/already registered|already exists|user.*exists/i.test(msg)){
+      q('#authHelp').textContent='Ese correo ya está registrado. Usa “Entrar con contraseña” si ya definiste una; si tu cuenta se creó con enlace de acceso, no debes crearla otra vez.';
+    }else{
+      q('#authHelp').textContent=`No fue posible crear la cuenta: ${msg}`;
+    }
+    return;
+  }
+  if(data?.user && Array.isArray(data.user.identities) && data.user.identities.length===0){
+    q('#authHelp').textContent='Ese correo ya está registrado. “Crear cuenta” es únicamente para correos nuevos. Usa el método de acceso de la cuenta existente.';
+    return;
+  }
+  if(data?.session){
+    q('#authHelp').textContent='Cuenta creada y sesión iniciada.';
+  }else{
+    q('#authHelp').textContent='Cuenta nueva creada. Revisa el correo de confirmación antes del primer ingreso.';
+  }
+}
 async function setPassword(){const next=prompt('Escribe una nueva contraseña de al menos 8 caracteres:');if(next===null)return;if(next.length<8){q('#authHelp').textContent='La contraseña debe tener al menos 8 caracteres.';return}const {error}=await sb.auth.updateUser({password:next});q('#authHelp').textContent=error?`No fue posible actualizar la contraseña: ${error.message}`:'Contraseña actualizada. En adelante puedes entrar sin solicitar un enlace por correo.'}
 async function sendMagicLink(){const email=q('#email').value.trim();if(!email){q('#authHelp').textContent='Escribe un correo válido.';return}q('#loginBtn').disabled=true;q('#authHelp').textContent='Enviando enlace de acceso…';const redirectTo=location.origin+location.pathname;const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:redirectTo}});if(error){const rateLimited=/rate limit|too many/i.test(error.message||'');if(rateLimited){q('#authHelp').textContent='Se alcanzó temporalmente el límite de correos. Usa contraseña si ya la definiste o espera antes de solicitar otro enlace.';startLoginCooldown(60)}else{q('#loginBtn').disabled=false;q('#authHelp').textContent=`No se pudo enviar: ${error.message}`}return}q('#authHelp').textContent='Enlace enviado. Revisa tu correo y evita solicitar otro mientras llega este mensaje.';startLoginCooldown(60)}
 
