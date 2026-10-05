@@ -43,17 +43,16 @@ class VesterRelation:
     source: str
     target: str
     score: int
-    justification: str
+    justification: str | None = None
 
     def __post_init__(self) -> None:
         if self.source == self.target:
             raise ValueError("Vester no permite relación de una variable consigo misma")
         if self.score not in (0, 1, 2, 3):
             raise ValueError("La escala Vester válida es 0–3")
-        if not self.justification.strip():
-            raise ValueError("Toda valoración Vester requiere justificación")
 
 def calculate_vester(relations: list[VesterRelation]) -> dict[str, dict[str, int]]:
+    """Cálculo determinístico de influencia y dependencia; no infiere causalidad."""
     variables = sorted({r.source for r in relations} | {r.target for r in relations})
     result = {v: {"influence": 0, "dependence": 0} for v in variables}
     for r in relations:
