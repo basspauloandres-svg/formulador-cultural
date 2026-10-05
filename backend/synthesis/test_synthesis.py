@@ -41,14 +41,29 @@ def test_solution_absence_wording_is_flagged():
     assert any("necesidad, acción o solución" in note for note in review.observations)
 
 
-def test_solution_oriented_central_is_not_presented_as_problem():
+def test_solution_oriented_central_produces_reformulation_options():
     service = SynthesisService()
     inputs = SynthesisInputs(
         central_problem="La banda requiere talleres individuales de instrumentos para mejorar cada sección",
         population=None,
         territory="Villamaría",
     )
-    proposal = service.propose(inputs)[0]
-    assert proposal.startswith("[POR VERIFICAR]")
-    assert "parece expresar una necesidad o solución" in proposal
-    assert "Villamaría" not in proposal
+    proposals = service.propose(inputs)
+    assert len(proposals) == 3
+    assert all("requiere talleres" not in proposal.lower() for proposal in proposals)
+    assert all("Villamaría" in proposal for proposal in proposals)
+    assert any("Dificultades" in proposal for proposal in proposals)
+
+
+def test_reformulation_does_not_confirm_evidence_or_causality():
+    service = SynthesisService()
+    inputs = SynthesisInputs(
+        central_problem="La organización necesita crear un programa para aumentar la participación",
+        population=None,
+        territory="Anserma",
+    )
+    proposals = service.reformulate(inputs)
+    joined = " ".join(proposals).lower()
+    assert "evidencia" not in joined
+    assert "causa" not in joined
+    assert "demuestra" not in joined
