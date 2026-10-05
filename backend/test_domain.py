@@ -2,9 +2,9 @@ from uuid import uuid4
 from backend.domain import Project, POR_VERIFICAR, VesterRelation, calculate_vester
 
 
-def test_project_initializes_s01_s08():
+def test_project_initializes_s01_s09():
     p = Project(user_id=uuid4(), title="Caso")
-    assert list(p.sections) == [f"S{i:02d}" for i in range(1, 9)]
+    assert list(p.sections) == [f"S{i:02d}" for i in range(1, 10)]
 
 
 def test_empty_value_becomes_por_verificar():
