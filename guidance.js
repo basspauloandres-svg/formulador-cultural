@@ -1,58 +1,76 @@
 const didacticGuidance={
-'S01:Nombre del proyecto':['¿Qué idea central quieres que una persona comprenda solo con leer el nombre?','¿El nombre identifica el proceso cultural sin prometer resultados que aún no se han demostrado?','¿Conviene incluir territorio, población o práctica cultural para hacerlo más preciso?'],
-'S01:Entidad u organización':['¿Quién formula, ejecuta o respalda institucionalmente el proyecto?','¿La entidad tiene una función concreta dentro del proyecto o solo aparece como referencia?','¿Qué dato permitiría identificarla sin ambigüedad?'],
-'S01:País':['¿En qué país se desarrollará efectivamente la acción principal?','Si existen actividades en más de un país, ¿cuál corresponde a este proyecto y cuál debe registrarse aparte?'],
-'S01:Departamento':['¿Cuál es el departamento principal de ejecución?','¿El proyecto cubre todo el departamento o municipios específicos?'],
-'S01:Municipio':['¿En qué municipio ocurrirá la acción concreta?','¿Hay diferencias entre municipio de formulación, sede administrativa y lugar real de ejecución?'],
-'S01:Institución o sede':['¿En qué institución, espacio comunitario o sede se desarrollarán las actividades?','¿Ese lugar está confirmado o sigue sujeto a gestión?','Si hay varias sedes, ¿deben diferenciarse?'],
-'S01:Responsable':['¿Quién tiene responsabilidad operativa o decisoria sobre el proyecto?','¿Su rol está claro para seguimiento, autorizaciones y rendición de cuentas?'],
-'S01:Sector o campo cultural':['¿Cuál práctica o campo cultural organiza realmente el proyecto: música, danza, literatura, patrimonio, audiovisual u otro?','¿Hay un campo principal y otros complementarios?','¿La categoría elegida describe la práctica y no solo la población?'],
-'S01:Duración preliminar':['¿Qué periodo requiere el proyecto para cumplir las actividades previstas?','¿La duración incluye preparación, ejecución, seguimiento y cierre?','¿Es una estimación o una fecha ya confirmada?'],
+'S01:Nombre del proyecto':['¿Cómo llamarías al proyecto en una frase corta?','¿El nombre deja claro de qué trata sin prometer algo que todavía no sabemos?'],
+'S01:Entidad u organización':['¿Qué organización presenta o ejecutará el proyecto?','¿Qué papel tendrá dentro del proyecto?'],
+'S01:País':['¿En qué país se realizará el proyecto?'],
+'S01:Departamento':['¿En qué departamento se realizará principalmente?'],
+'S01:Municipio':['¿En qué municipio ocurrirán las actividades?'],
+'S01:Institución o sede':['¿En qué lugar concreto se desarrollará el proyecto?','Si el lugar aún no está confirmado, escríbelo como [POR VERIFICAR].'],
+'S01:Responsable':['¿Quién será la persona responsable de coordinar el proyecto?'],
+'S01:Sector o campo cultural':['¿Cuál es el campo principal: música, danza, teatro, literatura, patrimonio, audiovisual u otro?'],
+'S01:Duración preliminar':['¿Cuánto tiempo crees que necesitará el proyecto desde la preparación hasta el cierre?'],
 
-'S02:Territorio o lugar de intervención':['¿Qué características del lugar inciden directamente en el proyecto?','¿Qué escala territorial es pertinente: barrio, vereda, municipio, región o institución?','¿Qué rasgo territorial ayuda a comprender la necesidad sin convertir este campo en una descripción general del municipio?'],
-'S02:Características culturales':['¿Qué prácticas, expresiones, espacios, actores o tradiciones culturales son relevantes para este proyecto?','¿Cuáles están documentadas y cuáles provienen de percepción local?','¿Qué relación concreta tienen con la situación que después se analizará?'],
-'S02:Principales dinámicas sociales':['¿Qué relaciones, condiciones o procesos sociales ayudan a entender la situación?','¿Existen formas de participación, organización, conflicto, movilidad o acceso que afecten el proyecto?','¿Qué información corresponde al contexto y cuál debería reservarse para la formulación del problema?'],
-'S02:Antecedentes':['¿Qué acciones, programas o experiencias previas se han realizado sobre esta situación?','¿Qué ocurrió con esas experiencias y qué evidencia existe sobre sus resultados?','¿Qué continuidad, vacío o cambio justifica considerar un nuevo proyecto?'],
+'S02:Territorio o lugar de intervención':['¿Qué necesitas contar del lugar para entender el proyecto?','Escribe solo características que ayuden a comprender la necesidad.'],
+'S02:Características culturales':['¿Qué prácticas, grupos, espacios o expresiones culturales son importantes para este proyecto?'],
+'S02:Principales dinámicas sociales':['¿Qué situaciones sociales influyen en el proyecto o en la población?'],
+'S02:Antecedentes':['¿Qué se ha hecho antes frente a esta situación?','¿Qué funcionó, qué quedó pendiente o qué cambió?'],
 
-'S03:Población atendida':['¿Quién presenta la necesidad o condición que el proyecto busca atender?','¿Cómo se delimita esta población por territorio, edad, práctica cultural u otra característica pertinente?','¿La cifra proviene de una fuente verificable o debe mantenerse como estimación?'],
-'S03:Población participante':['¿Quiénes participarán directamente en las actividades del proyecto?','¿Coincide con toda la población atendida o solo con una parte?','¿Qué criterio define quién puede participar?'],
-'S03:Caracterización':['¿Qué características son relevantes para diseñar el proyecto y cuáles serían irrelevantes o invasivas?','¿Existen diferencias internas que deban reconocerse para evitar tratar a la población como homogénea?','¿Qué datos provienen de evidencia y cuáles de conocimiento preliminar del equipo?'],
-'S03:Cantidad estimada':['¿Cuántas personas se espera atender o involucrar directamente?','¿Cuál es la fuente o procedimiento usado para estimar esa cantidad?','¿Debe expresarse como cifra exacta, rango o dato por verificar?'],
+'S03:Población atendida':['¿Quiénes viven o presentan la situación que el proyecto quiere atender?','Describe el grupo de forma concreta.'],
+'S03:Población participante':['¿Quiénes participarán directamente en las actividades?','¿Son todas las personas atendidas o solo una parte?'],
+'S03:Caracterización':['¿Qué características de esta población necesitas conocer para diseñar bien el proyecto?'],
+'S03:Cantidad estimada':['¿Cuántas personas participarían o serían atendidas?','Si no tienes una cifra respaldada, usa un estimado y marca [POR VERIFICAR].'],
 
-'S04:Evidencia disponible':['¿Qué hecho concreto respalda la existencia o magnitud de la situación?','¿La evidencia permite verificar el hecho o solo orienta una hipótesis?','¿Qué parte de la afirmación está sustentada y qué parte permanece por verificar?'],
-'S04:Fuentes':['¿Quién produjo la información y con qué propósito?','¿La fuente puede localizarse nuevamente por otra persona?','¿Es una fuente primaria, institucional, académica, testimonial, administrativa o web?'],
-'S04:Datos por verificar':['¿Qué afirmaciones todavía carecen de respaldo suficiente?','¿Qué fuente sería adecuada para verificarlas?','¿Qué consecuencia tendría formular el proyecto manteniendo ese dato como incierto?'],
-'S04:Observaciones':['¿Existe alguna limitación, contradicción o condición de consulta que deba conservarse?','¿La fuente presenta sesgos, cobertura parcial o una fecha que limite su vigencia?','¿Hay discrepancias con otras fuentes que deban quedar registradas?'],
+'S04:Evidencia disponible':['¿Qué dato, documento, registro u observación demuestra que la situación existe?','¿Qué parte está comprobada y qué parte todavía falta verificar?'],
+'S04:Fuentes':['¿De dónde salió la información?','¿Otra persona podría encontrar esa fuente?'],
+'S04:Datos por verificar':['¿Qué afirmaciones todavía necesitan una fuente o comprobación?'],
+'S04:Observaciones':['¿Hay algo importante que debamos recordar sobre la calidad o limitaciones de la información?'],
 
-'S05:Situaciones observables':['¿Qué hechos concretos pueden observarse sin confundirlos todavía con causas o soluciones?','¿Cada situación está formulada como una condición existente y verificable?','¿Hay situaciones distintas que estén mezcladas en una sola frase?'],
-'S05:Descripción':['¿Dónde, a quiénes y de qué manera se manifiesta esta situación?','¿Qué extensión, frecuencia o intensidad puede describirse con la evidencia disponible?','¿Qué parte es observación y qué parte es interpretación?'],
-'S05:Evidencia asociada':['¿Qué registro o fuente respalda específicamente esta situación?','¿La evidencia demuestra la situación completa o solo uno de sus componentes?','¿Hay evidencia contradictoria que también deba conservarse?'],
-'S05:Prioridad preliminar':['¿Por qué esta situación merece mayor atención que otras?','¿La prioridad se basa en magnitud, gravedad, urgencia, alcance o posibilidad de acción?','¿Es una decisión preliminar del equipo o una conclusión respaldada por participación de actores?'],
+'S05:Situaciones observables':['Escribe hechos o condiciones problemáticas que realmente puedan observarse.','Usa una situación por línea. Evita escribir soluciones como “hacer talleres” o “crear un programa”.'],
+'S05:Descripción':['¿Cómo se ve esa situación en la práctica?','¿A quién afecta, dónde ocurre y con qué frecuencia?'],
+'S05:Evidencia asociada':['¿Qué evidencia respalda esta situación concreta?','Si aún no existe, marca [POR VERIFICAR].'],
+'S05:Prioridad preliminar':['¿Por qué esta situación merece atención?','Piensa en gravedad, cantidad de personas, urgencia o posibilidad de intervención.'],
 
-'S06:Variables Vester':['¿Cada variable representa una situación claramente diferenciada?','¿Puede formularse de manera breve sin perder su significado?','¿Hay variables duplicadas, demasiado amplias o que contienen varias situaciones a la vez?'],
-'S06:Relaciones causales':['¿La variable A influye realmente sobre la variable B o solo están asociadas?','¿Cuál es el mecanismo concreto mediante el cual ocurre esa influencia?','¿La dirección causal podría estar invertida o ser bidireccional?'],
-'S06:Valoración 0–3':['¿Qué criterio usarás para distinguir influencia nula, baja, media y alta?','¿La valoración se apoya en evidencia, juicio experto o deliberación colectiva?','¿Dos personas aplicarían la misma regla de valoración si revisaran el caso?'],
-'S06:Justificación':['¿Qué evidencia o razonamiento sostiene la puntuación asignada?','¿Qué duda o desacuerdo existe sobre esa relación?','¿La justificación permite auditar después por qué se eligió ese valor?'],
+'S06:Variables Vester':['Aquí usarás solo las situaciones que ya revisaste en S05.','Cada variable debe ser un problema claro, no una solución.'],
+'S06:Relaciones causales':['Haz una pregunta simple: “Si cambia A, ¿provoca un cambio directo en B?”.','Después revisa también la dirección contraria: B → A.'],
+'S06:Valoración 0–3':['0 = no influye; 1 = influye poco; 2 = influye de manera importante; 3 = influye de forma fuerte y directa.'],
+'S06:Justificación':['Explica en una o dos frases por qué elegiste ese valor.','Si tienes dudas, puedes dejarlo pendiente y volver después.'],
 
-'S07:Causas indirectas':['¿Qué condiciones más amplias contribuyen a generar las causas directas?','¿La relación causal está sustentada o es todavía una hipótesis?','¿La causa indirecta pertenece al alcance del proyecto o solo ayuda a comprender el contexto?'],
-'S07:Causas directas':['¿Qué condiciones producen de manera inmediata el problema central?','¿Cada causa puede relacionarse lógicamente con el problema mediante una frase causal?','¿Existe evidencia suficiente para distinguir causa de simple asociación?'],
-'S07:Problema central':['¿Describe una condición negativa existente y verificable?','¿Incluye una sola situación principal y evita incorporar causas, efectos o soluciones en la misma frase?','¿Puede relacionarse de forma coherente con las causas y efectos registrados?'],
-'S07:Efectos directos':['¿Qué consecuencias aparecen de manera inmediata cuando ocurre el problema central?','¿Están observadas o inferidas?','¿Existe evidencia que permita distinguir consecuencia de coincidencia temporal?'],
-'S07:Efectos indirectos':['¿Qué consecuencias más amplias se producen a partir de los efectos directos?','¿La cadena causal puede explicarse paso a paso?','¿Qué efectos todavía son hipótesis y requieren verificación?'],
+'S07:Causas indirectas':['¿Qué situaciones están detrás de las causas directas?','Piensa: “esto ayuda a explicar por qué aparece la causa directa”.'],
+'S07:Causas directas':['¿Qué situaciones producen directamente el problema central?','Si esta causa cambiara, ¿el problema también cambiaría?'],
+'S07:Problema central':['Resume en una sola frase la situación principal que quieres transformar.','Debe describir un problema existente, no una solución que falta.'],
+'S07:Efectos directos':['¿Qué ocurre inmediatamente como consecuencia del problema central?'],
+'S07:Efectos indirectos':['¿Qué consecuencias aparecen después de los efectos directos?'],
 
-'S08:Enunciado del problema':['¿Qué condición negativa concreta resume mejor la situación priorizada?','¿El enunciado identifica población o territorio cuando son necesarios para delimitarlo?','¿Evita términos vagos, juicios de valor y formulaciones que ya contienen la solución?'],
-'S08:Población atendida':['¿Quién experimenta directamente el problema formulado?','¿La población coincide con la definida en S03 o el análisis exige ajustar su delimitación?','¿Qué evidencia respalda esa delimitación?'],
-'S08:Evidencia soporte':['¿Cuáles son las evidencias mínimas indispensables para sostener el problema central?','¿Cada evidencia respalda una parte concreta del enunciado?','¿Qué afirmación debería retirarse o marcarse [POR VERIFICAR] si falta soporte?'],
-'S08:Alcance':['¿Hasta dónde puede afirmarse el problema con la evidencia disponible?','¿Qué límites territoriales, temporales o poblacionales deben declararse?','¿Qué aspectos relacionados quedan fuera del alcance de esta formulación?']
+'S08:Enunciado del problema':['Redacta el problema de forma clara y concreta.','La herramienta te ayudará a detectar si la frase parece una solución, una causa o un efecto.'],
+'S08:Población atendida':['¿Quién vive directamente este problema?','Comprueba que coincida con la población definida antes.'],
+'S08:Evidencia soporte':['¿Qué evidencias sostienen este problema?','Si una parte no tiene respaldo, déjala [POR VERIFICAR].'],
+'S08:Alcance':['¿Hasta dónde podemos afirmar este problema con la información disponible?'],
+
+'S09:Objetivo central':['¿Cómo se vería el problema central si lográramos transformarlo positivamente?'],
+'S09:Medios directos':['Convierte las causas directas en condiciones positivas que el proyecto puede promover.'],
+'S09:Medios indirectos':['Convierte las causas indirectas en condiciones positivas de apoyo.'],
+'S09:Fines directos':['¿Qué mejora directa esperas observar si el objetivo se cumple?'],
+'S09:Fines indirectos':['¿Qué mejora más amplia podría ocurrir después?'],
+
+'S10:Alternativa seleccionada':['¿Cuál ruta de trabajo parece más adecuada para alcanzar los objetivos?','La herramienta puede comparar opciones, pero tú decides.'],
+'S10:Criterios de valoración':['Valora cada opción preguntando: ¿es pertinente?, ¿es viable?, ¿hay evidencia?, ¿cubre lo necesario?'],
+'S10:Justificación de la selección':['Explica brevemente por qué elegiste esta alternativa y qué dudas quedan pendientes.'],
+
+'S11:Resultados o productos':['¿Qué debe quedar logrado, entregado o disponible al terminar este grupo de acciones?','Debe poder comprobarse.'],
+'S11:Actividades confirmadas':['¿Qué acciones concretas son necesarias para producir ese resultado?','Cada actividad debe responder a un resultado.'],
+'S11:Observaciones':['¿Qué condición o aclaración debemos conservar para ejecutar estas actividades?'],
+
+'S12:Indicadores confirmados':['¿Cómo sabremos que una actividad o resultado avanzó o se cumplió?','Describe algo que pueda observarse o medirse.'],
+'S12:Metas confirmadas':['¿Qué valor o nivel esperas alcanzar?','Si aún no tienes una cifra sustentada, conserva [POR VERIFICAR].'],
+'S12:Medios de verificación':['¿Dónde se podrá comprobar el resultado: acta, registro, informe, base de datos, fotografía, medición u otra fuente?']
 };
 
 guide=function(label){
   const key=`${active}:${label}`;
   return didacticGuidance[key]||[
-    `¿Qué decisión metodológica exige este campo dentro de ${active}?`,
-    '¿Qué evidencia o razonamiento permite responderlo con precisión?',
-    '¿Qué información debería mantenerse explícitamente como [POR VERIFICAR]?'
+    '¿Qué necesitas decidir en este paso?',
+    '¿Qué información ya tienes para responder?',
+    '¿Qué dato todavía debes dejar como [POR VERIFICAR]?'
   ];
 };
 
-render();
+if(typeof render==='function')render();
