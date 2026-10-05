@@ -1,6 +1,5 @@
 from uuid import uuid4
-import pytest
-from domain import Project, POR_VERIFICAR, VesterRelation, calculate_vester
+from backend.domain import Project, POR_VERIFICAR, VesterRelation, calculate_vester
 
 
 def test_project_initializes_s01_s08():
@@ -24,6 +23,6 @@ def test_vester_is_deterministic():
     assert result["B"] == {"influence": 1, "dependence": 3}
 
 
-def test_vester_rejects_missing_justification():
-    with pytest.raises(ValueError):
-        VesterRelation("A", "B", 2, "")
+def test_vester_justification_is_optional():
+    relation = VesterRelation("A", "B", 2)
+    assert relation.justification is None
