@@ -7,10 +7,13 @@ from uuid import UUID, uuid4
 POR_VERIFICAR = "[POR VERIFICAR]"
 
 class SourceKind(str, Enum):
-    PROJECT = "project"
-    LIBRARY = "library"
+    INSTITUTIONAL = "institutional"
+    RESEARCH = "research"
+    ADMINISTRATIVE = "administrative"
+    OBSERVATION = "observation"
+    INTERVIEW = "interview"
     WEB = "web"
-    AI = "ai"
+    OTHER = "other"
 
 @dataclass
 class Evidence:
