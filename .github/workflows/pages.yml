@@ -15,7 +15,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obtener repositorio
+        uses: actions/checkout@v4
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+      - name: Instalar dependencias
+        run: pip install -r backend/requirements.txt
+      - name: Ejecutar pruebas Python
+        run: python -m pytest backend -q
+      - name: Validar sintaxis JavaScript
+        run: |
+          node --check app.js
+          node --check guidance.js
+          node --check evidence.js
+          node --check vester.js
+          node --check tree.js
+          node --check synthesis.js
+      - name: Verificar archivos públicos esenciales
+        run: |
+          test -f index.html
+          test -f style.css
+          grep -q 'synthesis.js' index.html
+          grep -q 'tree.js' index.html
+          grep -q 'vester.js' index.html
+
   deploy:
+    needs: test
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
