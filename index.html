@@ -4,14 +4,15 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#f4f6f8" />
-<title>Formulador Cultural · S01–S09</title>
-<link rel="stylesheet" href="style.css?v=20261005-12" />
-<link rel="stylesheet" href="vester.css?v=20261005-12" />
-<link rel="stylesheet" href="tree.css?v=20261005-12" />
-<link rel="stylesheet" href="synthesis.css?v=20261005-12" />
-<link rel="stylesheet" href="visualization.css?v=20261005-12" />
-<link rel="stylesheet" href="s07_front.css?v=20261005-12" />
-<link rel="stylesheet" href="objectives.css?v=20261005-12" />
+<title>Formulador Cultural · S01–S12</title>
+<link rel="stylesheet" href="style.css?v=20261005-13" />
+<link rel="stylesheet" href="vester.css?v=20261005-13" />
+<link rel="stylesheet" href="tree.css?v=20261005-13" />
+<link rel="stylesheet" href="synthesis.css?v=20261005-13" />
+<link rel="stylesheet" href="visualization.css?v=20261005-13" />
+<link rel="stylesheet" href="s07_front.css?v=20261005-13" />
+<link rel="stylesheet" href="objectives.css?v=20261005-13" />
+<link rel="stylesheet" href="completion.css?v=20261005-13" />
 <style>
 .vester-prep{margin-top:20px;border-top:2px solid var(--ink);padding-top:16px}.vester-prep-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.vester-prep-head p{margin:5px 0;color:var(--muted);font-size:.9rem}.vester-prep-head button,.prep-actions button,.prep-actions select{border:1px solid #aeb8c2;background:#fff;border-radius:10px;padding:9px 11px;font:inherit}.prep-summary{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}.prep-summary span{border:1px solid var(--line);border-radius:999px;padding:4px 8px;font-size:.76rem;background:#fafbfc}.prep-list{display:grid;gap:10px}.prep-item{display:grid;grid-template-columns:auto 1fr;gap:10px;border:1px solid var(--line);border-radius:12px;padding:11px;background:#fff}.prep-index{font-weight:800;font-size:.82rem;border:1px solid var(--line);border-radius:999px;padding:4px 7px;height:max-content}.prep-main{min-width:0;display:grid;gap:8px}.prep-original small{display:block;color:var(--muted);margin-bottom:3px}.prep-main label{display:grid;gap:5px;font-weight:700;font-size:.84rem}.prep-main textarea{width:100%;min-height:76px;border:1px solid #b8c2cc;border-radius:10px;padding:9px;font:inherit;resize:vertical}.prep-reason{font-size:.82rem;color:#52606d;background:#f7f9fb;border-radius:8px;padding:8px}.prep-actions{display:flex;flex-wrap:wrap;gap:7px}.prep-actions select{min-width:180px}.prep-rule{margin-top:12px;border:1px solid #e0c86e;background:#fff9df;border-radius:11px;padding:10px 12px}.prep-rule p{margin:4px 0;font-size:.86rem;color:#5d646b}@media(max-width:720px){.vester-prep-head{display:block}.vester-prep-head button{margin-top:8px;width:100%}.prep-item{grid-template-columns:1fr}.prep-index{width:max-content}.prep-actions{display:grid}.prep-actions select,.prep-actions button{width:100%}}
 </style>
@@ -20,75 +21,37 @@
 <div class="wrap">
   <section class="hero">
     <h1>Formulador Cultural</h1>
-    <p>Prototipo web navegable · Ruta metodológica S01–S09</p>
+    <p>Prototipo web navegable · Ruta metodológica S01–S12</p>
     <p>Los datos sin respaldo deben conservarse como <strong>[POR VERIFICAR]</strong>.</p>
     <span class="badge">Fase 2 · persistencia multiusuario en conexión</span>
     <div class="progress" aria-label="Progreso"><span id="progressBar"></span></div>
   </section>
-
-  <section class="auth-card" id="authCard">
-    <div>
-      <strong id="authTitle">Sincronización en la nube</strong>
-      <div class="auth-help" id="authHelp">Puedes seguir trabajando localmente o iniciar sesión para sincronizar el proyecto.</div>
-    </div>
-    <div class="auth-actions auth-stack" id="authSignedOut">
-      <input id="email" type="email" inputmode="email" autocomplete="email" placeholder="correo@ejemplo.com" aria-label="Correo electrónico" />
-      <input id="password" type="password" autocomplete="current-password" placeholder="Contraseña" aria-label="Contraseña" minlength="8" />
-      <div class="auth-button-row">
-        <button id="passwordLoginBtn" class="primary">Entrar con contraseña</button>
-        <button id="signupBtn">Crear cuenta</button>
-      </div>
-      <div class="auth-divider"><span>o</span></div>
-      <button id="loginBtn">Enviar enlace de acceso</button>
-    </div>
-    <div class="auth-actions hidden" id="authSignedIn">
-      <span id="userLabel"></span>
-      <button id="syncBtn">Sincronizar proyecto</button>
-      <button id="setPasswordBtn">Definir o cambiar contraseña</button>
-      <button id="logoutBtn">Cerrar sesión</button>
-    </div>
-  </section>
-
+  <section class="auth-card" id="authCard"><div><strong id="authTitle">Sincronización en la nube</strong><div class="auth-help" id="authHelp">Puedes seguir trabajando localmente o iniciar sesión para sincronizar el proyecto.</div></div><div class="auth-actions auth-stack" id="authSignedOut"><input id="email" type="email" inputmode="email" autocomplete="email" placeholder="correo@ejemplo.com" aria-label="Correo electrónico" /><input id="password" type="password" autocomplete="current-password" placeholder="Contraseña" aria-label="Contraseña" minlength="8" /><div class="auth-button-row"><button id="passwordLoginBtn" class="primary">Entrar con contraseña</button><button id="signupBtn">Crear cuenta</button></div><div class="auth-divider"><span>o</span></div><button id="loginBtn">Enviar enlace de acceso</button></div><div class="auth-actions hidden" id="authSignedIn"><span id="userLabel"></span><button id="syncBtn">Sincronizar proyecto</button><button id="setPasswordBtn">Definir o cambiar contraseña</button><button id="logoutBtn">Cerrar sesión</button></div></section>
   <div class="nav-wrap"><nav class="nav" id="nav" aria-label="Secciones"></nav></div>
-  <main class="panel" id="panel">
-    <div class="counter" id="counter"></div>
-    <h2 id="title"></h2>
-    <div class="question" id="question"></div>
-    <div class="meaning" id="meaning"></div>
-    <div id="fields"></div>
-    <div class="toolbar">
-      <button id="prev">← Anterior</button>
-      <button class="primary" id="save">Guardar borrador</button>
-      <button id="next">Siguiente →</button>
-      <button id="clear">Limpiar sección</button>
-    </div>
-    <div class="status" id="status"><span class="saved-dot ok" id="savedDot"></span>El borrador se almacena en este navegador.</div>
-    <div class="sources">
-      <div class="source">Proyecto</div><div class="source">Biblioteca · siguiente bloque</div><div class="source">Web · siguiente bloque</div><div class="source">Propuesta IA · siguiente bloque</div>
-    </div>
-  </main>
-  <div class="foot">Fase 2 en curso. La persistencia multiusuario usa Supabase con aislamiento por usuario. RAG, búsqueda web e IA se conectarán después sobre el mismo núcleo.</div>
+  <main class="panel" id="panel"><div class="counter" id="counter"></div><h2 id="title"></h2><div class="question" id="question"></div><div class="meaning" id="meaning"></div><div id="fields"></div><div class="toolbar"><button id="prev">← Anterior</button><button class="primary" id="save">Guardar borrador</button><button id="next">Siguiente →</button><button id="clear">Limpiar sección</button></div><div class="status" id="status"><span class="saved-dot ok" id="savedDot"></span>El borrador se almacena en este navegador.</div><div class="sources"><div class="source">Proyecto</div><div class="source">Biblioteca · siguiente bloque</div><div class="source">Web · siguiente bloque</div><div class="source">Propuesta IA · siguiente bloque</div></div></main>
+  <div class="foot">La persistencia multiusuario usa Supabase con aislamiento por usuario. Las propuestas asistidas deben confirmarse y los vacíos permanecen [POR VERIFICAR].</div>
 </div>
-<div class="mobile-actions">
-  <button id="mPrev">←</button><button class="primary" id="mSave">Guardar</button><button id="mNext">→</button>
-</div>
+<div class="mobile-actions"><button id="mPrev">←</button><button class="primary" id="mSave">Guardar</button><button id="mNext">→</button></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="preboot.js?v=20261005-12"></script>
-<script src="app.js?v=20261005-12"></script>
-<script src="sections_extension.js?v=20261005-12"></script>
-<script src="guidance.js?v=20261005-12"></script>
-<script src="evidence.js?v=20261005-12"></script>
-<script src="s05_preflight.js?v=20261005-12"></script>
-<script src="vester.js?v=20261005-12"></script>
-<script src="causal_validation.js?v=20261005-12"></script>
-<script src="decision_guidance.js?v=20261005-12"></script>
-<script src="tree_validation_bridge.js?v=20261005-12"></script>
-<script src="tree.js?v=20261005-12"></script>
-<script src="synthesis.js?v=20261005-12"></script>
-<script src="visualization.js?v=20261005-12"></script>
-<script src="s07_front.js?v=20261005-12"></script>
-<script src="objectives.js?v=20261005-12"></script>
-<script src="workflow.js?v=20261005-12"></script>
+<script src="preboot.js?v=20261005-13"></script>
+<script src="app.js?v=20261005-13"></script>
+<script src="sections_extension.js?v=20261005-13"></script>
+<script src="guidance.js?v=20261005-13"></script>
+<script src="evidence.js?v=20261005-13"></script>
+<script src="s05_preflight.js?v=20261005-13"></script>
+<script src="vester.js?v=20261005-13"></script>
+<script src="causal_validation.js?v=20261005-13"></script>
+<script src="decision_guidance.js?v=20261005-13"></script>
+<script src="tree_validation_bridge.js?v=20261005-13"></script>
+<script src="tree.js?v=20261005-13"></script>
+<script src="synthesis.js?v=20261005-13"></script>
+<script src="visualization.js?v=20261005-13"></script>
+<script src="s07_front.js?v=20261005-13"></script>
+<script src="objectives.js?v=20261005-13"></script>
+<script src="workflow.js?v=20261005-13"></script>
+<script src="completion.js?v=20261005-13"></script>
+<script src="export_completion.js?v=20261005-13"></script>
+<script src="completion_bridge.js?v=20261005-13"></script>
 </body>
 </html>
