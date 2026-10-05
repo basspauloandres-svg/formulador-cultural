@@ -38,4 +38,17 @@ def test_solution_absence_wording_is_flagged():
             evidence=("Registro institucional",),
         ),
     )
-    assert any("ausencia de una solución" in note for note in review.observations)
+    assert any("necesidad, acción o solución" in note for note in review.observations)
+
+
+def test_solution_oriented_central_is_not_presented_as_problem():
+    service = SynthesisService()
+    inputs = SynthesisInputs(
+        central_problem="La banda requiere talleres individuales de instrumentos para mejorar cada sección",
+        population=None,
+        territory="Villamaría",
+    )
+    proposal = service.propose(inputs)[0]
+    assert proposal.startswith("[POR VERIFICAR]")
+    assert "parece expresar una necesidad o solución" in proposal
+    assert "Villamaría" not in proposal
