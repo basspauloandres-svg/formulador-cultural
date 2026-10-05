@@ -32,19 +32,43 @@ jobs:
         run: python -m pytest backend -q
       - name: Validar sintaxis JavaScript
         run: |
-          node --check app.js
-          node --check guidance.js
-          node --check evidence.js
-          node --check vester.js
-          node --check tree.js
-          node --check synthesis.js
+          for file in \
+            preboot.js \
+            app.js \
+            sections_extension.js \
+            guidance.js \
+            evidence.js \
+            s05_preflight.js \
+            vester.js \
+            tree.js \
+            synthesis.js \
+            visualization.js \
+            s07_front.js \
+            objectives.js \
+            workflow.js; do
+            node --check "$file"
+          done
       - name: Verificar archivos públicos esenciales
         run: |
           test -f index.html
           test -f style.css
-          grep -q 'synthesis.js' index.html
-          grep -q 'tree.js' index.html
-          grep -q 'vester.js' index.html
+          for file in \
+            preboot.js \
+            app.js \
+            sections_extension.js \
+            guidance.js \
+            evidence.js \
+            s05_preflight.js \
+            vester.js \
+            tree.js \
+            synthesis.js \
+            visualization.js \
+            s07_front.js \
+            objectives.js \
+            workflow.js; do
+            test -f "$file"
+            grep -q "$file" index.html
+          done
 
   deploy:
     needs: test
