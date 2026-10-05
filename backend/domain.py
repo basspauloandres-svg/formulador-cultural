@@ -38,7 +38,7 @@ class Project:
     sections: dict[str, Section] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        for code in [f"S{i:02d}" for i in range(1, 9)]:
+        for code in [f"S{i:02d}" for i in range(1, 10)]:
             self.sections.setdefault(code, Section(code=code))
 
 @dataclass(frozen=True)
