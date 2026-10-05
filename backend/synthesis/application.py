@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .domain import SynthesisInputs, SynthesisReview, basic_review
+from .domain import SynthesisInputs, SynthesisReview, basic_review, looks_like_solution
 from .ports import SynthesisAssistantPort
 
 class SynthesisService:
@@ -9,7 +9,14 @@ class SynthesisService:
     def propose(self, inputs: SynthesisInputs) -> tuple[str, ...]:
         if self.assistant is not None:
             return self.assistant.propose(inputs)
-        central = inputs.central_problem or "[POR VERIFICAR]"
+        central = (inputs.central_problem or "").strip()
+        if not central:
+            return ("[POR VERIFICAR] Define primero una situación negativa observable como problema central.",)
+        if looks_like_solution(central):
+            return (
+                f"[POR VERIFICAR] La formulación de S07 parece expresar una necesidad o solución («{central}»). "
+                "Describe la situación negativa observable que existe antes de esa respuesta.",
+            )
         parts = [central]
         if inputs.population:
             parts.append(f"en {inputs.population}")
