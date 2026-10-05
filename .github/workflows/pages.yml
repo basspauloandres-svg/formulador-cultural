@@ -48,13 +48,17 @@ jobs:
             visualization.js \
             s07_front.js \
             objectives.js \
-            workflow.js; do
+            workflow.js \
+            completion.js \
+            export_completion.js \
+            completion_bridge.js; do
             node --check "$file"
           done
       - name: Verificar archivos públicos esenciales
         run: |
           test -f index.html
           test -f style.css
+          test -f completion.css
           for file in \
             preboot.js \
             app.js \
@@ -71,10 +75,14 @@ jobs:
             visualization.js \
             s07_front.js \
             objectives.js \
-            workflow.js; do
+            workflow.js \
+            completion.js \
+            export_completion.js \
+            completion_bridge.js; do
             test -f "$file"
             grep -q "$file" index.html
           done
+          grep -q "S01–S12" index.html
 
   deploy:
     needs: test
