@@ -61,7 +61,7 @@ function ensureVester(){
   if(!wizard.querySelector('#showVesterGraph')){
     const b=document.createElement('button'); b.type='button'; b.id='showVesterGraph'; b.textContent='Ver gráfico';
     actions.appendChild(b);
-    b.onclick=()=>{let panel=wizard.querySelector('#vesterGraphPanel');if(!panel){panel=document.createElement('section');panel.id='vesterGraphPanel';panel.className='viz-panel';wizard.querySelector('#vesterAssist')?.insertAdjacentElement('afterend',panel)}panel.innerHTML=vesterChartHtml();panel.classList.toggle('open',true);panel.scrollIntoView({behavior:'smooth',block:'start'})};
+    b.onclick=()=>{let panel=wizard.querySelector('#vesterGraphPanel');if(!panel){panel=document.createElement('section');panel.id='vesterGraphPanel';panel.className='viz-panel';wizard.querySelector('#vesterAssist')?.insertAdjacentElement('afterend',panel)}panel.innerHTML=vesterChartHtml();panel.classList.add('open');panel.scrollIntoView({behavior:'smooth',block:'start'})};
   }
 }
 
@@ -71,17 +71,11 @@ function ensureTree(){
   if(!wizard.querySelector('#showTreeDiagram')){
     const b=document.createElement('button'); b.type='button'; b.id='showTreeDiagram'; b.textContent='Ver diagrama';
     actions.appendChild(b);
-    b.onclick=()=>{let panel=wizard.querySelector('#treeDiagramPanel');if(!panel){panel=document.createElement('section');panel.id='treeDiagramPanel';panel.className='viz-panel';wizard.querySelector('#treeAssist')?.insertAdjacentElement('afterend',panel)}panel.innerHTML=treeDiagramHtml();panel.classList.toggle('open',true);panel.scrollIntoView({behavior:'smooth',block:'start'})};
+    b.onclick=()=>{let panel=wizard.querySelector('#treeDiagramPanel');if(!panel){panel=document.createElement('section');panel.id='treeDiagramPanel';panel.className='viz-panel';wizard.querySelector('#treeAssist')?.insertAdjacentElement('afterend',panel)}panel.innerHTML=treeDiagramHtml();panel.classList.add('open');panel.scrollIntoView({behavior:'smooth',block:'start'})};
   }
 }
 
-function refreshOpen(){
-  const vp=$('#vesterGraphPanel.open'); if(vp)vp.innerHTML=vesterChartHtml();
-  const tp=$('#treeDiagramPanel.open'); if(tp)tp.innerHTML=treeDiagramHtml();
-}
-
-const obs=new MutationObserver(()=>{ensureVester();ensureTree();refreshOpen()});
+const obs=new MutationObserver(()=>{ensureVester();ensureTree()});
 obs.observe(document.body,{subtree:true,childList:true,characterData:true});
-window.addEventListener('storage',refreshOpen);
 ensureVester();ensureTree();
 })();
