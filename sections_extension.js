@@ -1,8 +1,10 @@
 (()=>{
 if(typeof sections==='undefined'||typeof order==='undefined')return;
-if(!sections.S09){sections.S09={title:'Árbol de objetivos',question:'¿Cómo transformar el árbol de problemas en estados positivos deseados?',meaning:'Convierte problema, causas y efectos en objetivo central, medios y fines manteniendo la trazabilidad con S07.',fields:[['objetivo_central','Objetivo central',1],['medios_directos','Medios directos'],['medios_indirectos','Medios indirectos'],['fines_directos','Fines directos'],['fines_indirectos','Fines indirectos']]}}
-if(!order.includes('S09'))order.push('S09');
-const boot=localStorage.getItem('fc_boot_target');
-if(boot==='S09'){active='S09';localStorage.removeItem('fc_boot_target')}
+if(!sections.S09)sections.S09={title:'Árbol de objetivos',question:'¿Cómo transformar el árbol de problemas en estados positivos deseados?',meaning:'Convierte problema, causas y efectos en objetivo central, medios y fines manteniendo la trazabilidad con S07.',fields:[['objetivo_central','Objetivo central',1],['medios_directos','Medios directos'],['medios_indirectos','Medios indirectos'],['fines_directos','Fines directos'],['fines_indirectos','Fines indirectos']]};
+if(!sections.S10)sections.S10={title:'Análisis de alternativas',question:'¿Qué ruta de intervención resulta más pertinente y viable para el proyecto?',meaning:'Compara alternativas derivadas de los medios del árbol de objetivos y selecciona explícitamente una estrategia.',fields:[['alternativa_seleccionada','Alternativa seleccionada',1],['criterios','Criterios de valoración'],['justificacion_seleccion','Justificación de la selección']]};
+if(!sections.S11)sections.S11={title:'Actividades',question:'¿Qué acciones concretas permiten desarrollar la alternativa seleccionada?',meaning:'Organiza actividades vinculadas con los objetivos y confirma cuáles harán parte de la formulación.',fields:[['actividades_confirmadas','Actividades confirmadas',1],['observaciones_actividades','Observaciones']]};
+if(!sections.S12)sections.S12={title:'Metas e indicadores',question:'¿Cómo se verificará el avance y cumplimiento de las actividades y objetivos?',meaning:'Define indicadores, metas, línea base, medios de verificación, responsables y plazos sin inventar cifras.',fields:[['indicadores_confirmados','Indicadores confirmados',1],['metas_confirmadas','Metas confirmadas'],['medios_verificacion','Medios de verificación']]};
+['S09','S10','S11','S12'].forEach(code=>{if(!order.includes(code))order.push(code)});
+const boot=localStorage.getItem('fc_boot_target');if(boot&&order.includes(boot)){active=boot;localStorage.removeItem('fc_boot_target')}
 if(typeof render==='function')render();
 })();
