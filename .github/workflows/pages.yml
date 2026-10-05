@@ -50,6 +50,8 @@ jobs:
             objectives.js \
             workflow.js \
             completion.js \
+            results_layer.js \
+            coherence_engine.js \
             export_completion.js \
             completion_bridge.js; do
             node --check "$file"
@@ -77,12 +79,15 @@ jobs:
             objectives.js \
             workflow.js \
             completion.js \
+            results_layer.js \
+            coherence_engine.js \
             export_completion.js \
             completion_bridge.js; do
             test -f "$file"
             grep -q "$file" index.html
           done
           grep -q "S01–S12" index.html
+          grep -q "Motor de coherencia" coherence_engine.js
 
   deploy:
     needs: test
