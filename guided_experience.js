@@ -1,17 +1,60 @@
-(()=>{const $=s=>document.querySelector(s);
-const stageDefs=[
-{n:1,title:'Entender la situación',codes:['S01','S02','S03','S04','S05'],help:'Primero reunimos lo básico: dónde ocurre, a quién afecta, qué sabemos y qué situaciones observamos.'},
-{n:2,title:'Encontrar el problema principal',codes:['S06','S07','S08'],help:'Ahora ordenamos relaciones entre situaciones y construimos una explicación clara del problema.'},
-{n:3,title:'Definir qué queremos cambiar',codes:['S09'],help:'Transformamos el problema en objetivos claros y posibles.'},
-{n:4,title:'Diseñar qué vamos a hacer',codes:['S10','S11','S12'],help:'Elegimos una ruta, definimos resultados, actividades y cómo comprobaremos los avances.'},
-{n:5,title:'Revisar el proyecto',codes:[],help:'Al final revisamos si todo está conectado y si faltan datos antes de exportar el proyecto.'}
+(()=>{
+const $=s=>document.querySelector(s);
+const stages=[
+{n:1,title:'Entender la situación',items:[['S01','Identificación general'],['S02','Contexto'],['S03','Población'],['S04','Evidencia'],['S05','Situaciones']]},
+{n:2,title:'Encontrar el problema principal',items:[['S06','Comparar situaciones'],['S07','Árbol de problemas'],['S08','Síntesis del problema']]},
+{n:3,title:'Definir qué queremos cambiar',items:[['S09','Árbol y objetivos']]},
+{n:4,title:'Diseñar qué vamos a hacer',items:[['S10','Alternativas'],['S11','Resultados y actividades'],['S12','Indicadores y metas'],['S13','Cronograma'],['S14','Recursos y presupuesto'],['S15','Riesgos']]},
+{n:5,title:'Revisar y entregar',items:[['S16','Resultados, gráficas y documentos']]}
 ];
-let lastJourneyKey='',lastGuideKey='';
-function activeCode(){try{return typeof active!=='undefined'?active:($('#counter')?.textContent||'').slice(0,3)}catch{return ($('#counter')?.textContent||'').slice(0,3)||'S01'}}
-function stageFor(code){return stageDefs.find(s=>s.codes.includes(code))||stageDefs[0]}
-function navToStage(stage){if(stage.n===5){document.querySelector('#coherencePanel')?.scrollIntoView({behavior:'smooth',block:'start'});return}const code=stage.codes[0];if(code&&window.fcNavigate)window.fcNavigate(code)}
-function renderJourney(){document.body.classList.add('guided-mode');const code=activeCode(),cur=stageFor(code),key=code+':'+cur.n;let wrap=$('#guidedJourney');if(!wrap){wrap=document.createElement('section');wrap.id='guidedJourney';wrap.className='guided-journey';$('.nav-wrap')?.insertAdjacentElement('afterend',wrap);lastJourneyKey=''}else{wrap.classList.add('guided-journey')}if(lastJourneyKey===key)return;lastJourneyKey=key;const curIdx=Math.max(0,stageDefs.findIndex(s=>s.n===cur.n));wrap.innerHTML='<div class="guided-journey-head"><div><strong>Tu recorrido</strong><p>Avanza una decisión a la vez. El detalle técnico se guarda por debajo.</p></div><button class="guided-review-btn" type="button">Revisar lo que llevo</button></div><div class="guided-steps">'+stageDefs.map((s,i)=>'<button type="button" class="guided-step '+(s.n===cur.n?'current':i<curIdx?'done':i>curIdx+1?'locked':'')+'" data-stage="'+s.n+'"><span>Paso '+s.n+'</span><b>'+s.title+'</b></button>').join('')+'</div>';wrap.querySelectorAll('[data-stage]').forEach(b=>b.onclick=()=>navToStage(stageDefs.find(s=>String(s.n)===b.dataset.stage)));wrap.querySelector('.guided-review-btn').onclick=()=>navToStage(stageDefs[4])}
-function renderSectionGuide(){const code=activeCode(),fields=$('#fields');if(!fields)return;const s=stageFor(code),key=code+':'+s.n;if(lastGuideKey===key&&fields.querySelector('.guided-section-note'))return;fields.querySelector('.guided-section-note')?.remove();const note=document.createElement('div');note.className='guided-section-note';note.innerHTML='<strong>Paso '+s.n+' · '+s.title+'</strong><p>'+s.help+'</p>';fields.prepend(note);lastGuideKey=key}
-function simplifyVester(){const root=$('#vesterWizard');if(!root)return;const top=root.querySelector('.vester-top h3');if(top)top.textContent='Comparar situaciones';const p=root.querySelector('.vester-top p');if(p)p.textContent='Te mostraremos dos situaciones cada vez. Decide si una puede provocar cambios en la otra. El sistema hará los cálculos por detrás.';const core=root.querySelector('.vester-core-question');if(core){core.textContent='¿La primera situación puede provocar un cambio en la segunda?';if(!root.querySelector('.guided-vester-hint')){const h=document.createElement('div');h.className='guided-vester-hint';h.innerHTML='<strong>Cómo responder</strong><p>Piensa en el orden: si la primera situación cambiara, ¿la segunda cambiaría también? Si solo ocurren al mismo tiempo, elige “No cambia”.</p>';core.insertAdjacentElement('afterend',h)}}const labels=['No cambia','Cambia poco','Cambia bastante','Cambia mucho'];root.querySelectorAll('[data-score]').forEach(b=>{const sp=b.querySelector('span');if(sp)sp.textContent=labels[Number(b.dataset.score)]||sp.textContent});const just=root.querySelector('.vester-just textarea');if(just)just.placeholder='Una frase corta es suficiente. También puedes dejarlo vacío.';const assist=root.querySelector('.vester-actions');if(assist&&!assist.querySelector('.guided-help-toggle')){const b=document.createElement('button');b.type='button';b.className='guided-help-toggle';b.textContent='Necesito ayuda';b.onclick=()=>root.querySelector('[data-help="easy"]')?.click();assist.appendChild(b)}}
-let scheduled=false;function mount(){scheduled=false;renderJourney();renderSectionGuide();simplifyVester()}function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(mount)}
-new MutationObserver(schedule).observe(document.body,{subtree:true,childList:true});schedule();})();
+let renderKey='',guideKey='',scheduled=false;
+function code(){try{return typeof active!=='undefined'?active:(($('#counter')?.textContent||'').match(/^S\d{2}/)?.[0]||'S01')}catch{return 'S01'}}
+function data(c){try{return typeof draft!=='undefined'?(draft[c]||{}):{}}catch{return {}}}
+function has(v){if(v===null||v===undefined)return false;if(typeof v==='string')return !!v.trim();if(Array.isArray(v))return v.length>0;if(typeof v==='object')return Object.keys(v).length>0;return true}
+function fieldsStatus(c){
+ const s=typeof sections!=='undefined'?sections[c]:null,d=data(c);if(!s)return 'missing';
+ const req=(s.fields||[]).filter(x=>x[2]).map(x=>x[0]),all=(s.fields||[]).map(x=>x[0]);
+ const some=all.some(k=>has(d[k])),done=req.length?req.every(k=>has(d[k])):some;
+ return done?'complete':some?'progress':'missing'
+}
+function state(c){
+ const d=data(c);
+ try{
+  if(c==='S05'){const p=d.vester_preparation_v2||d.vester_preparation||{};const xs=p.items||[];if(xs.filter(x=>x.confirmed&&(x.status==='ready'||x.status==='confirmed')).length>=2)return 'complete';return has(d.situaciones_observables)?'progress':'missing'}
+  if(c==='S06'){const v=d.vester_state||{},ps=v.selected||[],rel=v.relations||{};let need=ps.length*(ps.length-1),answered=Object.values(rel).filter(r=>Number.isInteger(r?.score)).length;const cv=d.causal_validation||{},pairs=cv.pairs||[];const reviewed=pairs.filter(p=>p.decision&&p.decision!=='pending').length;if(ps.length>=2&&answered>=need&&(!pairs.length||reviewed===pairs.length))return 'complete';return ps.length||answered||pairs.length?'progress':'missing'}
+  if(c==='S07'){const t=d.tree_state||{},ns=t.nodes||[],cent=ns.some(n=>n.zone==='central'),linked=ns.filter(n=>n.zone&&n.zone!=='outside'&&n.zone!=='central').length;if(cent&&linked)return 'complete';return cent||ns.length?'progress':'missing'}
+  if(c==='S08')return has(d.enunciado)?'complete':fieldsStatus(c);
+  if(c==='S09'){const o=d.objectives_state||{},xs=o.items||[];if(xs.length&&xs.every(x=>x.confirmed))return 'complete';return xs.length?'progress':'missing'}
+  if(c==='S10'){const xs=d.completion_state?.items||[];if(xs.some(x=>x.selected&&x.confirmed))return 'complete';return xs.length?'progress':'missing'}
+  if(c==='S11'){const rs=d.results_state?.items||[],as=d.completion_state?.items||[];const r=rs.filter(x=>x.confirmed),a=as.filter(x=>x.confirmed);if(r.length&&a.length&&a.every(x=>x.resultId||x.objectiveId))return 'complete';return rs.length||as.length?'progress':'missing'}
+  if(c==='S12'){const xs=d.completion_state?.items||[];if(xs.length&&xs.every(x=>x.confirmed))return 'complete';return xs.length?'progress':'missing'}
+  if(c==='S13'){const xs=d.schedule_state?.items||[],acts=(data('S11').completion_state?.items||[]).filter(x=>x.confirmed);if(acts.length&&xs.filter(x=>x.confirmed).length>=acts.length)return 'complete';return xs.length?'progress':'missing'}
+  if(c==='S14'){const b=d.budget_state||{},ass=b.activityStatus||{},acts=(data('S11').completion_state?.items||[]).filter(x=>x.confirmed);const covered=acts.filter(a=>ass[a.id]&&ass[a.id]!=='pending').length;if(acts.length&&covered===acts.length)return 'complete';return (b.items||[]).length||Object.keys(ass).length?'progress':'missing'}
+  if(c==='S15'){const r=d.risk_state||{},ass=r.assessments||{},targets=(r.targets||[]);if(targets.length&&targets.every(t=>ass[t.id]&&ass[t.id]!=='pending'))return 'complete';return (r.items||[]).length||Object.keys(ass).length?'progress':'missing'}
+  if(c==='S16'){const rv=d.review_state||{};return rv.confirmed?'complete':has(rv)?'progress':'missing'}
+ }catch{}
+ return fieldsStatus(c)
+}
+function stLabel(s){return s==='complete'?'Completa':s==='progress'?'En curso':'Falta'}
+function stageFor(c){return stages.find(s=>s.items.some(i=>i[0]===c))||stages[0]}
+function stageState(stage){const ss=stage.items.map(x=>state(x[0]));return ss.every(x=>x==='complete')?'complete':ss.some(x=>x!=='missing')?'progress':'missing'}
+async function go(c){if(typeof window.fcNavigate==='function')await window.fcNavigate(c);else{try{active=c;render()}catch{}}}
+function renderJourney(){
+ document.body.classList.add('guided-mode');
+ const current=code();const statuses=stages.flatMap(s=>s.items.map(([c])=>c+':'+state(c))).join('|');
+ const key=current+'|'+statuses;if(key===renderKey)return;renderKey=key;
+ let wrap=$('#guidedJourney');if(!wrap){wrap=document.createElement('section');wrap.id='guidedJourney';wrap.className='guided-journey';$('.nav-wrap')?.insertAdjacentElement('beforebegin',wrap)}
+ wrap.className='guided-journey';
+ wrap.innerHTML='<div class="guided-journey-head"><div><strong>Tu recorrido</strong><p>Ubica dónde vas, qué ya terminaste y qué falta. Puedes entrar directamente a cualquier sección.</p></div><button class="guided-review-btn" type="button">Revisar lo que llevo</button></div><div class="guided-stage-grid">'+stages.map(s=>{const ss=stageState(s),cur=s.items.some(i=>i[0]===current);return '<section class="guided-stage '+(cur?'current ':'')+ss+'"><header><span class="stage-number">'+s.n+'</span><div><strong>'+s.title+'</strong><span class="stage-status '+ss+'">'+stLabel(ss)+'</span></div></header><div class="guided-subsections">'+s.items.map(([c,t])=>{const cs=state(c);return '<button type="button" data-code="'+c+'" class="guided-subsection '+(c===current?'current ':'')+cs+'"><span class="status-dot"></span><span><small>'+c+'</small>'+t+'</span></button>'}).join('')+'</div></section>'}).join('')+'</div>';
+ wrap.querySelectorAll('[data-code]').forEach(b=>b.onclick=()=>go(b.dataset.code));
+ wrap.querySelector('.guided-review-btn').onclick=()=>go('S16')
+}
+function renderGuide(){
+ const c=code(),fields=$('#fields');if(!fields)return;const s=stageFor(c),k=c+':'+s.n;if(k===guideKey&&fields.querySelector('.guided-section-note'))return;fields.querySelector('.guided-section-note')?.remove();const note=document.createElement('div');note.className='guided-section-note';note.innerHTML='<strong>Paso '+s.n+' · '+s.title+'</strong><p>Estás en <b>'+c+'</b>. Completa esta decisión y usa “Siguiente” para continuar, o el recorrido superior para ir directamente a otra sección.</p>';fields.prepend(note);guideKey=k
+}
+function simplifyVester(){const root=$('#vesterWizard');if(!root)return;const top=root.querySelector('.vester-top h3');if(top)top.textContent='Comparar situaciones';const p=root.querySelector('.vester-top p');if(p)p.textContent='Te mostramos dos situaciones cada vez. Responde si una puede provocar cambios en la otra.'}
+function mount(){scheduled=false;renderJourney();renderGuide();simplifyVester()}
+function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(mount)}
+window.fcSectionStatus=state;window.fcRenderJourney=()=>{renderKey='';schedule()};
+new MutationObserver(schedule).observe(document.body,{subtree:true,childList:true,characterData:true});schedule();
+})();
