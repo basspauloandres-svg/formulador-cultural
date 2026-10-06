@@ -14,6 +14,10 @@ if(!completion.includes('data-use-writing'))fail('S10 no permite adoptar una pro
 if(!completion.includes('¿Esta actividad es necesaria para lograr ese resultado?'))fail('S11 no contiene la pregunta principal simple');
 if(!completion.includes('¿Cómo sabremos que esto se logró?'))fail('S12 no contiene la pregunta principal simple');
 if(!results.includes('¿Este resultado expresa algo concreto que debería lograrse?'))fail('La capa de resultados no usa una pregunta simple');
+const objectives=fs.readFileSync('objectives.js','utf8');
+if(!objectives.includes('¿Cómo debería verse esta situación si el proyecto logra mejorarla?'))fail('S09 no formula la transformación problema → objetivo como pregunta simple');
+if(!objectives.includes('data-use-objective'))fail('S09 no permite elegir una propuesta de objetivo');
+if(!objectives.includes('sin [POR REVISAR]'))fail('S09 permite confirmar redacciones todavía marcadas por revisar');
 if(coherence.includes('<div class="coh-score">'))fail('La coherencia vuelve a mostrar un porcentaje competitivo durante el flujo');
 if(!coherence.includes('El porcentaje técnico y el diagnóstico completo se muestran en la revisión final S16.'))fail('La coherencia no deriva el detalle completo a S16');
 if(!planning.includes('Revisa una actividad por vez'))fail('Presupuesto no declara la lógica de una actividad por vez');
