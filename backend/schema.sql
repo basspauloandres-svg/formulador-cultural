@@ -12,7 +12,7 @@ create table if not exists public.sections (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
   user_id uuid not null default auth.uid(),
-  code text not null check (code in ('S01','S02','S03','S04','S05','S06','S07','S08','S09','S10','S11','S12')),
+  code text not null check (code in ('S01','S02','S03','S04','S05','S06','S07','S08','S09','S10','S11','S12','S13','S14','S15','S16')),
   data jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now(),
   unique(project_id, code)
