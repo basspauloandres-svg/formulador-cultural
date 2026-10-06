@@ -6,6 +6,9 @@ const coherence=fs.readFileSync('coherence_engine.js','utf8');
 const planning=fs.readFileSync('planning.js','utf8');
 const guided=fs.readFileSync('guided_experience.js','utf8');
 const semantic=fs.readFileSync('semantic_writing.js','utf8');
+const s07=fs.readFileSync('s07_front.js','utf8');
+const simpleTree=fs.readFileSync('simple_tree_ui.js','utf8');
+const tree=fs.readFileSync('tree.js','utf8');
 for(const id of ['completionS10','completionS11','completionS12'])if(!completion.includes('id="'+id+'"'))fail('Falta contenedor didáctico '+id);
 if(/<table class="completion-table"/.test(completion))fail('S12 volvió a una tabla densa en la vista principal');
 if(!completion.includes('¿Esta opción parece adecuada para lograr los objetivos del proyecto?'))fail('S10 no contiene la pregunta principal simple');
@@ -29,4 +32,8 @@ if(!coherence.includes('El porcentaje técnico y el diagnóstico completo se mue
 if(!planning.includes('Revisa una actividad por vez'))fail('Presupuesto no declara la lógica de una actividad por vez');
 if(!planning.includes('Revisa un elemento por vez'))fail('Riesgos no declara la lógica de un elemento por vez');
 if(!guided.includes("item=s.items.find"))fail('El encabezado no muestra la subsección actual');
+if(!s07.includes('data-s07-focus'))fail('El resumen de S07 no ofrece accesos directos a problema, causas, efectos o pendientes');
+if(!s07.includes('data-s07-justification'))fail('S07 no ofrece acceso directo a relaciones sin justificación');
+if(!simpleTree.includes('window.fcTreeFocus'))fail('La interfaz simple del árbol no permite enfocar subconjuntos de revisión');
+if(!tree.includes('window.fcTreeOpenTechnicalNode'))fail('El árbol técnico no permite abrir un nodo exacto desde el resumen');
 if(!process.exitCode)console.log('Didactic density audit OK');

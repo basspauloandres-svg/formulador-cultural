@@ -3,7 +3,7 @@ const TREE_KEY='formulador-cultural-problem-tree-v1';
 const CV_KEY='formulador-cultural-causal-validation-v1';
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
-let step='central',cursor=0,pendingRole=null;
+let step='central',cursor=0,pendingRole=null,focusIds=null;
 
 function readTree(){try{return (typeof draft!=='undefined'&&draft?.S07?.tree_state)||JSON.parse(localStorage.getItem(TREE_KEY)||'{}')}catch{return {nodes:[]}}}
 function readCv(){try{return (typeof draft!=='undefined'&&draft?.S06?.causal_validation)||JSON.parse(localStorage.getItem(CV_KEY)||'{}')}catch{return {pairs:[]}}}
@@ -11,6 +11,7 @@ function saveTree(s){s.updatedAt=new Date().toISOString();localStorage.setItem(T
 function central(s){return (s.nodes||[]).find(n=>n.zone==='central')||null}
 function candidates(s){return (s.nodes||[]).filter(n=>!n.stale)}
 function others(s){const c=central(s);return candidates(s).filter(n=>n.id!==c?.id)}
+function activeOthers(s){const list=others(s);return Array.isArray(focusIds)?list.filter(n=>focusIds.includes(n.id)):list}
 function cvRole(id){const v=(readCv().variables||[]).find(x=>x.id===id);return v?.role||''}
 function pairHint(id,centralId){
   const p=(readCv().pairs||[]).find(x=>(x.aId===id&&x.bId===centralId)||(x.bId===id&&x.aId===centralId));
@@ -34,14 +35,14 @@ function chooseCentral(id){
 }
 function setRole(id,role){
   const s=readTree(),n=(s.nodes||[]).find(x=>x.id===id);if(!n)return;
-  if(role==='outside'){n.zone='outside';n.parentId=null;n.reviewed=true;saveTree(s);cursor++;pendingRole=null;render();return}
+  if(role==='outside'){n.zone='outside';n.parentId=null;n.reviewed=true;saveTree(s);cursor++;pendingRole=null;if(Array.isArray(focusIds))focusIds=focusIds.filter(x=>x!==id);render();return}
   pendingRole=role;render();
 }
 function setDepth(id,direct){
   const s=readTree(),n=(s.nodes||[]).find(x=>x.id===id);if(!n)return;
   if(pendingRole==='cause')n.zone=direct?'direct_cause':'indirect_cause';
   if(pendingRole==='effect')n.zone=direct?'direct_effect':'indirect_effect';
-  n.parentId=null;n.reviewed=true;saveTree(s);cursor++;pendingRole=null;render();
+  n.parentId=null;n.reviewed=true;saveTree(s);cursor++;pendingRole=null;if(Array.isArray(focusIds))focusIds=focusIds.filter(x=>x!==id);render();
 }
 function summaryTree(s){
   const groups={
@@ -60,7 +61,7 @@ function renderCentral(root,s){
   root.querySelectorAll('[data-central]').forEach(b=>b.onclick=()=>chooseCentral(b.dataset.central));
 }
 function renderRole(root,s){
-  const c=central(s),list=others(s);
+  const c=central(s),list=activeOthers(s);
   if(!c){step='central';render();return}
   if(cursor>=list.length){step='summary';render();return}
   const n=list[cursor],hint=pairHint(n.id,c.id);
@@ -87,7 +88,7 @@ function renderSummary(root,s){
     summaryTree(s)+
     '<div class="st-summary-actions"><button type="button" id="stReviewAgain">Revisar de nuevo</button><button type="button" id="stContinue" class="primary">Continuar</button></div>'+
     '<details class="st-help"><summary>¿Qué debería comprobar?</summary><p>Que las causas ocurran antes del problema y que los efectos aparezcan después. Si una relación no está clara, es mejor dejarla por revisar que inventarla.</p></details>';
-  $('#stReviewAgain')&&($('#stReviewAgain').onclick=()=>{step='central';cursor=0;pendingRole=null;render()});
+  $('#stReviewAgain')&&($('#stReviewAgain').onclick=()=>{step='central';cursor=0;pendingRole=null;focusIds=null;render()});
   $('#stContinue')&&($('#stContinue').onclick=()=>{const tech=$('#treeWizard');tech?.querySelector('[data-tree-phase="review"]')?.click();document.querySelector('#s07Summary')?.scrollIntoView({behavior:'smooth',block:'start'})});
 }
 function render(){
@@ -104,8 +105,23 @@ function mount(){
   const technical=document.createElement('details');technical.className='st-technical';const sm=document.createElement('summary');sm.textContent='Ver detalle técnico';technical.appendChild(sm);
   wizard.parentNode.insertBefore(technical,wizard);technical.appendChild(wizard);
   const flow=document.createElement('section');flow.id='simpleTreeFlow';flow.className='simple-tree-flow';technical.parentNode.insertBefore(flow,technical);
-  const s=readTree();step=central(s)?'roles':'central';cursor=0;pendingRole=null;render();
+  const s=readTree();step=central(s)?'roles':'central';cursor=0;pendingRole=null;focusIds=null;render();
 }
+window.fcTreeFocus=type=>{
+ const s=readTree(),all=others(s);
+ if(type==='central'){focusIds=null;step='central';cursor=0;pendingRole=null;render();return true}
+ let ids=[];
+ if(type==='causes')ids=all.filter(n=>n.zone==='direct_cause'||n.zone==='indirect_cause').map(n=>n.id);
+ else if(type==='effects')ids=all.filter(n=>n.zone==='direct_effect'||n.zone==='indirect_effect').map(n=>n.id);
+ else if(type==='pending')ids=all.filter(n=>((n.zone==='indirect_cause'||n.zone==='indirect_effect')&&!n.parentId)||!n.reviewed||n.zone==='outside').map(n=>n.id);
+ if(!ids.length)return false;
+ focusIds=ids;step='roles';cursor=0;pendingRole=null;render();return true
+};
+window.fcTreeFocusNode=id=>{
+ const s=readTree(),list=others(s),idx=list.findIndex(n=>n.id===id);if(idx<0)return false;
+ focusIds=[id];step='roles';cursor=0;pendingRole=null;render();return true
+};
+
 const style=document.createElement('style');
 style.textContent='.simple-tree-flow{border-top:2px solid var(--ink);margin-top:8px;padding-top:18px}.st-head p{margin:5px 0;color:var(--muted)}.st-central-list{display:grid;gap:9px;margin:12px 0}.st-central-list article,.st-current,.st-central-ref,.st-suggestion,.st-summary-col{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff}.st-central-list article p,.st-suggestion p{margin:5px 0;color:#586470;font-size:.88rem}.st-central-list button,.st-options button,.st-nav button,.st-summary-actions button{border:1px solid #aeb8c2;background:#fff;border-radius:10px;padding:9px 11px;font:inherit}.st-progress{display:flex;justify-content:space-between;gap:10px;color:#586470;font-size:.86rem;margin-bottom:10px}.st-central-ref{background:#f5f7f9;margin-bottom:8px}.st-current{margin-bottom:8px}.st-central-ref small,.st-current small,.st-suggestion small,.st-summary-col article small{display:block;color:var(--muted);margin-bottom:5px}.st-central-ref strong,.st-current strong{display:block;line-height:1.35}.st-suggestion{background:#f7fbff;border-color:#bfd0df;margin-bottom:10px}.st-question{font-size:1.05rem;font-weight:750;margin:15px 0 10px}.st-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}.st-options button{text-align:left}.st-options button:last-child:nth-child(odd){grid-column:1/-1}.st-nav{display:flex;justify-content:space-between;gap:8px;margin:14px 0}.st-summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0}.st-summary-col h4{margin:0 0 8px}.st-summary-col article{border-top:1px solid var(--line);padding:8px 0}.st-summary-col article:first-of-type{border-top:0}.st-summary-col p{color:var(--muted);font-size:.86rem}.st-summary-actions{display:flex;justify-content:flex-end;gap:8px}.st-summary-actions .primary{background:var(--ink);color:#fff;border-color:var(--ink)}.st-help,.st-technical{margin-top:12px}.st-help summary,.st-technical summary{cursor:pointer;color:#596673;font-size:.86rem}.st-technical #treeWizard{margin-top:10px}@media(max-width:720px){.st-options,.st-summary{grid-template-columns:1fr}.st-options button:last-child:nth-child(odd){grid-column:auto}.st-progress,.st-nav,.st-summary-actions{display:grid}.st-nav button,.st-summary-actions button{width:100%}}';
 document.head.appendChild(style);
