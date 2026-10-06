@@ -20,12 +20,8 @@ function openGuidedFocus(type){
 }
 function openJustification(){
   const c=counts(),id=c.withoutJustIds?.[0];if(!id)return;
-  const s=readTree(),n=(s.nodes||[]).find(x=>x.id===id);if(!n)return;
   const technical=document.querySelector('.st-technical');if(technical)technical.open=true;
-  const phase=n.zone;
-  const wizard=document.querySelector('#treeWizard');
-  wizard?.querySelector('[data-tree-phase="'+phase+'"]')?.click();
-  setTimeout(()=>{const card=document.querySelector('[data-node-card="'+id+'"]');card?.scrollIntoView({behavior:'smooth',block:'center'});card?.querySelector('[data-justification="'+id+'"]').focus()},100)
+  if(window.fcTreeOpenTechnicalNode?.(id)!==false)return;
 }
 function bindCorrectionLinks(){
   wizard.querySelectorAll('[data-s07-focus]').forEach(b=>{b.onclick=()=>openGuidedFocus(b.dataset.s07Focus)});
