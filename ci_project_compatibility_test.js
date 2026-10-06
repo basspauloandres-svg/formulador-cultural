@@ -105,6 +105,17 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
  await w.fcNavigate('S15');await wait(60);
  assert((w.fcGetRiskState().targets||[]).length>=1,'S15 no creó objetivos de revisión de riesgo');
+ const riskYes=w.document.querySelector('[data-risk-assess="yes"]');assert(riskYes,'S15 no muestra la decisión de registrar riesgo');riskYes.click();await wait(40);
+ const riskValues={event:'Posible demora en una actividad crítica',effect:'Puede retrasar el resultado esperado',preventiveResponse:'Revisar anticipadamente disponibilidad y dependencias',contingencyResponse:'Reprogramar la actividad y reasignar recursos',owner:'Responsable de proyecto',trigger:'Retraso superior a una semana'};
+ for(const [k,v] of Object.entries(riskValues)){const el=w.document.querySelector('[data-risk="'+k+'"]');assert(el,'Falta el campo de riesgo '+k);el.value=v;el.dispatchEvent(new w.Event('input',{bubbles:true}))}
+ const confirmRisk=w.document.querySelector('#confirmRisk');assert(confirmRisk,'No existe botón Confirmar riesgo');confirmRisk.click();await wait(60);
+ assert((w.fcGetRiskState().items||[]).some(x=>x.confirmed),'Confirmar riesgo no dejó ningún riesgo confirmado');
+
+ await w.fcNavigate('S07');await wait(60);
+ const easy=w.document.querySelector('[data-tree-help="easy"]');assert(easy,'S07 no muestra Explícame fácil');easy.click();await wait(20);
+ const assist=w.document.querySelector('#treeAssist');assert(assist&&!assist.classList.contains('hidden')&&/Ayuda para razonar/.test(assist.textContent),'El botón Explícame fácil no produce respuesta visible');
+ const causesBtn=w.document.querySelector('[data-tree-phase="direct_cause"]');assert(causesBtn,'S07 no muestra Revisar causas');causesBtn.click();await wait(20);
+ assert(w.document.querySelector('#treeBody'),'Revisar causas no mantiene una vista activa del árbol');
 
  await w.fcNavigate('S16');await wait(80);
  assert(w.document.querySelector('.review-dashboard'),'S16 no renderizó el panel final');
