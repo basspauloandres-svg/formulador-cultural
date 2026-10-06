@@ -24,7 +24,7 @@ function state(c){
   if(c==='S06'){const v=d.vester_state||{},ps=v.selected||[],rel=v.relations||{};let need=ps.length*(ps.length-1),answered=Object.values(rel).filter(r=>Number.isInteger(r?.score)).length;const cv=d.causal_validation||{},pairs=cv.pairs||[];const reviewed=pairs.filter(p=>p.decision&&p.decision!=='pending').length;if(ps.length>=2&&answered>=need&&(!pairs.length||reviewed===pairs.length))return 'complete';return ps.length||answered||pairs.length?'progress':'missing'}
   if(c==='S07'){const t=d.tree_state||{},ns=t.nodes||[],cent=ns.some(n=>n.zone==='central'),linked=ns.filter(n=>n.zone&&n.zone!=='outside'&&n.zone!=='central').length;if(cent&&linked)return 'complete';return cent||ns.length?'progress':'missing'}
   if(c==='S08')return has(d.enunciado)?'complete':fieldsStatus(c);
-  if(c==='S09'){const o=d.objectives_state||{},xs=o.items||[];if(xs.length&&xs.every(x=>x.confirmed))return 'complete';return xs.length?'progress':'missing'}
+  if(c==='S09'){const gate=window.fcS09TransitionStatus?.();if(gate&&!gate.ok)return 'progress';const o=d.objectives_state||{},xs=o.items||[];if(xs.length&&xs.every(x=>x.confirmed))return 'complete';return xs.length?'progress':'missing'}
   if(c==='S10'){const xs=d.completion_state?.items||[];if(xs.some(x=>x.selected&&x.confirmed))return 'complete';return xs.length?'progress':'missing'}
   if(c==='S11'){const rs=d.results_state?.items||[],as=d.completion_state?.items||[];const r=rs.filter(x=>x.confirmed),a=as.filter(x=>x.confirmed);if(r.length&&a.length&&a.every(x=>x.resultId||x.objectiveId))return 'complete';return rs.length||as.length?'progress':'missing'}
   if(c==='S12'){const xs=d.completion_state?.items||[];if(xs.length&&xs.every(x=>x.confirmed))return 'complete';return xs.length?'progress':'missing'}
