@@ -53,14 +53,16 @@ jobs:
             results_layer.js \
             coherence_engine.js \
             export_completion.js \
-            completion_bridge.js \\\n            guided_experience.js; do
+            completion_bridge.js \
+            guided_experience.js; do
             node --check "$file"
           done
       - name: Verificar archivos públicos esenciales
         run: |
           test -f index.html
           test -f style.css
-          test -f completion.css\n          test -f guided_experience.css
+          test -f completion.css
+          test -f guided_experience.css
           for file in \
             preboot.js \
             app.js \
