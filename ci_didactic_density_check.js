@@ -16,7 +16,7 @@ if(!completion.includes('¿Esta actividad es necesaria para lograr ese resultado
 if(!completion.includes('¿Cómo sabremos que esto se logró?'))fail('S12 no contiene la pregunta principal simple');
 if(!results.includes('¿Este resultado expresa algo concreto que debería lograrse?'))fail('La capa de resultados no usa una pregunta simple');
 const objectives=fs.readFileSync('objectives.js','utf8');
-if(!objectives.includes('¿Cómo debería verse esta situación si el proyecto logra mejorarla?'))fail('S09 no formula la transformación problema → objetivo como pregunta simple');
+if(!objectives.includes('¿Qué cambio principal debería lograr el proyecto frente a este problema?'))fail('S09 no guía el objetivo general con una pregunta específica');
 if(!objectives.includes('data-use-objective'))fail('S09 no permite elegir una propuesta de objetivo');
 if(!objectives.includes('sin [POR REVISAR]'))fail('S09 permite confirmar redacciones todavía marcadas por revisar');
 if(!objectives.includes('¿Qué cambio principal debería lograr el proyecto frente a este problema?'))fail('S09 no guía el objetivo general con una pregunta específica');
