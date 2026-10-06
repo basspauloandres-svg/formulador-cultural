@@ -2,7 +2,7 @@ name: Publicar prototipo
 
 on:
   push:
-    branches: ["main", "audit/**"]
+    branches: ["main", "audit/**", "ux/**"]
   workflow_dispatch:
 
 permissions:
@@ -70,6 +70,8 @@ jobs:
         run: node ci_front_smoke.js
       - name: Ejecutar auditoría de arquitectura
         run: node ci_architecture_check.js
+      - name: Ejecutar auditoría de densidad didáctica
+        run: node ci_didactic_density_check.js
       - name: Ejecutar prueba de compatibilidad del proyecto
         run: node ci_project_compatibility_test.js
       - name: Verificar archivos públicos esenciales
@@ -105,7 +107,7 @@ jobs:
             grep -q "$file" index.html
           done
           grep -q "S01–S16" index.html
-          grep -q "¿El proyecto sigue teniendo sentido?" coherence_engine.js
+          grep -q "Revisión del proyecto" coherence_engine.js
 
   deploy:
     if: github.ref == 'refs/heads/main'
