@@ -3,7 +3,7 @@ const {JSDOM}=require('jsdom');
 const html=fs.readFileSync('index.html','utf8').replace(/<script[\s\S]*?<\/script>/gi,'');
 const dom=new JSDOM(html,{url:'https://example.test/formulador-cultural/',runScripts:'dangerously',pretendToBeVisual:true});
 const w=dom.window,errors=[];
-w.alert=()=>{};w.confirm=()=>true;w.prompt=()=>null;w.requestAnimationFrame=cb=>setTimeout(cb,0);
+w.alert=()=>{};w.confirm=()=>true;w.prompt=()=>null;w.requestAnimationFrame=cb=>setTimeout(cb,0);w.HTMLElement.prototype.scrollIntoView=()=>{};
 w.addEventListener('error',e=>errors.push(e.error||e.message));
 const chain=()=>{const o={select:()=>o,order:()=>o,limit:()=>Promise.resolve({data:[],error:null}),eq:()=>o,maybeSingle:()=>Promise.resolve({data:null,error:null}),single:()=>Promise.resolve({data:null,error:null}),insert:()=>o,update:()=>o,upsert:()=>Promise.resolve({data:null,error:null}),delete:()=>o};return o};
 w.supabase={createClient:()=>({auth:{getSession:()=>Promise.resolve({data:{session:null}}),onAuthStateChange:()=>{},signInWithPassword:()=>Promise.resolve({error:null}),signUp:()=>Promise.resolve({data:{},error:null}),signInWithOtp:()=>Promise.resolve({error:null}),updateUser:()=>Promise.resolve({error:null}),signOut:()=>Promise.resolve()},from:()=>chain()})};
