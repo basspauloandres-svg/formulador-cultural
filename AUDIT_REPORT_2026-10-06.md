@@ -83,6 +83,22 @@ Una revisión de riesgo podía considerarse completa solo por haber seleccionado
 
 **Corrección:** cuando la respuesta es “Sí”, el riesgo debe estar confirmado; “No aplica” puede cerrar la revisión sin crear un riesgo.
 
+### H8. Compatibilidad con proyectos creados antes de S13–S16
+**Severidad: alta.**
+El proyecto real conserva un árbol de problemas estructurado en S07, pero S09 aún puede existir con campos planos y `objectives_state` vacío. S10 sí puede contener alternativas históricas.
+
+**Riesgo:** abrir S10 con la arquitectura nueva podía interpretar la ausencia de objetivos confirmados como una nueva fuente vacía y regenerar/borrar alternativas ya construidas.
+
+**Corrección:** S10 conserva alternativas históricas mientras no existan medios/objetivos confirmados en la estructura nueva. S09 puede reconstruirse desde S07 sin inventar contenido; la persona confirma las reformulaciones antes de que S10 vuelva a derivarse.
+
+### H9. Competencia de render entre resultados y actividades
+**Severidad: alta.**
+S10–S12 reaccionaban a cualquier mutación del DOM. En S11, la capa de resultados podía insertarse y el módulo de actividades volver a renderizar inmediatamente el contenedor.
+
+**Riesgo:** parpadeo, pérdida visual de la capa de resultados, ciclos de render y experiencia inestable.
+
+**Corrección:** cada bloque base dispone ahora de un identificador de montaje y solo se renderiza cuando no existe. Los resultados solicitan una actualización explícita de S11 cuando una confirmación cambia la fuente de actividades.
+
 ## 3. Mejoras de control incorporadas
 
 Se agregó `ci_architecture_check.js`, que verifica antes de publicar:
@@ -98,7 +114,11 @@ Se agregó `ci_architecture_check.js`, que verifica antes de publicar:
 9. cobertura de indicadores de resultados y objetivo general;
 10. ponderación correcta del índice de coherencia;
 11. criterio estricto de “Listo para presentar”;
-12. restricción del despliegue a la rama `main`.
+12. restricción del despliegue a la rama `main`;
+13. prueba de compatibilidad con la estructura real del proyecto existente;
+14. preservación de alternativas históricas cuando S09 todavía no está normalizado;
+15. generación de actividades únicamente después de confirmar resultados;
+16. recorrido S09 → S16 sin ciclos de render.
 
 ## 4. Resultado de GitHub Actions
 
@@ -110,6 +130,7 @@ Workflow de auditoría: `37501827100`
 - Smoke test del front: SUCCESS
 - Auditoría de arquitectura: SUCCESS
 - Verificación de archivos públicos: SUCCESS
+- Prueba funcional de compatibilidad del proyecto: SUCCESS
 - Deploy: SKIPPED
 
 El despliegue fue omitido intencionalmente porque la auditoría se ejecutó en una rama separada.
@@ -138,7 +159,24 @@ Ese cambio no se recomienda antes de validar funcionalmente S01–S16 con proyec
 
 ## 7. Recomendación de publicación
 
-**Recomendación: PUBLICAR DESPUÉS DE REVISIÓN FUNCIONAL HUMANA.**
+**Recomendación: APROBADA PARA FUSIÓN Y PUBLICACIÓN CONTROLADA.**
+
+La revisión funcional automatizada con una estructura equivalente al proyecto actualmente almacenado verificó:
+- preservación de alternativas históricas;
+- reconstrucción de S09 desde S07;
+- confirmación de objetivos;
+- resultados aprobados;
+- actividades derivadas de resultados;
+- indicadores de actividad, resultado y objetivo;
+- generación de cronograma;
+- inicialización presupuestal;
+- generación de objetivos de riesgo;
+- panel S16;
+- generación de SVG;
+- construcción del documento HTML;
+- disponibilidad de Excel, DOCX y PDF.
+
+La publicación debe realizarse únicamente mediante fusión del PR auditado a `main`, seguida de CI y deploy en `success`.
 
 La auditoría automatizada no detecta bloqueos arquitectónicos pendientes. Antes de fusionar a `main`, se recomienda una prueba manual corta con el proyecto existente:
 
