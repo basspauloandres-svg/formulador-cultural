@@ -6,3 +6,5 @@
 .objective-proposals article p{margin:5px 0 8px;line-height:1.4}
 .objective-proposals button{border:1px solid #aeb8c2;background:#fff;border-radius:8px;padding:8px 10px;font:inherit}
 @media(max-width:700px){.objective-proposals button{width:100%}}
+
+.objective-role{margin-top:3px;font-size:.8rem;color:#41505d;font-weight:650}
