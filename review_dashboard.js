@@ -1,4 +1,5 @@
 (()=>{
+let evidenceRequested=false;
 const $=s=>document.querySelector(s),esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 function arr(fn){try{return fn?.()||[]}catch{return []}}
 function pct(a,b){return b?Math.round(a/b*100):0}
@@ -23,6 +24,7 @@ function snapshot(){
 function bar(label,value){return '<div class="dash-bar"><div><span>'+esc(label)+'</span><b>'+value+'%</b></div><div class="bar-track"><i style="width:'+Math.max(0,Math.min(100,value))+'%"></i></div></div>'}
 function render(){
  const c=$('#counter')?.textContent||'';if(!c.startsWith('S16'))return;const host=$('#fields');if(!host)return;const s=snapshot(),rv=draft?.S16?.review_state||{};
+ if(!evidenceRequested&&s.evidence.total===0&&typeof window.fcLoadEvidenceRecords==='function'){evidenceRequested=true;window.fcLoadEvidenceRecords().then(()=>render()).catch(()=>{})}
  host.innerHTML='<section class="review-dashboard"><div class="review-hero '+(s.ready?'ready':'review')+'"><div><strong>'+(s.ready?'Proyecto listo para presentar':'Proyecto en revisión')+'</strong><p>'+(s.ready?'La cadena principal está conectada. Revisa los datos marcados [POR VERIFICAR] antes de cada convocatoria.':'Todavía hay secciones o relaciones que conviene completar antes de presentar.')+'</p></div><div class="big-score">'+s.completion+'%</div></div>'+
  '<div class="dash-grid"><article><h3>Avance de formulación</h3>'+bar('Secciones completas',s.completion)+bar('Coherencia interna',s.coh.score)+'<p><b>'+s.complete+'</b> completas · <b>'+s.progress+'</b> en curso · <b>'+s.missing+'</b> faltan</p></article>'+
  '<article><h3>Cadena lógica</h3>'+s.coverage.map(x=>bar(x[0],x[1])).join('')+'</article>'+
