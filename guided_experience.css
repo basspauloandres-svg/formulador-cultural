@@ -21,3 +21,12 @@ body.guided-mode #vesterWizard .contrast-box{display:none}
 @media(max-width:820px){.guided-steps{grid-template-columns:1fr 1fr}.guided-step:last-child{grid-column:1/-1}.guided-journey-head{display:block}.guided-review-btn{margin-top:8px;width:100%}}
 @media(max-width:520px){.guided-steps{grid-template-columns:1fr}.guided-step:last-child{grid-column:auto}body.guided-mode #vesterWizard .score-grid{grid-template-columns:1fr 1fr}}
 .comparison-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.comparison-cards article{border:1px solid #d7dde4;border-radius:12px;padding:12px;background:#fff}.comparison-cards small{display:block;color:#6b7680;margin-bottom:5px}.comparison-cards strong{display:block;line-height:1.35}.vester-core-question{font-size:1.05rem;font-weight:750;margin:14px 0}.guided-mode .vester-actions [data-help="guide"],.guided-mode .vester-actions [data-help="why"],.guided-mode .vester-actions [data-help="review"]{display:none!important}@media(max-width:620px){.comparison-cards{grid-template-columns:1fr}}
+body.guided-mode.causal-simple-active #causalValidationBody{display:none!important}
+body.guided-mode.causal-simple-active .sc-technical[open] #causalValidationBody{display:block!important}
+body.guided-mode.causal-simple-active #causalValidation .cv-note,
+body.guided-mode.causal-simple-active #causalValidation .cv-summary,
+body.guided-mode.causal-simple-active #causalValidation .cv-tabs,
+body.guided-mode.causal-simple-active #causalValidation .dg-overall,
+body.guided-mode.causal-simple-active #causalValidation .dg-readiness,
+body.guided-mode.causal-simple-active #causalValidation .dg-advice{display:none!important}
+body.guided-mode.causal-simple-active .sc-prior #vesterWizard{display:block}
