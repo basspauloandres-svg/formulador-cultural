@@ -11,12 +11,13 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-v2
   cancel-in-progress: true
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Obtener repositorio
         uses: actions/checkout@v4
