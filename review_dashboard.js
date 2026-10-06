@@ -12,7 +12,7 @@ function snapshot(){
  const resObj=new Set(res.map(x=>x.objectiveId)),actRes=new Set(acts.map(x=>x.resultId)),indAct=new Set(inds.filter(x=>x.confirmed).map(x=>x.activityId)),schAct=new Set(sch.filter(x=>x.confirmed).map(x=>x.activityId)),bsState=window.fcGetBudgetState?.()||{},coveredBudget=new Set(Object.entries(bsState.activityStatus||{}).filter(([,v])=>v&&v!=='pending').map(([k])=>k));
  const riskCounts={Alto:risks.filter(x=>x.riskLevel==='Alto').length,Medio:risks.filter(x=>x.riskLevel==='Medio').length,Bajo:risks.filter(x=>x.riskLevel==='Bajo').length};
  const highOpen=risks.filter(x=>x.riskLevel==='Alto'&&!x.confirmed).length;
- const ready=missing===0&&coh.score>=80&&highOpen===0;
+ const ready=complete===codes.length&&coh.score>=80&&highOpen===0;
  const evidence={verified:ev.filter(x=>x.verification_status==='verificada').length,pending:ev.filter(x=>x.verification_status==='por_verificar').length,discarded:ev.filter(x=>x.verification_status==='descartada').length,total:ev.length};return {states,complete,progress,missing,completion:pct(complete,codes.length),res,acts,inds,sch,bud,risks,bs,coh,obj,riskCounts,evidence,highOpen,ready,coverage:[
   ['Objetivos con resultados',pct(obj.filter(x=>resObj.has(x.id)).length,obj.length)],
   ['Resultados con actividades',pct(res.filter(x=>actRes.has(x.id)).length,res.length)],
