@@ -56,6 +56,10 @@ jobs:
             coherence_engine.js \
             export_completion.js \
             completion_bridge.js \
+            planning.js \
+            deliverables.js \
+            visual_exports_ui.js \
+            review_dashboard.js \
             guided_experience.js; do
             node --check "$file"
           done
@@ -91,7 +95,7 @@ jobs:
             test -f "$file"
             grep -q "$file" index.html
           done
-          grep -q "S01–S12" index.html
+          grep -q "S01–S16" index.html
           grep -q "¿El proyecto sigue teniendo sentido?" coherence_engine.js
 
   deploy:
