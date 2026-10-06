@@ -50,10 +50,11 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert((stored.S09.objectives_state?.items||[]).length===3,'S09 no reconstruyó objetivos desde el árbol existente');
 
  const ids=(stored.S09.objectives_state.items||[]).map(x=>x.id);
- for(const id of ids){
-   const b=w.document.querySelector('[data-confirm="'+id+'"]');
+ for(let i=0;i<ids.length;i++){
+   const id=ids[i],b=w.document.querySelector('[data-confirm="'+id+'"]');
    assert(b,'No se encontró control para confirmar objetivo '+id);
    b.click();await wait(25);
+   if(i<ids.length-1){const next=w.document.querySelector('#objectiveNext');assert(next,'No existe navegación al siguiente objetivo');next.click();await wait(25)}
  }
  stored=JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1'));
  assert(stored.S09.objectives_state.items.every(x=>x.confirmed),'No se confirmaron las formulaciones de S09');
