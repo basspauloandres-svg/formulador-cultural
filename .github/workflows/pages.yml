@@ -30,6 +30,8 @@ jobs:
         run: pip install -r backend/requirements.txt
       - name: Ejecutar pruebas Python
         run: python -m pytest backend -q
+      - name: Instalar jsdom para smoke test
+        run: npm install jsdom@25 --no-save --no-package-lock
       - name: Validar sintaxis JavaScript
         run: |
           for file in \
@@ -63,6 +65,8 @@ jobs:
             guided_experience.js; do
             node --check "$file"
           done
+      - name: Ejecutar smoke test del front
+        run: node ci_front_smoke.js
       - name: Verificar archivos públicos esenciales
         run: |
           test -f index.html
