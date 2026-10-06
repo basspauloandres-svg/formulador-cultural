@@ -21,7 +21,7 @@ const must=[
  ['review_dashboard.js','review-dashboard','render']
 ];
 for(const [f,a,b] of must){if(!src[f].includes(a))fail(f+' no contiene control '+a);if(!src[f].includes(b))fail(f+' no contiene acción esperada '+b)}
-if(/data-risk[^]*?onchange[^]*?renderS15\(\)/.test(src['planning.js']))fail('S15 vuelve a renderizar durante edición de campos de riesgo y puede perder el clic de confirmación');
+if(src['planning.js'].includes("host.querySelectorAll('[data-risk]').forEach(el=>el.onchange"))fail('S15 vuelve a usar onchange con re-render durante edición de riesgos');
 if(!src['planning.js'].includes("Falta completar: "))fail('Confirmar riesgo no explica qué campos faltan');
 if(!src['tree.js'].includes("scrollIntoView({behavior:'smooth',block:'center'})"))fail('La ayuda de S07 no lleva visualmente a la respuesta');
 if(!process.exitCode)console.log('Button contract audit OK');
