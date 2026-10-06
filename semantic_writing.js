@@ -96,7 +96,8 @@ function indicatorGuidance(source,type){
   question:'¿Qué cambio observable demostraría que el objetivo general está avanzando?',
   formulaHint:'Expresa cómo compararás el cambio frente a la línea base.',
   unitHint:'Porcentaje, diferencia, índice, nivel, frecuencia u otra unidad directamente relacionada con el cambio.',
-  suggestions:[indicatorProposal(t,'Objetivo')].filter(Boolean)
+  suggestions:[indicatorProposal(t,'Objetivo')].filter(Boolean),
+  formulaExamples:['Valor de seguimiento − línea base','((Valor de seguimiento − línea base) / línea base) × 100, cuando la línea base sea distinta de cero']
  };
  if(type==='Resultado')return {
   level:'Indicador de resultado',
@@ -104,7 +105,8 @@ function indicatorGuidance(source,type){
   question:'¿Qué dato demostraría que este resultado fue realmente alcanzado?',
   formulaHint:'Define el criterio que permite decidir cuándo el resultado se considera logrado.',
   unitHint:'Cantidad, porcentaje, cobertura, proporción, nivel de calidad u otra unidad del resultado.',
-  suggestions:[indicatorProposal(t,'Resultado')].filter(Boolean)
+  suggestions:[indicatorProposal(t,'Resultado')].filter(Boolean),
+  formulaExamples:['Valor observado comparado con la meta definida','(Resultado alcanzado / resultado previsto) × 100, cuando el resultado sea cuantificable']
  };
  return {
   level:'Indicador de ejecución',
@@ -112,7 +114,8 @@ function indicatorGuidance(source,type){
   question:'¿Qué dato demostraría que esta actividad se realizó como estaba prevista?',
   formulaHint:'Indica cómo calcularás el avance o cumplimiento de la actividad.',
   unitHint:'Número, porcentaje de cumplimiento, sesiones, participantes, productos u otra unidad de ejecución.',
-  suggestions:[indicatorProposal(t,'Actividad')].filter(Boolean)
+  suggestions:[indicatorProposal(t,'Actividad')].filter(Boolean),
+  formulaExamples:['(Cantidad realizada / cantidad programada) × 100','Número de acciones efectivamente realizadas, cuando corresponda']
  }
 }
 function indicatorQuality(x){
