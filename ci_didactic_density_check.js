@@ -13,7 +13,13 @@ if(!completion.includes('Ayúdame a redactarla'))fail('S10 no ofrece ayuda visib
 if(!completion.includes('Todavía no escribas actividades concretas'))fail('S10 no explica la diferencia entre alternativa y actividad');
 if(!completion.includes('data-use-writing'))fail('S10 no permite adoptar una propuesta de redacción');
 if(!completion.includes('¿Esta actividad es necesaria para lograr ese resultado?'))fail('S11 no contiene la pregunta principal simple');
-if(!completion.includes('¿Cómo sabremos que esto se logró?'))fail('S12 no contiene la pregunta principal simple');
+if(!completion.includes('Construir la batería de indicadores'))fail('S12 no presenta la lógica de batería de indicadores');
+if(!completion.includes('Paso 1 de 4')||!completion.includes('Paso 4 de 4'))fail('S12 no acompaña la construcción del indicador por pasos');
+if(!completion.includes('Ayúdame a formularlo'))fail('S12 no ofrece ayuda explícita de formulación');
+if(!completion.includes('Fórmula o criterio de cálculo'))fail('S12 no pide fórmula o criterio');
+if(!completion.includes('Línea base')||!completion.includes('Meta'))fail('S12 no conecta línea base y meta');
+if(!semantic.includes('indicatorGuidance'))fail('El motor semántico no distingue niveles de indicador');
+if(!semantic.includes('indicatorQuality'))fail('No existe control de calidad de indicadores');
 if(!results.includes('¿Este resultado expresa algo concreto que debería lograrse?'))fail('La capa de resultados no usa una pregunta simple');
 const objectives=fs.readFileSync('objectives.js','utf8');
 if(!objectives.includes('¿Qué cambio principal debería lograr el proyecto frente a este problema?'))fail('S09 no guía el objetivo general con una pregunta específica');
