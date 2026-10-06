@@ -9,6 +9,33 @@ function selectedAlternative(){return (read('S10').items||[]).find(x=>x.selected
 function confirmedActivities(){return (read('S11').items||[]).filter(x=>x.confirmed)}
 function confirmedResults(){try{return (draft?.S11?.results_state?.items||JSON.parse(localStorage.getItem('formulador-cultural-results-v1')||'{}').items||[]).filter(x=>x.confirmed)}catch{return []}}
 function makeAlternatives(){const means=confirmedMeans();const items=means.map((m,i)=>({id:`A${i+1}`,title:`Alternativa ${i+1}`,text:`Desarrollar una estrategia orientada a: ${m.text}`,sourceIds:[m.id],scores:{pertinencia:'',viabilidad:'',evidencia:'',alcance:''},selected:false,confirmed:false,note:''}));if(means.length>1)items.push({id:`A${items.length+1}`,title:'Alternativa integrada',text:`Articular acciones sobre: ${means.map(x=>x.text).join(' + ')}`,sourceIds:means.map(x=>x.id),scores:{pertinencia:'',viabilidad:'',evidencia:'',alcance:''},selected:false,confirmed:false,note:''});return items}
+function sourceMeansForAlternative(x){
+ const ids=new Set(x?.sourceIds||[]);return confirmedMeans().filter(m=>ids.has(m.id))
+}
+function cleanSourceText(v){
+ return String(v||'').replace(/^\s*\[POR REVISAR\]\s*/i,'').replace(/^\s*Situación deseada respecto de:\s*/i,'').replace(/^\s*\d+[.)-]?\s*/,'').replace(/\s+/g,' ').trim()
+}
+function writingProposals(x){
+ const src=sourceMeansForAlternative(x).map(m=>cleanSourceText(m.text)).filter(Boolean);
+ if(!src.length)return[
+   'Definir un camino de intervención que permita avanzar hacia los objetivos ya establecidos. [POR VERIFICAR]',
+   'Organizar una estrategia de trabajo coherente con los objetivos priorizados. [POR VERIFICAR]'
+ ];
+ if(src.length===1){
+   const t=src[0];
+   return[
+     `Desarrollar una estrategia de intervención orientada a lograr: ${t}.`,
+     `Organizar una línea de trabajo que permita avanzar hacia: ${t}.`,
+     `Articular acciones del proyecto alrededor del siguiente propósito: ${t}.`
+   ]
+ }
+ const joined=src.join('; ');
+ return[
+   `Desarrollar una estrategia integrada que articule estos propósitos: ${joined}.`,
+   `Organizar una línea de intervención que responda de manera conjunta a: ${joined}.`,
+   `Articular las acciones del proyecto para avanzar simultáneamente en: ${joined}.`
+ ]
+}
 function ensureS10(){
  let s=read('S10'),means=confirmedMeans(),sig=means.map(x=>`${x.id}:${x.text}`).join('|');
  if(!means.length&&Array.isArray(s.items)&&s.items.length)return s;
@@ -69,7 +96,15 @@ function renderS10(){
  ${x?`<div class="didactic-progress">Opción ${cursors.S10+1} de ${xs.length}</div>
  <article class="didactic-card">
    <small>${esc(x.title)}</small>
-   <label class="didactic-main-label">Opción propuesta<textarea data-alt-text="${x.id}">${esc(x.text)}</textarea></label>
+   <label class="didactic-main-label">¿Qué camino general podría seguir el proyecto?<textarea data-alt-text="${x.id}" placeholder="Escribe una frase general. Las actividades se definirán después.">${esc(x.text)}</textarea></label>
+   <div class="writing-help">
+     <button type="button" data-writing-help="${x.id}">Ayúdame a redactarla</button>
+     <div class="writing-help-panel ${x.showWritingHelp?'':'hidden'}" data-writing-panel="${x.id}">
+       <div class="writing-help-explain"><strong>¿Qué debes escribir aquí?</strong><p>Una alternativa describe el <b>camino general</b> que seguirá el proyecto para alcanzar los objetivos. Todavía no escribas actividades concretas.</p></div>
+       <div class="writing-source"><small>La herramienta está usando como base:</small>${sourceMeansForAlternative(x).map(m=>`<p>• ${esc(cleanSourceText(m.text))}</p>`).join('')||'<p>• Objetivos previamente registrados [POR VERIFICAR]</p>'}</div>
+       <div class="writing-proposals">${writingProposals(x).map((p,i)=>`<article><small>Propuesta ${i+1}</small><p>${esc(p)}</p><button type="button" data-use-writing="${x.id}:${i}">Usar esta propuesta</button></article>`).join('')}</div>
+     </div>
+   </div>
    <div class="didactic-question">¿Esta opción parece adecuada para lograr los objetivos del proyecto?</div>
    <div class="didactic-choice-row">
      <button data-alt-decision="${x.id}:yes" class="${x.decision==='yes'?'selected':''}">Sí, parece adecuada</button>
@@ -90,6 +125,8 @@ function renderS10(){
 }
 function bindS10(s){
  document.querySelectorAll('[data-alt-text]').forEach(el=>el.onchange=()=>{const x=s.items.find(i=>i.id===el.dataset.altText);x.text=el.value.trim();x.confirmed=false;write('S10',s)});
+ document.querySelectorAll('[data-writing-help]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.writingHelp);x.showWritingHelp=!x.showWritingHelp;renderS10()});
+ document.querySelectorAll('[data-use-writing]').forEach(b=>b.onclick=()=>{const [id,idx]=b.dataset.useWriting.split(':');const x=s.items.find(i=>i.id===id),p=writingProposals(x)[Number(idx)];if(!p)return;x.text=p;x.confirmed=false;x.showWritingHelp=false;write('S10',s);renderS10()});
  document.querySelectorAll('[data-alt-decision]').forEach(b=>b.onclick=()=>{const [id,v]=b.dataset.altDecision.split(':');const x=s.items.find(i=>i.id===id);x.decision=v;write('S10',s);renderS10()});
  document.querySelectorAll('[data-alt-score]').forEach(el=>el.onchange=()=>{const [id,k]=el.dataset.altScore.split(':');const x=s.items.find(i=>i.id===id);x.scores[k]=el.value?Number(el.value):'';write('S10',s)});
  document.querySelectorAll('[data-alt-note]').forEach(el=>el.onchange=()=>{const x=s.items.find(i=>i.id===el.dataset.altNote);x.note=el.value.trim();write('S10',s)});
