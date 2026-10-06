@@ -8,7 +8,13 @@ function confirmedMeans(){return (objectives().items||[]).filter(x=>x.confirmed&
 function selectedAlternative(){return (read('S10').items||[]).find(x=>x.selected)||null}
 function confirmedActivities(){return (read('S11').items||[]).filter(x=>x.confirmed)}
 function confirmedResults(){try{return (draft?.S11?.results_state?.items||JSON.parse(localStorage.getItem('formulador-cultural-results-v1')||'{}').items||[]).filter(x=>x.confirmed)}catch{return []}}
-function makeAlternatives(){const means=confirmedMeans();const items=means.map((m,i)=>({id:`A${i+1}`,title:`Alternativa ${i+1}`,text:`Desarrollar una estrategia orientada a: ${m.text}`,sourceIds:[m.id],scores:{pertinencia:'',viabilidad:'',evidencia:'',alcance:''},selected:false,confirmed:false,note:''}));if(means.length>1)items.push({id:`A${items.length+1}`,title:'Alternativa integrada',text:`Articular acciones sobre: ${means.map(x=>x.text).join(' + ')}`,sourceIds:means.map(x=>x.id),scores:{pertinencia:'',viabilidad:'',evidencia:'',alcance:''},selected:false,confirmed:false,note:''});return items}
+function makeAlternatives(){
+ const means=confirmedMeans();
+ const items=means.map((m,i)=>({id:`A${i+1}`,title:`Alternativa ${i+1}`,text:'',sourceIds:[m.id],scores:{pertinencia:'',viabilidad:'',evidencia:'',alcance:''},selected:false,confirmed:false,note:''}));
+ if(means.length>1)items.push({id:`A${items.length+1}`,title:'Alternativa integrada',text:'',sourceIds:means.map(x=>x.id),scores:{pertinencia:'',viabilidad:'',evidencia:'',alcance:''},selected:false,confirmed:false,note:''});
+ for(const x of items){const src=means.filter(m=>(x.sourceIds||[]).includes(m.id)).map(m=>m.text);x.text=window.fcWriting?.strategyProposals?window.fcWriting.strategyProposals(src)[0]:'[POR REVISAR]'}
+ return items
+}
 function sourceMeansForAlternative(x){
  const ids=new Set(x?.sourceIds||[]);return confirmedMeans().filter(m=>ids.has(m.id))
 }
@@ -17,24 +23,7 @@ function cleanSourceText(v){
 }
 function writingProposals(x){
  const src=sourceMeansForAlternative(x).map(m=>cleanSourceText(m.text)).filter(Boolean);
- if(!src.length)return[
-   'Definir un camino de intervención que permita avanzar hacia los objetivos ya establecidos. [POR VERIFICAR]',
-   'Organizar una estrategia de trabajo coherente con los objetivos priorizados. [POR VERIFICAR]'
- ];
- if(src.length===1){
-   const t=src[0];
-   return[
-     `Desarrollar una estrategia de intervención orientada a lograr: ${t}.`,
-     `Organizar una línea de trabajo que permita avanzar hacia: ${t}.`,
-     `Articular acciones del proyecto alrededor del siguiente propósito: ${t}.`
-   ]
- }
- const joined=src.join('; ');
- return[
-   `Desarrollar una estrategia integrada que articule estos propósitos: ${joined}.`,
-   `Organizar una línea de intervención que responda de manera conjunta a: ${joined}.`,
-   `Articular las acciones del proyecto para avanzar simultáneamente en: ${joined}.`
- ]
+ return window.fcWriting?.strategyProposals?window.fcWriting.strategyProposals(src):['[POR REVISAR]']
 }
 function ensureS10(){
  let s=read('S10'),means=confirmedMeans(),sig=means.map(x=>`${x.id}:${x.text}`).join('|');
@@ -130,8 +119,8 @@ function bindS10(s){
  document.querySelectorAll('[data-alt-decision]').forEach(b=>b.onclick=()=>{const [id,v]=b.dataset.altDecision.split(':');const x=s.items.find(i=>i.id===id);x.decision=v;write('S10',s);renderS10()});
  document.querySelectorAll('[data-alt-score]').forEach(el=>el.onchange=()=>{const [id,k]=el.dataset.altScore.split(':');const x=s.items.find(i=>i.id===id);x.scores[k]=el.value?Number(el.value):'';write('S10',s)});
  document.querySelectorAll('[data-alt-note]').forEach(el=>el.onchange=()=>{const x=s.items.find(i=>i.id===el.dataset.altNote);x.note=el.value.trim();write('S10',s)});
- document.querySelectorAll('[data-alt-confirm]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.altConfirm);x.confirmed=!!x.text.trim();write('S10',s);sync('S10');renderS10()});
- document.querySelectorAll('[data-alt-select]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.altSelect);if(!x.confirmed){x.confirmed=!!x.text.trim()}s.items.forEach(i=>i.selected=i.id===b.dataset.altSelect);write('S10',s);sync('S10');renderS10()});
+ document.querySelectorAll('[data-alt-confirm]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.altConfirm);x.confirmed=!!x.text.trim()&&!window.fcWriting?.isPlaceholder?.(x.text);if(!x.confirmed&&window.fcWriting?.isPlaceholder?.(x.text)){alert('Antes de confirmar la alternativa, reemplaza la marca [POR REVISAR] por una estrategia concreta.')}write('S10',s);sync('S10');renderS10()});
+ document.querySelectorAll('[data-alt-select]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.altSelect);if(!x.confirmed){x.confirmed=!!x.text.trim()&&!window.fcWriting?.isPlaceholder?.(x.text)}if(!x.confirmed){alert('Antes de elegir esta alternativa, redacta una estrategia concreta.');return}s.items.forEach(i=>i.selected=i.id===b.dataset.altSelect);write('S10',s);sync('S10');renderS10()});
  $('#altPrev')&&($('#altPrev').onclick=()=>{cursors.S10=Math.max(0,cursors.S10-1);renderS10()});$('#altNext')&&($('#altNext').onclick=()=>{cursors.S10=Math.min(s.items.length-1,cursors.S10+1);renderS10()});
  $('#goS11')?.addEventListener('click',()=>window.fcNavigate?.('S11'))
 }
