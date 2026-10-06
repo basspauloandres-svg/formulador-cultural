@@ -9,7 +9,15 @@ function selectedAlternative(){return (read('S10').items||[]).find(x=>x.selected
 function confirmedActivities(){return (read('S11').items||[]).filter(x=>x.confirmed)}
 function confirmedResults(){try{return (draft?.S11?.results_state?.items||JSON.parse(localStorage.getItem('formulador-cultural-results-v1')||'{}').items||[]).filter(x=>x.confirmed)}catch{return []}}
 function makeAlternatives(){const means=confirmedMeans();const items=means.map((m,i)=>({id:`A${i+1}`,title:`Alternativa ${i+1}`,text:`Desarrollar una estrategia orientada a: ${m.text}`,sourceIds:[m.id],scores:{pertinencia:'',viabilidad:'',evidencia:'',alcance:''},selected:false,confirmed:false,note:''}));if(means.length>1)items.push({id:`A${items.length+1}`,title:'Alternativa integrada',text:`Articular acciones sobre: ${means.map(x=>x.text).join(' + ')}`,sourceIds:means.map(x=>x.id),scores:{pertinencia:'',viabilidad:'',evidencia:'',alcance:''},selected:false,confirmed:false,note:''});return items}
-function ensureS10(){let s=read('S10');const sig=confirmedMeans().map(x=>`${x.id}:${x.text}`).join('|');if(!s.items||s.sourceSignature!==sig){const old=new Map((s.items||[]).map(x=>[x.id,x]));s={sourceSignature:sig,items:makeAlternatives().map(x=>old.get(x.id)||x),updatedAt:null};write('S10',s)}return s}
+function ensureS10(){
+ let s=read('S10'),means=confirmedMeans(),sig=means.map(x=>`${x.id}:${x.text}`).join('|');
+ if(!means.length&&Array.isArray(s.items)&&s.items.length)return s;
+ if(!s.items||s.sourceSignature!==sig){
+   const old=new Map((s.items||[]).map(x=>[x.id,x]));
+   s={sourceSignature:sig,items:makeAlternatives().map(x=>old.get(x.id)||x),updatedAt:null};write('S10',s)
+ }
+ return s
+}
 function activityProposals(){
  const alt=selectedAlternative();if(!alt)return[];
  const allowed=new Set(alt.sourceIds||[]),res=confirmedResults().filter(r=>allowed.has(r.objectiveId));
