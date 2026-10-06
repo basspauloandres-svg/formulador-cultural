@@ -23,6 +23,20 @@ function objectiveProposals(text,zone){
  if(!out.length)return ['[POR REVISAR] Redactar el cambio deseado para: '+t+'.'];
  return uniq(out)
 }
+function strategyProposals(items){
+ const src=(items||[]).map(clean).filter(Boolean);
+ if(!src.length)return ['[POR REVISAR] Definir una estrategia coherente con los objetivos específicos confirmados.'];
+ const joined=src.join(' | ');
+ if(/frecuencia de acompañamiento especializado/i.test(joined))return uniq([
+  'Organizar un esquema de acompañamiento especializado que distribuya de manera equilibrada la atención entre las familias instrumentales',
+  'Reorganizar el acompañamiento especializado para equilibrar su frecuencia entre las familias instrumentales'
+ ]);
+ if(/niveles? de dominio instrumental/i.test(joined))return uniq([
+  'Desarrollar una estrategia de acompañamiento diferenciado orientada a reducir las brechas de dominio instrumental entre integrantes',
+  'Articular acciones de acompañamiento que respondan a las diferencias de dominio instrumental identificadas'
+ ]);
+ return ['[POR REVISAR] Definir una estrategia que permita alcanzar: '+src.join('; ')+'.']
+}
 function resultProposal(objective){
  const t=clean(objective);const rules=[
   [/^Reducir las diferencias en\s+/i,'Reducción verificable de las diferencias en '],
@@ -74,5 +88,5 @@ function indicatorProposal(source,type){
  return '[POR REVISAR]'
 }
 function isPlaceholder(v){return /^\s*\[POR (REVISAR|VERIFICAR|DEFINIR)\]/i.test(String(v||''))}
-window.fcWriting={clean,objectiveProposals,resultProposal,activityProposals,indicatorProposal,isPlaceholder};
+window.fcWriting={clean,objectiveProposals,strategyProposals,resultProposal,activityProposals,indicatorProposal,isPlaceholder};
 })();
