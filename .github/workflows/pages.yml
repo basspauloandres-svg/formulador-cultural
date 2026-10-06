@@ -48,6 +48,7 @@ jobs:
             synthesis.js \
             visualization.js \
             s07_front.js \
+            simple_tree_ui.js \
             objectives.js \
             workflow.js \
             completion.js \
