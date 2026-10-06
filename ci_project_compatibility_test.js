@@ -73,7 +73,9 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  await w.fcNavigate('S11');await wait(100);
  let resultBtn=w.document.querySelector('[data-result-confirm]');
  assert(resultBtn,'S11 no presentó resultados para aprobación');
- resultBtn.click();await wait(100);
+ let resultText=w.document.querySelector('[data-result-text]');
+ if(resultText&&/^\s*\[POR REVISAR\]/i.test(resultText.value)){resultText.value='Resultado verificable redactado manualmente para la prueba.';resultText.dispatchEvent(new w.Event('change',{bubbles:true}));await wait(20)}
+ resultBtn=w.document.querySelector('[data-result-confirm]');resultBtn.click();await wait(100);
  const results=w.fcGetResults().filter(x=>x.confirmed);
  assert(results.length>=1,'No quedó un resultado confirmado');
  const activities=w.fcGetActivities();
@@ -83,7 +85,9 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
  let actBtn=w.document.querySelector('[data-act-confirm]');
  assert(actBtn,'No existe control para confirmar actividad');
- actBtn.click();await wait(60);
+ let actText=w.document.querySelector('[data-act-text]');
+ if(actText&&/^\s*\[POR REVISAR\]/i.test(actText.value)){actText.value='Realizar una actividad concreta y verificable para producir el resultado.';actText.dispatchEvent(new w.Event('change',{bubbles:true}));await wait(20)}
+ actBtn=w.document.querySelector('[data-act-confirm]');actBtn.click();await wait(60);
  const confirmedActs=w.fcGetActivities().filter(x=>x.confirmed);
  assert(confirmedActs.length>=1,'No quedó actividad confirmada');
 
