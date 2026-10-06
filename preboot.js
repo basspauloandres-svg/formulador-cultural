@@ -1,1 +1,1 @@
-(()=>{const current=localStorage.getItem('fc_active');if(current==='S09'){localStorage.setItem('fc_boot_target','S09');localStorage.setItem('fc_active','S08')}})();
+(()=>{const current=localStorage.getItem('fc_active');if(/^S(09|10|11|12)$/.test(current||'')){localStorage.setItem('fc_boot_target',current);localStorage.setItem('fc_active','S08')}})();
