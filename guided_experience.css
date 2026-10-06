@@ -30,3 +30,14 @@ body.guided-mode #nav{display:none!important}body.guided-mode .sources{display:n
 .didactic-nav{display:flex;justify-content:space-between;gap:8px}
 body.guided-mode .completion-wrap .completion-note+ .completion-card{margin-top:0}
 @media(max-width:700px){.didactic-choice-row{grid-template-columns:1fr}.didactic-actions,.didactic-nav{display:grid}.didactic-actions button,.didactic-nav button{width:100%}}
+
+.writing-help{display:grid;gap:8px}
+.writing-help>button{justify-self:start;border:1px solid #7f8b96;background:#fff;border-radius:9px;padding:9px 11px;font:inherit}
+.writing-help-panel{border:1px solid #cbd8e5;background:#f8fbff;border-radius:12px;padding:11px;display:grid;gap:10px}
+.writing-help-explain p{margin:4px 0;color:#56616d;font-size:.86rem}
+.writing-source{border-left:3px solid #9fb5ca;padding:7px 10px;background:#fff;border-radius:0 8px 8px 0}
+.writing-source small{color:var(--muted)}.writing-source p{margin:4px 0;font-size:.84rem}
+.writing-proposals{display:grid;gap:8px}.writing-proposals article{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px}
+.writing-proposals article p{margin:5px 0 8px;line-height:1.4}.writing-proposals article small{color:var(--muted)}
+.writing-proposals button{border:1px solid #aeb8c2;background:#fff;border-radius:8px;padding:8px 10px;font:inherit}
+@media(max-width:700px){.writing-help>button,.writing-proposals button{width:100%}}
