@@ -1,32 +1,9 @@
-.guided-journey{margin:14px 0 18px;background:#fff;border:1px solid #d7dde4;border-radius:16px;padding:14px}
-.guided-journey-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}.guided-journey-head strong{font-size:1rem}.guided-journey-head p{margin:4px 0 0;color:#64707c;font-size:.86rem}
-.guided-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.guided-step{border:1px solid #d7dde4;border-radius:12px;background:#fff;padding:9px 8px;text-align:left;font:inherit;min-height:66px}.guided-step span{display:block;font-size:.7rem;color:#6c7884;margin-bottom:3px}.guided-step b{font-size:.82rem;line-height:1.15}.guided-step.current{border-color:#1f2933;background:#f5f7f9}.guided-step.done{background:#f8fafb}.guided-step.locked{opacity:.62}.guided-step-review{cursor:pointer}
+.guided-journey{margin:14px 0 18px;background:#fff;border:1px solid #d7dde4;border-radius:16px;padding:16px}
+.guided-journey-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}.guided-journey-head strong{font-size:1.08rem}.guided-journey-head p{margin:4px 0 0;color:#64707c;font-size:.88rem}.guided-review-btn{border:1px solid #1f2933;background:#1f2933;color:#fff;border-radius:10px;padding:9px 12px;font:inherit}
+.guided-stage-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.guided-stage{border:1px solid #d7dde4;border-radius:13px;background:#fff;overflow:hidden}.guided-stage.current{border-color:#52606d;box-shadow:0 0 0 1px #52606d inset}.guided-stage header{display:flex;gap:9px;align-items:flex-start;padding:11px;background:#fafbfc}.stage-number{display:grid;place-items:center;min-width:30px;height:30px;border-radius:50%;background:#e9eef4;font-weight:800}.guided-stage.current .stage-number{background:#1f2933;color:#fff}.guided-stage header strong{display:block;font-size:.84rem;line-height:1.25}.stage-status{display:inline-block;margin-top:6px;border-radius:999px;padding:3px 7px;font-size:.7rem}.stage-status.complete{background:#e8f7ed;color:#17633d}.stage-status.progress{background:#fff3ce;color:#8b6200}.stage-status.missing{background:#eef1f4;color:#66717c}
+.guided-subsections{padding:5px 9px 9px}.guided-subsection{width:100%;display:flex;gap:8px;align-items:center;border:0;border-top:1px solid #edf0f3;background:transparent;padding:8px 3px;text-align:left;font:inherit;cursor:pointer;color:#27313b}.guided-subsection:first-child{border-top:0}.guided-subsection.current{background:#eef5ff;border-radius:7px;padding-left:7px}.guided-subsection small{display:block;color:#75808b;font-size:.68rem}.guided-subsection span:last-child{font-size:.78rem;line-height:1.2}.status-dot{width:12px;height:12px;border:2px solid #aeb8c2;border-radius:50%;flex:0 0 auto}.guided-subsection.complete .status-dot{border-color:#1f9d55;background:#1f9d55;box-shadow:inset 0 0 0 2px white}.guided-subsection.progress .status-dot{border-color:#d89a00;background:#fff}.guided-subsection.missing{color:#68737e}
 .guided-section-note{margin:0 0 14px;border:1px solid #d7dde4;background:#f8fafb;border-radius:12px;padding:11px 12px}.guided-section-note strong{display:block;margin-bottom:4px}.guided-section-note p{margin:0;color:#5c6874;font-size:.88rem}
-body.guided-mode #nav{display:none}
-body.guided-mode .counter{font-size:.78rem;color:#77828d}
-body.guided-mode .sources{display:none}
-body.guided-mode #clear{display:none}
-body.guided-mode .toolbar{gap:8px}.guided-help-toggle{margin-left:auto}
-body.guided-mode #vesterWizard .vester-actions [data-help="why"],body.guided-mode #vesterWizard .vester-actions [data-help="review"],body.guided-mode #vesterWizard #showMatrix,body.guided-mode #vesterWizard #calcVester{display:none!important}
-body.guided-mode #vesterWizard .vester-mode{display:none}
-body.guided-mode #vesterWizard .vester-top h3{font-size:1.15rem}
-body.guided-mode #vesterWizard .vester-top p{max-width:720px}
-body.guided-mode #vesterWizard .score-grid{grid-template-columns:repeat(4,1fr)}
-body.guided-mode #vesterWizard .score-btn strong{display:none}
-body.guided-mode #vesterWizard .score-btn span{font-size:.88rem}
-body.guided-mode #vesterWizard .contrast-box{display:none}
-.guided-vester-hint{border:1px solid #d7dde4;background:#f8fafb;border-radius:12px;padding:11px 12px;margin:10px 0}.guided-vester-hint strong{display:block;margin-bottom:4px}.guided-vester-hint p{margin:0;color:#596673;font-size:.88rem}
-.guided-tech{margin-top:12px}.guided-tech summary{cursor:pointer;font-size:.84rem;color:#56616c}
-.guided-review-btn{border:1px solid #1f2933;background:#1f2933;color:#fff;border-radius:10px;padding:9px 12px;font:inherit}
-@media(max-width:820px){.guided-steps{grid-template-columns:1fr 1fr}.guided-step:last-child{grid-column:1/-1}.guided-journey-head{display:block}.guided-review-btn{margin-top:8px;width:100%}}
-@media(max-width:520px){.guided-steps{grid-template-columns:1fr}.guided-step:last-child{grid-column:auto}body.guided-mode #vesterWizard .score-grid{grid-template-columns:1fr 1fr}}
-.comparison-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.comparison-cards article{border:1px solid #d7dde4;border-radius:12px;padding:12px;background:#fff}.comparison-cards small{display:block;color:#6b7680;margin-bottom:5px}.comparison-cards strong{display:block;line-height:1.35}.vester-core-question{font-size:1.05rem;font-weight:750;margin:14px 0}.guided-mode .vester-actions [data-help="guide"],.guided-mode .vester-actions [data-help="why"],.guided-mode .vester-actions [data-help="review"]{display:none!important}@media(max-width:620px){.comparison-cards{grid-template-columns:1fr}}
-body.guided-mode.causal-simple-active #causalValidationBody{display:none!important}
-body.guided-mode.causal-simple-active .sc-technical[open] #causalValidationBody{display:block!important}
-body.guided-mode.causal-simple-active #causalValidation .cv-note,
-body.guided-mode.causal-simple-active #causalValidation .cv-summary,
-body.guided-mode.causal-simple-active #causalValidation .cv-tabs,
-body.guided-mode.causal-simple-active #causalValidation .dg-overall,
-body.guided-mode.causal-simple-active #causalValidation .dg-readiness,
-body.guided-mode.causal-simple-active #causalValidation .dg-advice{display:none!important}
-body.guided-mode.causal-simple-active .sc-prior #vesterWizard{display:block}
+body.guided-mode #nav{display:none!important}body.guided-mode .sources{display:none}body.guided-mode #clear{display:none}.guided-tech{margin-top:12px}.guided-tech summary{cursor:pointer;font-size:.84rem;color:#56616c}
+.comparison-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.comparison-cards article{border:1px solid #d7dde4;border-radius:12px;padding:12px;background:#fff}
+@media(max-width:1050px){.guided-stage-grid{grid-template-columns:repeat(2,1fr)}.guided-stage:last-child{grid-column:1/-1}}
+@media(max-width:650px){.guided-stage-grid{grid-template-columns:1fr}.guided-stage:last-child{grid-column:auto}.guided-journey-head{display:block}.guided-review-btn{width:100%;margin-top:8px}.comparison-cards{grid-template-columns:1fr}}
