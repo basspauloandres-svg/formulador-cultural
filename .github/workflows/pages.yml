@@ -90,7 +90,7 @@ jobs:
             grep -q "$file" index.html
           done
           grep -q "S01–S12" index.html
-          grep -q "Motor de coherencia" coherence_engine.js
+          grep -q "¿El proyecto sigue teniendo sentido?" coherence_engine.js
 
   deploy:
     needs: test
