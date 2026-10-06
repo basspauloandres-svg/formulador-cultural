@@ -51,8 +51,12 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
  const ids=(stored.S09.objectives_state.items||[]).map(x=>x.id);
  for(let i=0;i<ids.length;i++){
-   const id=ids[i],b=w.document.querySelector('[data-confirm="'+id+'"]');
-   assert(b,'No se encontró control para confirmar objetivo '+id);
+   const id=ids[i],ta=w.document.querySelector('[data-obj-text="'+id+'"]'),b=w.document.querySelector('[data-confirm="'+id+'"]');
+   assert(ta&&b,'No se encontraron controles para revisar el objetivo '+id);
+   if(/^\s*\[POR REVISAR\]/i.test(ta.value)){
+     ta.value='Redacción manual verificable para el elemento de prueba.';
+     ta.dispatchEvent(new w.Event('input',{bubbles:true}));
+   }
    b.click();await wait(25);
    if(i<ids.length-1){const next=w.document.querySelector('#objectiveNext');assert(next,'No existe navegación al siguiente objetivo');next.click();await wait(25)}
  }
