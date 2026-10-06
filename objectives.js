@@ -15,6 +15,16 @@ function objectiveProposals(text,zone){return window.fcWriting?.objectiveProposa
 function suggest(text,zone){return objectiveProposals(text,zone)[0]}
 function refreshFromTree(force=false){const src=sourceNodes(),sig=signature();if(!state.items.length||force){const old=new Map(state.items.map(x=>[x.id,x]));state.items=src.map(n=>{const prev=old.get(n.id);return prev&&prev.sourceText===n.text?{...prev,zone:n.zone,parentId:n.parentId}:{id:n.id,zone:n.zone,parentId:n.parentId,sourceText:n.text,text:suggest(n.text,n.zone),confirmed:false}});state.sourceSignature=sig;save()}return sig}
 function changed(){return !!state.sourceSignature&&state.sourceSignature!==signature()}
+function transitionStatus(){
+ const src=sourceNodes(),central=src.filter(n=>n.zone==='central'),direct=src.filter(n=>n.zone==='direct_cause'),effects=src.filter(n=>n.zone==='direct_effect'||n.zone==='indirect_effect');
+ const sourceChanged=!!state.sourceSignature&&state.sourceSignature!==signature();
+ const issues=[];
+ if(central.length!==1)issues.push({code:'central',message:central.length?'Hay más de un problema central en S07.':'S07 no tiene un problema central confirmado.'});
+ if(!direct.length)issues.push({code:'direct_causes',message:'El árbol no tiene causas directas. Sin ellas no se pueden formular objetivos específicos de manera consistente.'});
+ if(sourceChanged)issues.push({code:'changed',message:'El árbol de problemas cambió después de la última construcción de S09.'});
+ return {ok:issues.length===0,issues,centralCount:central.length,directCauseCount:direct.length,effectCount:effects.length,sourceChanged}
+}
+window.fcS09TransitionStatus=transitionStatus;
 function counts(){return {central:state.items.filter(x=>x.zone==='central').length,means:state.items.filter(x=>x.zone==='direct_cause'||x.zone==='indirect_cause').length,ends:state.items.filter(x=>x.zone==='direct_effect'||x.zone==='indirect_effect').length,pending:state.items.filter(x=>!x.confirmed).length}}
 function questionFor(x){
  if(x.zone==='central')return '¿Qué cambio principal debería lograr el proyecto frente a este problema?';
@@ -54,12 +64,12 @@ function listHtml(){
 }
 function diagramHtml(){const order=['indirect_effect','direct_effect','central','direct_cause','indirect_cause'];return `<div class="objective-diagram">${order.map((z,i)=>{const xs=state.items.filter(x=>x.zone===z);return `<section class="objective-level"><h4>${esc(MAP[z])}</h4><div class="objective-level-grid">${xs.length?xs.map(x=>`<div class="objective-node ${z==='central'?'central':''}"><strong>${esc(x.text)}</strong><div class="objective-source">${x.confirmed?'Confirmado':'[POR REVISAR]'}</div></div>`).join(''):'<div class="objective-source">Sin elementos</div>'}</div></section>${i<order.length-1?'<div class="objective-arrow">↑</div>':''}`}).join('')}</div>`}
 function render(){
- const host=$('#objectivesBody');if(!host)return;const c=counts();
- host.innerHTML=`${changed()?'<div class="objectives-warning"><strong>El árbol de problemas cambió.</strong><p>Conviene actualizar las propuestas antes de continuar.</p><button type="button" id="refreshObjectives">Actualizar desde S07</button></div>':''}
+ const host=$('#objectivesBody');if(!host)return;const c=counts(),gate=transitionStatus();
+ host.innerHTML=`${!gate.ok?`<div class="objectives-warning objective-transition-warning"><strong>Antes de continuar, revisa la conexión con el árbol de problemas.</strong>${gate.issues.map(i=>`<p>• ${esc(i.message)}</p>`).join('')}<div class="objective-transition-actions"><button type="button" id="goReviewS07">Revisar S07 · árbol de problemas</button>${gate.sourceChanged?'<button type="button" id="refreshObjectives">Actualizar S09 desde S07</button>':''}</div></div>`:''}
  <div class="objective-guidance-head"><div><strong>Vamos uno por uno</strong><p>${c.pending?c.pending+' elemento(s) todavía requieren tu revisión.':'Todas las formulaciones fueron revisadas.'}</p></div><details><summary>Ver regla metodológica</summary><p>Problema central → objetivo general. Causa directa → objetivo específico. Causa indirecta → medio. Efecto → fin esperado.</p></details></div>
  <div id="objectivesContent">${listHtml()}</div>
  <div class="objectives-secondary"><button type="button" id="showObjectiveDiagram">Ver árbol de objetivos</button><button type="button" id="saveObjectives">Guardar S09</button><button type="button" id="exportObjectivesWorkbook">Exportar respaldo técnico</button></div>`;
- $('#refreshObjectives')?.addEventListener('click',()=>{if(confirm('Se reconstruirán las propuestas desde S07. Las formulaciones confirmadas solo se conservarán cuando el texto fuente no haya cambiado. ¿Continuar?')){refreshFromTree(true);cursor=0;render()}});
+ $('#goReviewS07')?.addEventListener('click',()=>window.fcNavigate?.('S07')); $('#refreshObjectives')?.addEventListener('click',()=>{if(confirm('Se reconstruirán las propuestas desde S07. Las formulaciones confirmadas solo se conservarán cuando el texto fuente no haya cambiado. ¿Continuar?')){refreshFromTree(true);cursor=0;render()}});
  $('#showObjectiveDiagram')?.addEventListener('click',()=>{const content=$('#objectivesContent');if(!content)return;content.innerHTML=diagramHtml();const back=document.createElement('button');back.type='button';back.id='backObjectiveGuide';back.textContent='← Volver a la revisión';back.className='objective-back';content.prepend(back);back.onclick=()=>render()});
  $('#saveObjectives')?.addEventListener('click',async()=>{save();if(typeof session!=='undefined'&&session&&typeof syncSection==='function'){try{await syncSection('S09');if(typeof setStatus==='function')setStatus('S09 guardada y sincronizada en la nube.',true)}catch(e){if(typeof setStatus==='function')setStatus(`S09 guardada localmente. Error de sincronización: ${e.message||'desconocido'}`)}}else if(typeof setStatus==='function')setStatus('S09 guardada localmente. Inicia sesión para sincronizar.')});
  $('#exportObjectivesWorkbook')?.addEventListener('click',async()=>{const btn=$('#exportObjectivesWorkbook'),old=btn.textContent;btn.disabled=true;btn.textContent='Generando…';try{save();if(typeof window.fcExportCompleteWorkbook!=='function')throw new Error('El módulo de exportación no está disponible.');await window.fcExportCompleteWorkbook()}catch(e){console.error(e);alert(`No fue posible generar el archivo: ${e.message||'error desconocido'}`)}finally{btn.disabled=false;btn.textContent=old}});
