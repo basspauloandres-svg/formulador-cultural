@@ -25,5 +25,5 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  if(!/Revisión/.test(w.document.querySelector('#title')?.textContent||''))throw new Error('S16 no navega correctamente');
  if(!w.document.querySelector('.review-dashboard'))throw new Error('S16 no renderiza el panel de revisión');
  if(errors.length)throw errors[0];
- console.log('Front smoke OK');
-})().catch(e=>{console.error(e);process.exit(1)});
+ console.log('Front smoke OK');w.close();process.exit(0);
+})().catch(e=>{console.error(e);try{w.close()}catch{}process.exit(1)});
