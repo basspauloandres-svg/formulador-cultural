@@ -29,4 +29,6 @@ if(!coherence.includes('El porcentaje técnico y el diagnóstico completo se mue
 if(!planning.includes('Revisa una actividad por vez'))fail('Presupuesto no declara la lógica de una actividad por vez');
 if(!planning.includes('Revisa un elemento por vez'))fail('Riesgos no declara la lógica de un elemento por vez');
 if(!guided.includes("item=s.items.find"))fail('El encabezado no muestra la subsección actual');
+if(guided.includes("class=\"guided-stage '+(cur?'current ':'')+ss+'\""))fail('El recorrido usa estados CSS genéricos que pueden colisionar con .progress');
+if(!guided.includes("'stage-'+ss"))fail('El recorrido no usa clases de estado específicas para cada etapa');
 if(!process.exitCode)console.log('Didactic density audit OK');
