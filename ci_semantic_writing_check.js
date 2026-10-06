@@ -1,0 +1,24 @@
+const fs=require('fs'),vm=require('vm');
+function fail(m){console.error('SEMANTIC WRITING ERROR:',m);process.exitCode=1}
+const context={window:{}};vm.createContext(context);vm.runInContext(fs.readFileSync('semantic_writing.js','utf8'),context);
+const w=context.window.fcWriting;
+if(!w)fail('No se expuso fcWriting');
+const central=w.objectiveProposals('1 Diferencias en los niveles de dominio instrumental entre integrantes de una misma sección de la banda.','central');
+if(!central.some(x=>/^Reducir las diferencias en los niveles de dominio instrumental/i.test(x)))fail('El problema central no genera un objetivo general preciso');
+const indirect=w.objectiveProposals('2 Frecuencia desigual de acompañamiento especializado entre las diferentes familias instrumentales.','indirect_cause');
+if(!indirect.some(x=>/^Equilibrar la frecuencia de acompañamiento especializado/i.test(x)))fail('La causa indirecta no genera un medio preciso');
+const result=w.resultProposal('Equilibrar la frecuencia de acompañamiento especializado entre las diferentes familias instrumentales.');
+if(!/equilibrio en la frecuencia de acompañamiento especializado/i.test(result))fail('El resultado no conserva la lógica del objetivo');
+const acts=w.activityProposals(result,'Equilibrar la frecuencia de acompañamiento especializado entre las diferentes familias instrumentales.');
+if(acts.length<2||acts.some(x=>/^\[POR REVISAR\]/.test(x)))fail('No se generaron actividades específicas para el caso conocido');
+const ind=w.indicatorProposal(result,'Resultado');
+if(!/frecuencias? de acompañamiento especializado/i.test(ind))fail('El indicador de resultado no mide el cambio esperado');
+const objectives=fs.readFileSync('objectives.js','utf8');
+if(!objectives.includes('no se convierte automáticamente en objetivo específico'))fail('S09 no distingue medios indirectos de objetivos específicos');
+const results=fs.readFileSync('results_layer.js','utf8');
+if(!results.includes("x.zone==='direct_cause'"))fail('Resultados todavía aceptan causas indirectas como objetivos específicos');
+const coherence=fs.readFileSync('coherence_engine.js','utf8');
+if(!coherence.includes('Causas directas → objetivos específicos'))fail('Coherencia no comprueba la jerarquía causal correcta');
+const docs=fs.readFileSync('deliverables.js','utf8');
+if(!docs.includes("spec=obj.filter(x=>x.zone==='direct_cause')"))fail('Documento final mezcla causas indirectas con objetivos específicos');
+if(!process.exitCode)console.log('Semantic writing audit OK');
