@@ -42,6 +42,7 @@ jobs:
             vester.js \
             causal_validation.js \
             decision_guidance.js \
+            simple_causal_ui.js \
             tree_validation_bridge.js \
             tree.js \
             synthesis.js \
