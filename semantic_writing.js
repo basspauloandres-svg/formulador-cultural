@@ -87,6 +87,55 @@ function indicatorProposal(source,type){
  }
  return '[POR REVISAR]'
 }
+
+function indicatorGuidance(source,type){
+ const t=clean(source);
+ if(type==='Objetivo')return {
+  level:'Indicador de cambio',
+  purpose:'Debe mostrar si el problema principal realmente está cambiando. Evita medir talleres, reuniones o actividades realizadas.',
+  question:'¿Qué cambio observable demostraría que el objetivo general está avanzando?',
+  formulaHint:'Expresa cómo compararás el cambio frente a la línea base.',
+  unitHint:'Porcentaje, diferencia, índice, nivel, frecuencia u otra unidad directamente relacionada con el cambio.',
+  suggestions:[indicatorProposal(t,'Objetivo')].filter(Boolean),
+  formulaExamples:['Valor de seguimiento − línea base','((Valor de seguimiento − línea base) / línea base) × 100, cuando la línea base sea distinta de cero']
+ };
+ if(type==='Resultado')return {
+  level:'Indicador de resultado',
+  purpose:'Debe comprobar que el resultado o producto esperado existe y tiene la condición prevista. No basta con contar actividades.',
+  question:'¿Qué dato demostraría que este resultado fue realmente alcanzado?',
+  formulaHint:'Define el criterio que permite decidir cuándo el resultado se considera logrado.',
+  unitHint:'Cantidad, porcentaje, cobertura, proporción, nivel de calidad u otra unidad del resultado.',
+  suggestions:[indicatorProposal(t,'Resultado')].filter(Boolean),
+  formulaExamples:['Valor observado comparado con la meta definida','(Resultado alcanzado / resultado previsto) × 100, cuando el resultado sea cuantificable']
+ };
+ return {
+  level:'Indicador de ejecución',
+  purpose:'Debe mostrar si la actividad se realizó en la cantidad, cobertura, tiempo o condición prevista. Este indicador no demuestra por sí solo el cambio del proyecto.',
+  question:'¿Qué dato demostraría que esta actividad se realizó como estaba prevista?',
+  formulaHint:'Indica cómo calcularás el avance o cumplimiento de la actividad.',
+  unitHint:'Número, porcentaje de cumplimiento, sesiones, participantes, productos u otra unidad de ejecución.',
+  suggestions:[indicatorProposal(t,'Actividad')].filter(Boolean),
+  formulaExamples:['(Cantidad realizada / cantidad programada) × 100','Número de acciones efectivamente realizadas, cuando corresponda']
+ }
+}
+function indicatorQuality(x){
+ const missing=v=>!String(v||'').trim()||/^\s*\[POR (VERIFICAR|REVISAR|DEFINIR)\]/i.test(String(v||''));
+ const issues=[];
+ if(missing(x.indicator))issues.push('Falta definir qué se medirá.');
+ if(missing(x.formula))issues.push('Falta explicar cómo se calculará o evaluará.');
+ if(missing(x.unidad))issues.push('Falta definir la unidad de medida.');
+ if(missing(x.lineaBase))issues.push('Falta la línea base.');
+ if(missing(x.meta))issues.push('Falta una meta verificable.');
+ if(missing(x.medioVerificacion))issues.push('Falta una fuente o medio de verificación.');
+ if(missing(x.periodicidad))issues.push('Falta indicar cada cuánto se medirá.');
+ if(missing(x.responsable))issues.push('Falta asignar responsable.');
+ if(missing(x.plazo))issues.push('Falta definir el plazo o momento de cumplimiento.');
+ const text=String(x.indicator||'').toLowerCase();
+ if(x.linkedType==='Objetivo'&&/(número|cantidad|porcentaje) de (actividades|talleres|reuniones|sesiones)/i.test(text))issues.push('Este indicador parece medir ejecución, pero está asociado al objetivo general.');
+ if(x.linkedType==='Resultado'&&/(número|cantidad) de (actividades|talleres|reuniones)/i.test(text))issues.push('Este indicador parece contar actividades y no el resultado alcanzado.');
+ return {ok:issues.length===0,issues}
+}
+
 function isPlaceholder(v){return /^\s*\[POR (REVISAR|VERIFICAR|DEFINIR)\]/i.test(String(v||''))}
-window.fcWriting={clean,objectiveProposals,strategyProposals,resultProposal,activityProposals,indicatorProposal,isPlaceholder};
+window.fcWriting={clean,objectiveProposals,strategyProposals,resultProposal,activityProposals,indicatorProposal,indicatorGuidance,indicatorQuality,isPlaceholder};
 })();

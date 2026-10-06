@@ -39,7 +39,7 @@ function reportHtml(){
  <h2>7. Estrategia de intervención</h2><p>${esc(p(alt?.text))}</p><h2>8. Resultados esperados</h2>${res.length?'<ul>'+res.map(x=>'<li>'+esc(x.text)+'</li>').join('')+'</ul>':'<p>[POR VERIFICAR]</p>'}
  <h2>9. Actividades</h2>${acts.length?table(['ID','Resultado/objetivo','Actividad'],acts.map(x=>[x.id,x.resultText||x.objectiveText||'',x.text])):'<p>[POR VERIFICAR]</p>'}
  <h2>10. Cronograma</h2>${sch.length?table(['Actividad','Inicio','Fin','Responsable','Frecuencia'],sch.map(x=>[x.activityText,x.startDate||'[POR VERIFICAR]',x.endDate||'[POR VERIFICAR]',x.responsible||'[POR VERIFICAR]',x.frequency||''])):'<p>[POR VERIFICAR]</p>'}
- <h2>11. Indicadores y metas</h2>${inds.length?table(['Actividad','Indicador','Línea base','Meta','Medio de verificación','Responsable'],inds.map(x=>[x.activityText,x.indicator,x.lineaBase,x.meta,x.medioVerificacion,x.responsable])):'<p>[POR VERIFICAR]</p>'}
+ <h2>11. Indicadores y metas</h2>${inds.length?table(['Nivel','Elemento','Indicador','Fórmula/criterio','Línea base','Meta','Unidad','Periodicidad','Medio de verificación','Responsable','Plazo'],inds.map(x=>[x.linkedType||'Actividad',x.linkedText||x.activityText||'',x.indicator,x.formula||'[POR VERIFICAR]',x.lineaBase,x.meta,x.unidad,x.periodicidad,x.medioVerificacion,x.responsable,x.plazo])):'<p>[POR VERIFICAR]</p>'}
  <h2>12. Recursos y presupuesto</h2>${bud.length?table(['Actividad','Recurso','Unidad','Cantidad','Veces','Costo unitario','Total','Tipo'],bud.map(x=>[x.activityText,x.description,x.unit,String(x.quantity),String(x.frequency),moneyRaw(x.unitCost),moneyRaw(x.totalCost),x.costType])):'<p>[POR VERIFICAR]</p>'}<p><b>Total valorizado:</b> ${moneyRaw(bs.total)}</p>
  <h2>13. Riesgos y respuestas</h2>${risks.length?table(['Origen','Riesgo','Probabilidad','Impacto','Nivel','Prevención','Contingencia','Responsable'],risks.map(x=>[x.linkedObjectType,x.event,x.probability,x.impact,x.riskLevel,x.preventiveResponse,x.contingencyResponse,x.owner])):'<p>[POR VERIFICAR]</p>'}
  <h2>14. Coherencia y trazabilidad</h2><p><b>Índice orientativo de coherencia:</b> ${coherence.score}%</p>${coherence.checks?.length?'<ul>'+coherence.checks.map(x=>'<li><b>'+esc(x.label)+':</b> '+esc(x.message)+'</li>').join('')+'</ul>':''}
@@ -65,7 +65,7 @@ function reportParagraphs(){
  add('8. Resultados',rows(window.fcGetResults).filter(x=>x.confirmed).map(x=>p(x.text)));
  add('9. Actividades',rows(window.fcGetActivities).filter(x=>x.confirmed).map(x=>x.id+' · '+p(x.text)));
  add('10. Cronograma',rows(window.fcGetSchedule).map(x=>p(x.activityText)+' | '+p(x.startDate)+' - '+p(x.endDate)+' | '+p(x.responsible)));
- add('11. Indicadores y metas',rows(window.fcGetIndicators).filter(x=>x.confirmed).map(x=>p(x.indicator)+' | Meta: '+p(x.meta)));
+ add('11. Indicadores y metas',rows(window.fcGetIndicators).filter(x=>x.confirmed).map(x=>p(x.linkedType)+' · '+p(x.indicator)+' | Fórmula/criterio: '+p(x.formula)+' | Línea base: '+p(x.lineaBase)+' | Meta: '+p(x.meta)+' | Unidad: '+p(x.unidad)+' | Periodicidad: '+p(x.periodicidad)+' | Fuente: '+p(x.medioVerificacion)+' | Responsable: '+p(x.responsable)+' | Plazo: '+p(x.plazo)));
  add('12. Presupuesto',rows(window.fcGetBudget).map(x=>p(x.activityText)+' | '+p(x.description)+' | '+moneyRaw(x.totalCost)));
  add('13. Riesgos',rows(window.fcGetRisks).map(x=>p(x.event)+' | '+p(x.riskLevel)+' | '+p(x.preventiveResponse)));
  add('14. Fuentes',p(draft?.S04?.fuentes));
