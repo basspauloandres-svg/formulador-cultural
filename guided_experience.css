@@ -1,0 +1,22 @@
+.guided-journey{margin:14px 0 18px;background:#fff;border:1px solid #d7dde4;border-radius:16px;padding:14px}
+.guided-journey-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}.guided-journey-head strong{font-size:1rem}.guided-journey-head p{margin:4px 0 0;color:#64707c;font-size:.86rem}
+.guided-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.guided-step{border:1px solid #d7dde4;border-radius:12px;background:#fff;padding:9px 8px;text-align:left;font:inherit;min-height:66px}.guided-step span{display:block;font-size:.7rem;color:#6c7884;margin-bottom:3px}.guided-step b{font-size:.82rem;line-height:1.15}.guided-step.current{border-color:#1f2933;background:#f5f7f9}.guided-step.done{background:#f8fafb}.guided-step.locked{opacity:.62}.guided-step-review{cursor:pointer}
+.guided-section-note{margin:0 0 14px;border:1px solid #d7dde4;background:#f8fafb;border-radius:12px;padding:11px 12px}.guided-section-note strong{display:block;margin-bottom:4px}.guided-section-note p{margin:0;color:#5c6874;font-size:.88rem}
+body.guided-mode #nav{display:none}
+body.guided-mode .counter{font-size:.78rem;color:#77828d}
+body.guided-mode .sources{display:none}
+body.guided-mode #clear{display:none}
+body.guided-mode .toolbar{gap:8px}.guided-help-toggle{margin-left:auto}
+body.guided-mode #vesterWizard .vester-actions [data-help="why"],body.guided-mode #vesterWizard .vester-actions [data-help="review"],body.guided-mode #vesterWizard #showMatrix,body.guided-mode #vesterWizard #calcVester{display:none!important}
+body.guided-mode #vesterWizard .vester-mode{display:none}
+body.guided-mode #vesterWizard .vester-top h3{font-size:1.15rem}
+body.guided-mode #vesterWizard .vester-top p{max-width:720px}
+body.guided-mode #vesterWizard .score-grid{grid-template-columns:repeat(4,1fr)}
+body.guided-mode #vesterWizard .score-btn strong{display:none}
+body.guided-mode #vesterWizard .score-btn span{font-size:.88rem}
+body.guided-mode #vesterWizard .contrast-box{display:none}
+.guided-vester-hint{border:1px solid #d7dde4;background:#f8fafb;border-radius:12px;padding:11px 12px;margin:10px 0}.guided-vester-hint strong{display:block;margin-bottom:4px}.guided-vester-hint p{margin:0;color:#596673;font-size:.88rem}
+.guided-tech{margin-top:12px}.guided-tech summary{cursor:pointer;font-size:.84rem;color:#56616c}
+.guided-review-btn{border:1px solid #1f2933;background:#1f2933;color:#fff;border-radius:10px;padding:9px 12px;font:inherit}
+@media(max-width:820px){.guided-steps{grid-template-columns:1fr 1fr}.guided-step:last-child{grid-column:1/-1}.guided-journey-head{display:block}.guided-review-btn{margin-top:8px;width:100%}}
+@media(max-width:520px){.guided-steps{grid-template-columns:1fr}.guided-step:last-child{grid-column:auto}body.guided-mode #vesterWizard .score-grid{grid-template-columns:1fr 1fr}}
