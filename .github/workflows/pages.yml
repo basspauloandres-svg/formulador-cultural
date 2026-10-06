@@ -72,6 +72,8 @@ jobs:
         run: node ci_architecture_check.js
       - name: Ejecutar auditoría de densidad didáctica
         run: node ci_didactic_density_check.js
+      - name: Ejecutar auditoría de botones
+        run: node ci_button_contract_check.js
       - name: Ejecutar prueba de compatibilidad del proyecto
         run: node ci_project_compatibility_test.js
       - name: Verificar archivos públicos esenciales
