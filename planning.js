@@ -103,7 +103,20 @@ function renderS15(){
  '<div class="plan-nav"><button id="riskPrev">← Anterior</button><button id="riskNext">Siguiente →</button></div><details class="plan-summary"><summary>Ver matriz de riesgos</summary><div class="table-scroll"><table><thead><tr><th>Origen</th><th>Riesgo</th><th>Prob.</th><th>Impacto</th><th>Nivel</th><th>Responsable</th></tr></thead><tbody>'+(s.items||[]).map(x=>'<tr><td>'+esc(x.linkedObjectType)+'</td><td>'+esc(x.event)+'</td><td>'+esc(x.probability)+'</td><td>'+esc(x.impact)+'</td><td>'+esc(x.riskLevel)+'</td><td>'+esc(x.owner)+'</td></tr>').join('')+'</tbody></table></div></details></section>';
  if(!t)return;
  host.querySelectorAll('[data-risk-assess]').forEach(b=>b.onclick=()=>{s.assessments[t.id]=b.dataset.riskAssess;if(b.dataset.riskAssess==='yes')ensureRisk(s,t);write('S15','risk_state',s);renderS15()});
- if(r){host.querySelectorAll('[data-risk]').forEach(el=>el.onchange=()=>{r[el.dataset.risk]=el.value.trim()||'[POR VERIFICAR]';r.riskLevel=level(r);r.confirmed=false;write('S15','risk_state',s);renderS15()});$('#confirmRisk')&&($('#confirmRisk').onclick=()=>{r.riskLevel=level(r);r.confirmed=!['event','effect','preventiveResponse','contingencyResponse','owner'].some(k=>!r[k]||/POR VERIFICAR/.test(r[k]));write('S15','risk_state',s);sync('S15');renderS15()});$('#riskToActivity')&&($('#riskToActivity').onclick=()=>{if(createPreventiveActivity(r)){alert('La respuesta preventiva quedó creada como actividad y entrará al cronograma y presupuesto.');window.fcRenderJourney?.()}})}
+ if(r){
+   host.querySelectorAll('[data-risk]').forEach(el=>{
+     const saveField=()=>{r[el.dataset.risk]=el.value.trim()||'[POR VERIFICAR]';r.riskLevel=level(r);r.confirmed=false;write('S15','risk_state',s);const lvl=host.querySelector('.risk-level b');if(lvl)lvl.textContent=r.riskLevel};
+     if(el.tagName==='SELECT')el.onchange=saveField;else el.oninput=saveField;
+   });
+   $('#confirmRisk')&&($('#confirmRisk').onclick=()=>{
+     r.riskLevel=level(r);
+     const labels={event:'qué podría ocurrir',effect:'qué podría afectar',preventiveResponse:'qué podemos hacer antes',contingencyResponse:'qué haremos si ocurre',owner:'responsable'};
+     const missing=['event','effect','preventiveResponse','contingencyResponse','owner'].filter(k=>!r[k]||/POR VERIFICAR/.test(r[k]));
+     if(missing.length){r.confirmed=false;write('S15','risk_state',s);alert('Falta completar: '+missing.map(k=>labels[k]).join(', ')+'.');return}
+     r.confirmed=true;write('S15','risk_state',s);sync('S15');renderS15()
+   });
+   $('#riskToActivity')&&($('#riskToActivity').onclick=()=>{if(createPreventiveActivity(r)){alert('La respuesta preventiva quedó creada como actividad y entrará al cronograma y presupuesto.');window.fcRenderJourney?.()}})
+ }
  $('#riskPrev').onclick=()=>{cursors.S15=Math.max(0,cursors.S15-1);renderS15()};$('#riskNext').onclick=()=>{cursors.S15=Math.min(targets.length-1,cursors.S15+1);renderS15()}
 }
 function mount(){const c=($('#counter')?.textContent||'').slice(0,3);if(c==='S13'&&!$('#fields .plan-wrap'))renderS13();else if(c==='S14'&&!$('#fields .plan-wrap'))renderS14();else if(c==='S15'&&!$('#fields .plan-wrap'))renderS15()}
