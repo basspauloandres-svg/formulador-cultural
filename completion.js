@@ -7,10 +7,41 @@ function objectives(){try{return draft?.S09?.objectives_state||JSON.parse(localS
 function confirmedMeans(){return (objectives().items||[]).filter(x=>x.confirmed&&(x.zone==='direct_cause'||x.zone==='indirect_cause')).map(x=>({id:x.id,text:x.text,zone:x.zone}))}
 function selectedAlternative(){return (read('S10').items||[]).find(x=>x.selected)||null}
 function confirmedActivities(){return (read('S11').items||[]).filter(x=>x.confirmed)}
+function confirmedResults(){try{return (draft?.S11?.results_state?.items||JSON.parse(localStorage.getItem('formulador-cultural-results-v1')||'{}').items||[]).filter(x=>x.confirmed)}catch{return []}}
 function makeAlternatives(){const means=confirmedMeans();const items=means.map((m,i)=>({id:`A${i+1}`,title:`Alternativa ${i+1}`,text:`Desarrollar una estrategia orientada a: ${m.text}`,sourceIds:[m.id],scores:{pertinencia:'',viabilidad:'',evidencia:'',alcance:''},selected:false,confirmed:false,note:''}));if(means.length>1)items.push({id:`A${items.length+1}`,title:'Alternativa integrada',text:`Articular acciones sobre: ${means.map(x=>x.text).join(' + ')}`,sourceIds:means.map(x=>x.id),scores:{pertinencia:'',viabilidad:'',evidencia:'',alcance:''},selected:false,confirmed:false,note:''});return items}
 function ensureS10(){let s=read('S10');const sig=confirmedMeans().map(x=>`${x.id}:${x.text}`).join('|');if(!s.items||s.sourceSignature!==sig){const old=new Map((s.items||[]).map(x=>[x.id,x]));s={sourceSignature:sig,items:makeAlternatives().map(x=>old.get(x.id)||x),updatedAt:null};write('S10',s)}return s}
-function activityProposals(){const alt=selectedAlternative(),means=confirmedMeans();if(!alt)return[];let n=1,out=[];for(const m of means.filter(x=>alt.sourceIds?.includes(x.id))){out.push({id:`ACT${n++}`,objectiveId:m.id,objectiveText:m.text,text:`Realizar un diagnóstico de las condiciones relacionadas con: ${m.text}`,confirmed:false,status:'propuesta',note:''});out.push({id:`ACT${n++}`,objectiveId:m.id,objectiveText:m.text,text:`Definir y priorizar acciones para avanzar en: ${m.text}`,confirmed:false,status:'propuesta',note:''});out.push({id:`ACT${n++}`,objectiveId:m.id,objectiveText:m.text,text:`Implementar y documentar las acciones priorizadas asociadas a: ${m.text}`,confirmed:false,status:'propuesta',note:''});out.push({id:`ACT${n++}`,objectiveId:m.id,objectiveText:m.text,text:`Verificar los resultados obtenidos respecto de: ${m.text}`,confirmed:false,status:'propuesta',note:''})}return out}
-function ensureS11(){let s=read('S11');const alt=selectedAlternative(),sig=alt?`${alt.id}:${alt.text}:${(alt.sourceIds||[]).join(',')}`:'';if(!s.items||s.sourceSignature!==sig){s={sourceSignature:sig,alternativeId:alt?.id||'',alternativeText:alt?.text||'',items:activityProposals(),updatedAt:null};write('S11',s)}return s}
+function activityProposals(){
+ const alt=selectedAlternative();if(!alt)return[];
+ const allowed=new Set(alt.sourceIds||[]),res=confirmedResults().filter(r=>allowed.has(r.objectiveId));
+ let out=[];
+ for(const r of res){
+   const base={objectiveId:r.objectiveId,objectiveText:r.objectiveText||'',resultId:r.id,resultText:r.text,status:'propuesta',note:''};
+   out.push({...base,id:`ACT-${r.id}-1`,text:`Preparar las condiciones necesarias para lograr: ${r.text}`,confirmed:false});
+   out.push({...base,id:`ACT-${r.id}-2`,text:`Desarrollar la acción principal asociada a: ${r.text}`,confirmed:false});
+   out.push({...base,id:`ACT-${r.id}-3`,text:`Verificar y documentar el logro de: ${r.text}`,confirmed:false});
+ }
+ return out
+}
+function ensureS11(){
+ let s=read('S11'),alt=selectedAlternative(),res=confirmedResults().filter(r=>alt?.sourceIds?.includes(r.objectiveId));
+ const sig=alt?`${alt.id}:${(alt.sourceIds||[]).join(',')}|${res.map(r=>r.id+':'+r.text).join('|')}`:'';
+ if(!s.items||s.sourceSignature!==sig){
+   const old=s.items||[],validResultIds=new Set(res.map(r=>r.id)),items=[];
+   for(const r of res){
+     const existing=old.filter(x=>x.resultId===r.id||(!x.resultId&&x.objectiveId===r.objectiveId));
+     if(existing.length){
+       for(const x of existing)items.push({...x,objectiveId:r.objectiveId,objectiveText:r.objectiveText||x.objectiveText||'',resultId:r.id,resultText:r.text})
+     }else{
+       items.push(...activityProposals().filter(x=>x.resultId===r.id))
+     }
+   }
+   for(const x of old){
+     if(x.status==='risk_response'&&x.resultId&&validResultIds.has(x.resultId)&&!items.some(y=>y.id===x.id))items.push(x)
+   }
+   s={sourceSignature:sig,alternativeId:alt?.id||'',alternativeText:alt?.text||'',items,updatedAt:new Date().toISOString()};write('S11',s)
+ }
+ return s
+}
 function indicatorProposal(source,i,type='Actividad'){
  const linkedId=source.id,linkedText=source.text||source.activityText||source.objectiveText||'';
  return{id:`I${i+1}`,linkedType:type,linkedId,linkedText,activityId:type==='Actividad'?linkedId:'',activityText:type==='Actividad'?linkedText:'',resultId:type==='Resultado'?linkedId:'',objectiveId:type==='Objetivo'?linkedId:'',indicator:type==='Actividad'?`Cumplimiento verificable de la actividad: ${linkedText}`:type==='Resultado'?`Grado de logro del resultado: ${linkedText}`:`Cambio asociado al objetivo: ${linkedText}`,meta:'[POR VERIFICAR]',lineaBase:'[POR VERIFICAR]',unidad:'[POR VERIFICAR]',periodicidad:'[POR VERIFICAR]',medioVerificacion:'[POR VERIFICAR]',responsable:'[POR VERIFICAR]',plazo:'[POR VERIFICAR]',confirmed:false}
@@ -21,7 +52,7 @@ function indicatorSources(){
  try{const central=(draft?.S09?.objectives_state?.items||[]).find(x=>x.confirmed&&x.zone==='central');if(central)out.push({source:central,type:'Objetivo'})}catch{}
  return out
 }
-function ensureS12(){let s=read('S12');const src=indicatorSources(),sig=src.map(x=>`${x.type}:${x.source.id}:${x.source.text}`).join('|');if(!s.items||s.sourceSignature!==sig){const old=new Map((s.items||[]).map(x=>[(x.linkedType||'Actividad')+':'+(x.linkedId||x.activityId),x]));s={sourceSignature:sig,items:src.map((x,i)=>old.get(x.type+':'+x.source.id)||indicatorProposal(x.source,i,x.type)),updatedAt:null};write('S12',s)}return s}
+function ensureS12(){let s=read('S12');const src=indicatorSources(),sig=src.map(x=>`${x.type}:${x.source.id}:${x.source.text}`).join('|');if(!s.items||s.sourceSignature!==sig){const old=new Map((s.items||[]).map(x=>[(x.linkedType||'Actividad')+':'+(x.linkedId||x.activityId),x]));s={sourceSignature:sig,items:src.map((x,i)=>{const prev=old.get(x.type+':'+x.source.id);return prev?{...prev,linkedType:x.type,linkedId:x.source.id,linkedText:x.source.text||x.source.activityText||x.source.objectiveText||'',activityId:x.type==='Actividad'?x.source.id:'',activityText:x.type==='Actividad'?(x.source.text||''):'',resultId:x.type==='Resultado'?x.source.id:'',objectiveId:x.type==='Objetivo'?x.source.id:(prev.objectiveId||'')}:indicatorProposal(x.source,i,x.type)}),updatedAt:null};write('S12',s)}return s}
 function sync(code){if(typeof session!=='undefined'&&session&&typeof syncSection==='function')syncSection(code).catch(()=>{})}
 function renderS10(){const host=$('#fields');if(!host)return;const s=ensureS10();host.innerHTML=`<section class="completion-wrap"><div class="completion-note"><strong>Análisis de alternativas</strong><p>El sistema propone rutas a partir de los medios confirmados en S09. Evalúa cada alternativa y selecciona explícitamente la que mejor responda al proyecto.</p></div>${s.items.length?s.items.map(x=>`<article class="completion-card" data-alt="${x.id}"><div><strong>${esc(x.title)}</strong> <span class="completion-status ${x.confirmed?'ok':'pending'}">${x.confirmed?'Confirmada':'Propuesta asistida'}</span></div><label>Formulación<textarea data-alt-text="${x.id}">${esc(x.text)}</textarea></label><div class="completion-grid">${['pertinencia','viabilidad','evidencia','alcance'].map(k=>`<label>${k.charAt(0).toUpperCase()+k.slice(1)} (1–3)<select data-alt-score="${x.id}:${k}"><option value="">Sin valorar</option>${[1,2,3].map(n=>`<option ${String(x.scores?.[k])===String(n)?'selected':''}>${n}</option>`).join('')}</select></label>`).join('')}</div><label>Nota de decisión<textarea data-alt-note="${x.id}" placeholder="Explica por qué esta alternativa resulta pertinente o qué falta verificar.">${esc(x.note||'')}</textarea></label><div class="completion-actions"><button data-alt-confirm="${x.id}">${x.confirmed?'Actualizar confirmación':'Confirmar alternativa'}</button><button data-alt-select="${x.id}" class="${x.selected?'primary':''}">${x.selected?'Alternativa seleccionada':'Seleccionar para el proyecto'}</button></div></article>`).join(''):'<div class="completion-note"><strong>No hay medios confirmados en S09.</strong><p>Confirma al menos un medio antes de analizar alternativas.</p></div>'}<div class="completion-toolbar"><button id="goS11" class="primary" ${s.items.some(x=>x.selected&&x.confirmed)?'':'disabled'}>Continuar a S11 · actividades</button></div></section>`;bindS10(s)}
 function bindS10(s){document.querySelectorAll('[data-alt-text]').forEach(el=>el.onchange=()=>{const x=s.items.find(i=>i.id===el.dataset.altText);x.text=el.value.trim();x.confirmed=false;write('S10',s)});document.querySelectorAll('[data-alt-score]').forEach(el=>el.onchange=()=>{const [id,k]=el.dataset.altScore.split(':');const x=s.items.find(i=>i.id===id);x.scores[k]=el.value?Number(el.value):'';write('S10',s)});document.querySelectorAll('[data-alt-note]').forEach(el=>el.onchange=()=>{const x=s.items.find(i=>i.id===el.dataset.altNote);x.note=el.value.trim();write('S10',s)});document.querySelectorAll('[data-alt-confirm]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.altConfirm);x.confirmed=!!x.text.trim();write('S10',s);sync('S10');renderS10()});document.querySelectorAll('[data-alt-select]').forEach(b=>b.onclick=()=>{s.items.forEach(i=>i.selected=i.id===b.dataset.altSelect);write('S10',s);renderS10()});$('#goS11')?.addEventListener('click',()=>window.fcNavigate?.('S11'))}
