@@ -51,9 +51,8 @@ function activityProposals(){
  let out=[];
  for(const r of res){
    const base={objectiveId:r.objectiveId,objectiveText:r.objectiveText||'',resultId:r.id,resultText:r.text,status:'propuesta',note:''};
-   out.push({...base,id:`ACT-${r.id}-1`,text:`Preparar las condiciones necesarias para lograr: ${r.text}`,confirmed:false});
-   out.push({...base,id:`ACT-${r.id}-2`,text:`Desarrollar la acción principal asociada a: ${r.text}`,confirmed:false});
-   out.push({...base,id:`ACT-${r.id}-3`,text:`Verificar y documentar el logro de: ${r.text}`,confirmed:false});
+   const proposals=window.fcWriting?.activityProposals?window.fcWriting.activityProposals(r.text,r.objectiveText):['[POR REVISAR] Definir una actividad concreta para: '+r.text];
+   proposals.forEach((text,i)=>out.push({...base,id:`ACT-${r.id}-${i+1}`,text,confirmed:false}))
  }
  return out
 }
@@ -79,7 +78,8 @@ function ensureS11(){
 }
 function indicatorProposal(source,i,type='Actividad'){
  const linkedId=source.id,linkedText=source.text||source.activityText||source.objectiveText||'';
- return{id:`I${i+1}`,linkedType:type,linkedId,linkedText,activityId:type==='Actividad'?linkedId:'',activityText:type==='Actividad'?linkedText:'',resultId:type==='Resultado'?linkedId:'',objectiveId:type==='Objetivo'?linkedId:'',indicator:type==='Actividad'?`Cumplimiento verificable de la actividad: ${linkedText}`:type==='Resultado'?`Grado de logro del resultado: ${linkedText}`:`Cambio asociado al objetivo: ${linkedText}`,meta:'[POR VERIFICAR]',lineaBase:'[POR VERIFICAR]',unidad:'[POR VERIFICAR]',periodicidad:'[POR VERIFICAR]',medioVerificacion:'[POR VERIFICAR]',responsable:'[POR VERIFICAR]',plazo:'[POR VERIFICAR]',confirmed:false}
+ const indicator=window.fcWriting?.indicatorProposal?window.fcWriting.indicatorProposal(linkedText,type):'[POR REVISAR]';
+ return{id:`I${i+1}`,linkedType:type,linkedId,linkedText,activityId:type==='Actividad'?linkedId:'',activityText:type==='Actividad'?linkedText:'',resultId:type==='Resultado'?linkedId:'',objectiveId:type==='Objetivo'?linkedId:'',indicator,meta:'[POR VERIFICAR]',lineaBase:'[POR VERIFICAR]',unidad:'[POR VERIFICAR]',periodicidad:'[POR VERIFICAR]',medioVerificacion:'[POR VERIFICAR]',responsable:'[POR VERIFICAR]',plazo:'[POR VERIFICAR]',confirmed:false}
 }
 function indicatorSources(){
  const out=[];confirmedActivities().forEach(x=>out.push({source:x,type:'Actividad'}));
@@ -144,7 +144,7 @@ function renderS11(){
 function bindS11(s){
  document.querySelectorAll('[data-act-text]').forEach(el=>el.onchange=()=>{const x=s.items.find(i=>i.id===el.dataset.actText);x.text=el.value.trim();x.confirmed=false;write('S11',s)});
  document.querySelectorAll('[data-act-note]').forEach(el=>el.onchange=()=>{const x=s.items.find(i=>i.id===el.dataset.actNote);x.note=el.value.trim();write('S11',s)});
- document.querySelectorAll('[data-act-confirm]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.actConfirm);x.confirmed=!!x.text.trim();write('S11',s);sync('S11');renderS11()});
+ document.querySelectorAll('[data-act-confirm]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.actConfirm);x.confirmed=!!x.text.trim()&&!window.fcWriting?.isPlaceholder?.(x.text);if(!x.confirmed&&window.fcWriting?.isPlaceholder?.(x.text)){alert('Antes de aprobar la actividad, reemplaza la marca [POR REVISAR] por una acción concreta.')}write('S11',s);sync('S11');renderS11()});
  document.querySelectorAll('[data-act-delete]').forEach(b=>b.onclick=()=>{s.items=s.items.filter(i=>i.id!==b.dataset.actDelete);cursors.S11=Math.max(0,Math.min(cursors.S11,s.items.length-1));write('S11',s);renderS11()});
  $('#addAct')&&($('#addAct').onclick=()=>{const id=`ACT${s.items.length+1}-${Date.now().toString().slice(-4)}`;s.items.push({id,objectiveId:'',objectiveText:'Actividad adicional',resultId:'',resultText:'[POR VERIFICAR]',text:'',confirmed:false,status:'manual',note:''});cursors.S11=s.items.length-1;write('S11',s);renderS11()});
  $('#actPrev')&&($('#actPrev').onclick=()=>{cursors.S11=Math.max(0,cursors.S11-1);renderS11()});$('#actNext')&&($('#actNext').onclick=()=>{cursors.S11=Math.min(s.items.length-1,cursors.S11+1);renderS11()});
@@ -158,7 +158,7 @@ function renderS12(){
 }
 function bindS12(s){
  document.querySelectorAll('[data-ind-field]').forEach(el=>el.onchange=()=>{const [id,k]=el.dataset.indField.split(':');const x=s.items.find(i=>i.id===id);x[k]=el.value.trim()||'[POR VERIFICAR]';x.confirmed=false;write('S12',s)});
- document.querySelectorAll('[data-ind-confirm]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.indConfirm);x.confirmed=true;write('S12',s);sync('S12');renderS12()});
+ document.querySelectorAll('[data-ind-confirm]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.indConfirm);x.confirmed=!window.fcWriting?.isPlaceholder?.(x.indicator);if(!x.confirmed){alert('Antes de aprobar el indicador, reemplaza la marca [POR REVISAR] por una medida concreta.')}write('S12',s);sync('S12');renderS12()});
  $('#indPrev')&&($('#indPrev').onclick=()=>{cursors.S12=Math.max(0,cursors.S12-1);renderS12()});$('#indNext')&&($('#indNext').onclick=()=>{cursors.S12=Math.min(s.items.length-1,cursors.S12+1);renderS12()});
  $('#exportFull')&&($('#exportFull').onclick=()=>window.fcExportCompleteWorkbook?.())
 }
