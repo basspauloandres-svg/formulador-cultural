@@ -50,7 +50,7 @@ function renderJourney(){
  wrap.querySelector('.guided-review-btn').onclick=()=>go('S16')
 }
 function renderGuide(){
- const c=code(),fields=$('#fields');if(!fields)return;const s=stageFor(c),k=c+':'+s.n;if(k===guideKey&&fields.querySelector('.guided-section-note'))return;fields.querySelector('.guided-section-note')?.remove();const note=document.createElement('div');note.className='guided-section-note';note.innerHTML='<strong>Paso '+s.n+' · '+s.title+'</strong><p>Estás en <b>'+c+'</b>. Completa esta decisión y usa “Siguiente” para continuar, o el recorrido superior para ir directamente a otra sección.</p>';fields.prepend(note);guideKey=k
+ const c=code(),fields=$('#fields');if(!fields)return;const s=stageFor(c),item=s.items.find(x=>x[0]===c),k=c+':'+s.n;if(k===guideKey&&fields.querySelector('.guided-section-note'))return;fields.querySelector('.guided-section-note')?.remove();const note=document.createElement('div');note.className='guided-section-note';note.innerHTML='<span>Paso '+s.n+' · '+s.title+'</span><strong>'+c+' · '+(item?.[1]||'Sección actual')+'</strong>';fields.prepend(note);guideKey=k
 }
 function simplifyVester(){const root=$('#vesterWizard');if(!root)return;const top=root.querySelector('.vester-top h3');if(top)top.textContent='Comparar situaciones';const p=root.querySelector('.vester-top p');if(p)p.textContent='Te mostramos dos situaciones cada vez. Responde si una puede provocar cambios en la otra.'}
 function mount(){scheduled=false;renderJourney();renderGuide();simplifyVester()}
