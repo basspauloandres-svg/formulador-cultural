@@ -70,6 +70,8 @@ jobs:
         run: node ci_front_smoke.js
       - name: Ejecutar auditoría de arquitectura
         run: node ci_architecture_check.js
+      - name: Ejecutar prueba de compatibilidad del proyecto
+        run: node ci_project_compatibility_test.js
       - name: Verificar archivos públicos esenciales
         run: |
           test -f index.html
