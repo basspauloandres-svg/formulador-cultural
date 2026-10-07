@@ -12,9 +12,15 @@ function causes(){try{return (draft?.S07?.tree_state?.nodes||[]).filter(x=>x.zon
 function days(n,u){const x=Math.max(1,Number(n)||1);return u==='weeks'?x*7:u==='months'?x*30:x}
 function endDate(start,n,u){if(!start)return '';const d=new Date(start+'T12:00:00');if(Number.isNaN(+d))return '';d.setDate(d.getDate()+days(n,u)-1);return d.toISOString().slice(0,10)}
 function money(n){return new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(n)||0)}
+function compactLabel(v,maxWords=28){return window.fcWriting?.compactPresentationText?window.fcWriting.compactPresentationText(v,maxWords):String(v||'').trim()}
+function riskWritingIssues(r){
+ const limits={event:30,effect:30,preventiveResponse:36,contingencyResponse:36},issues=[];
+ for(const [k,max] of Object.entries(limits)){const t=String(r?.[k]||'').trim();if(!t||/POR VERIFICAR/.test(t))continue;const words=t.split(/\s+/).filter(Boolean);if(words.length>max)issues.push(k+' supera '+max+' palabras');if((t.match(/[.!?]+/g)||[]).length>2)issues.push(k+' debe expresarse de forma más directa')}
+ return issues
+}
 function scheduleState(){
  let s=read('S13','schedule_state'),src=activities(),old=new Map((s.items||[]).map(x=>[x.activityId,x])),sig=src.map(x=>x.id+':'+x.text).join('|');
- if(!s.items||s.sourceSignature!==sig){s={sourceSignature:sig,items:src.map((a,i)=>old.get(a.id)||{id:'SCH'+(i+1),activityId:a.id,activityText:a.text,startDate:'',duration:1,durationUnit:'days',endDate:'',dependencyIds:[],responsible:'[POR VERIFICAR]',frequency:'Una vez',confirmed:false}),updatedAt:null};write('S13','schedule_state',s)}return s
+ if(!s.items||s.sourceSignature!==sig){s={sourceSignature:sig,items:src.map((a,i)=>{const prev=old.get(a.id);return prev?{...prev,activityId:a.id,activityText:a.text,activityContext:a.context||prev.activityContext||{}}:{id:'SCH'+(i+1),activityId:a.id,activityText:a.text,activityContext:a.context||{},startDate:'',duration:1,durationUnit:'days',endDate:'',dependencyIds:[],responsible:'[POR VERIFICAR]',frequency:'Una vez',confirmed:false}}),updatedAt:null};write('S13','schedule_state',s)}return s
 }
 function scheduleIssues(s){
  const map=new Map((s.items||[]).map(x=>[x.activityId,x])),out=[];
@@ -34,10 +40,10 @@ function renderS13(){
  '<label>¿Cuánto dura?<div class="inline"><input type="number" min="1" data-sch="duration" value="'+esc(x.duration)+'"><select data-sch="durationUnit"><option value="days" '+(x.durationUnit==='days'?'selected':'')+'>días</option><option value="weeks" '+(x.durationUnit==='weeks'?'selected':'')+'>semanas</option><option value="months" '+(x.durationUnit==='months'?'selected':'')+'>meses</option></select></div></label>'+
  '<label>¿Quién será responsable?<input data-sch="responsible" value="'+esc(x.responsible||'')+'" placeholder="[POR VERIFICAR]"></label>'+
  '<details class="didactic-detail"><summary>¿Se repite o depende de otra actividad?</summary><label>¿Se repite?<select data-sch="frequency"><option>Una vez</option><option '+(x.frequency==='Semanal'?'selected':'')+'>Semanal</option><option '+(x.frequency==='Mensual'?'selected':'')+'>Mensual</option><option '+(x.frequency==='Periódica'?'selected':'')+'>Periódica</option></select></label></div>'+
- '<details><summary>¿Necesita que otra actividad termine antes?</summary><div class="dep-list">'+xs.filter(y=>y.activityId!==x.activityId).map(y=>'<label><input type="checkbox" data-dep="'+esc(y.activityId)+'" '+((x.dependencyIds||[]).includes(y.activityId)?'checked':'')+'> '+esc(y.activityId)+' · '+esc(y.activityText)+'</label>').join('')+'</div></details>'+
+ '<details><summary>¿Necesita que otra actividad termine antes?</summary><div class="dep-list">'+xs.filter(y=>y.activityId!==x.activityId).map(y=>'<label><input type="checkbox" data-dep="'+esc(y.activityId)+'" '+((x.dependencyIds||[]).includes(y.activityId)?'checked':'')+'> '+esc(y.activityId)+' · '+esc(compactLabel(y.activityText))+'</label>').join('')+'</div></details>'+
  '<div class="plan-result">Final estimado: <b>'+(esc(x.endDate||'[POR VERIFICAR]'))+'</b></div>'+(x.confirmed?'<div class="schedule-indicator-note"><b>Datos disponibles para indicadores</b><span>Responsable y plazo confirmados en este cronograma quedarán disponibles como propuestas en S12. No se aplican sin tu confirmación.</span></div>':'')+'<button id="confirmSchedule" class="primary">'+(x.confirmed?'Actualizar':'Confirmar esta actividad')+'</button></article>':'<div class="plan-note">Primero confirma actividades en S11.</div>')+
  '<div class="plan-nav"><button id="schPrev">← Anterior</button><button id="schNext">Siguiente →</button></div>'+
- '<details class="plan-summary" open><summary>Ver cronograma completo</summary>'+ganttHtml(xs)+'<div class="table-scroll"><table><thead><tr><th>Actividad</th><th>Inicio</th><th>Fin</th><th>Responsable</th><th>Estado</th></tr></thead><tbody>'+xs.map(y=>'<tr><td>'+esc(y.activityId)+' · '+esc(y.activityText)+'</td><td>'+esc(y.startDate||'—')+'</td><td>'+esc(y.endDate||'—')+'</td><td>'+esc(y.responsible||'—')+'</td><td>'+(y.confirmed?'Completa':'Falta')+'</td></tr>').join('')+'</tbody></table></div></details>'+
+ '<details class="plan-summary" open><summary>Ver cronograma completo</summary>'+ganttHtml(xs)+'<div class="table-scroll"><table><thead><tr><th>Actividad</th><th>Inicio</th><th>Fin</th><th>Responsable</th><th>Estado</th></tr></thead><tbody>'+xs.map(y=>'<tr><td>'+esc(y.activityId)+' · '+esc(compactLabel(y.activityText))+'</td><td>'+esc(y.startDate||'—')+'</td><td>'+esc(y.endDate||'—')+'</td><td>'+esc(y.responsible||'—')+'</td><td>'+(y.confirmed?'Completa':'Falta')+'</td></tr>').join('')+'</tbody></table></div></details>'+
  (issues.length?'<div class="plan-alert"><strong>Revisar</strong><ul>'+issues.map(i=>'<li>'+esc(i)+'</li>').join('')+'</ul></div>':'')+'</section>';
  if(!x)return;
  host.querySelectorAll('[data-sch]').forEach(el=>el.onchange=()=>{const k=el.dataset.sch;x[k]=k==='duration'?Math.max(1,Number(el.value)||1):el.value;x.endDate=endDate(x.startDate,x.duration,x.durationUnit);x.confirmed=false;write('S13','schedule_state',s);renderS13()});
@@ -78,7 +84,7 @@ function riskTargets(){
 }
 function riskState(){
  let s=read('S15','risk_state'),targets=riskTargets(),sig=targets.map(x=>x.id+':'+x.text).join('|');s.items=s.items||[];s.assessments=s.assessments||{};
- if(s.sourceSignature!==sig){const ids=new Set(targets.map(x=>x.id));s.items=s.items.filter(x=>ids.has(x.targetId));for(const t of targets)if(!s.assessments[t.id])s.assessments[t.id]='pending';s.targets=targets;s.sourceSignature=sig;write('S15','risk_state',s)}return s
+ if(s.sourceSignature!==sig){const ids=new Set(targets.map(x=>x.id));s.items=s.items.filter(x=>ids.has(x.targetId));for(const t of targets){if(!s.assessments[t.id])s.assessments[t.id]='pending';const existing=s.items.find(x=>x.targetId===t.id);if(existing){existing.linkedObjectType=t.type;existing.linkedObjectId=t.sourceId;existing.sourceText=t.text}}s.targets=targets;s.sourceSignature=sig;write('S15','risk_state',s)}return s
 }
 function score(v){return {Baja:1,Media:2,Alta:3,Bajo:1,Medio:2,Alto:3}[v]||0}
 function level(r){const n=score(r.probability)*score(r.impact);return n>=7?'Alto':n>=4?'Medio':n?'Bajo':'[POR VERIFICAR]'}
@@ -115,6 +121,7 @@ function renderS15(){
      const labels={event:'qué podría ocurrir',effect:'qué podría afectar',preventiveResponse:'qué podemos hacer antes',contingencyResponse:'qué haremos si ocurre',owner:'responsable'};
      const missing=['event','effect','preventiveResponse','contingencyResponse','owner'].filter(k=>!r[k]||/POR VERIFICAR/.test(r[k]));
      if(missing.length){r.confirmed=false;write('S15','risk_state',s);alert('Falta completar: '+missing.map(k=>labels[k]).join(', ')+'.');return}
+     const writingIssues=riskWritingIssues(r);if(writingIssues.length){r.confirmed=false;write('S15','risk_state',s);alert('Haz más directa la redacción del riesgo: '+writingIssues.join(' · ')+'.');return}
      r.confirmed=true;write('S15','risk_state',s);sync('S15');renderS15()
    });
    $('#riskToActivity')&&($('#riskToActivity').onclick=()=>{if(createPreventiveActivity(r)){alert('La respuesta preventiva quedó creada como actividad y entrará al cronograma y presupuesto.');window.fcRenderJourney?.()}})
