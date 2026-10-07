@@ -8,6 +8,28 @@ function localState(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')}cat
 let state=localState();
 function syncFromDraft(){const cloudState=typeof draft!=='undefined'?draft?.S08?.synthesis_state:null;if(!cloudState)return;const localTime=Date.parse(state.updatedAt||0)||0;const cloudTime=Date.parse(cloudState.updatedAt||0)||0;if(!Object.keys(state).length||cloudTime>=localTime)state={...cloudState};localStorage.setItem(KEY,JSON.stringify(state))}
 function persistState(){state.updatedAt=new Date().toISOString();state.sourceSignature=treeSignature();localStorage.setItem(KEY,JSON.stringify(state));if(typeof draft!=='undefined'){draft.S08=draft.S08||{};draft.S08.synthesis_state=state;localStorage.setItem(storeKey,JSON.stringify(draft))}}
+function persistEditors({confirm=false}={}){
+ const finalEl=$('#finalProblem'),longEl=$('#longProblem');
+ if(finalEl)state.final=finalEl.value.trim();
+ if(longEl)state.description=longEl.value.trim();
+ state.confirmed=!!confirm;state.stale=false;
+ if(typeof draft!=='undefined'){draft.S08=draft.S08||{};draft.S08.enunciado_borrador=state.final||'';draft.S08.descripcion_borrador=state.description||''}
+ persistState();return !!state.final
+}
+async function confirmAndContinue(){
+ if(!persistEditors({confirm:true})){alert('Escribe o selecciona una formulación antes de continuar.');return false}
+ draft.S08=draft.S08||{};draft.S08.enunciado=state.final;draft.S08.evidencia_soporte=evidenceText().join(' · ')||'[POR VERIFICAR]';draft.S08.alcance=[territory(),population()].filter(Boolean).join(' · ')||'[POR VERIFICAR]';draft.S08.synthesis_state=state;localStorage.setItem(storeKey,JSON.stringify(draft));
+ if(typeof session!=='undefined'&&session&&typeof syncSection==='function'){try{await syncSection('S08');if(typeof setStatus==='function')setStatus('S08 guardada y sincronizada.',true)}catch(e){if(typeof setStatus==='function')setStatus('S08 guardada localmente. La sincronización falló: '+(e.message||'error desconocido'))}}
+ else if(typeof setStatus==='function')setStatus('S08 guardada en este navegador.',true);
+ if(typeof window.fcRenderJourney==='function')window.fcRenderJourney();
+ if(typeof window.fcNavigate==='function')await window.fcNavigate('S09');
+ return true
+}
+function bindS08GlobalSave(){
+ ['#save','#mSave'].forEach(sel=>{const b=$(sel);if(!b||b.dataset.s08DraftBound)return;b.dataset.s08DraftBound='1';b.addEventListener('click',()=>{if(typeof active!=='undefined'&&active==='S08'){persistEditors({confirm:false});if(typeof setStatus==='function')setStatus('Borrador de S08 guardado en este navegador.',true)}},true)})
+}
+window.fcSaveS08Draft=()=>persistEditors({confirm:false});
+window.fcConfirmS08AndContinue=confirmAndContinue;
 function treeState(){try{return draft?.S07?.tree_state||JSON.parse(localStorage.getItem('formulador-cultural-problem-tree-v1')||'{}')}catch{return {}}}
 function cleanNodeText(v){return String(v||'').replace(/^\s*(?:P)?\d+[.)-]?\s*/i,'').replace(/^\s*\[POR (?:REVISAR|VERIFICAR|DEFINIR)\]\s*/i,'').replace(/\s+/g,' ').trim()}
 function treeSignature(){const ns=(treeState()?.nodes||[]).filter(n=>['central','direct_cause','indirect_cause','direct_effect','indirect_effect'].includes(n.zone)).map(n=>({id:n.id,zone:n.zone,text:cleanNodeText(n.text),parentId:n.parentId||null,reviewed:n.reviewed!==false}));return JSON.stringify(ns)}
