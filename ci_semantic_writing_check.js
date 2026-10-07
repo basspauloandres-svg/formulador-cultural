@@ -38,3 +38,14 @@ if(strategyContext.some(x=>/^\[POR REVISAR\]/.test(x)))fail('S10 sigue devolvien
 if(!strategyContext.some(x=>/nivelación|trayectorias formativas/i.test(x)))fail('S10 no conserva el contenido real del objetivo específico en la alternativa');
 const strategyMissing=w.strategyProposals([]);
 if(!strategyMissing[0].includes('Faltan objetivos específicos confirmados'))fail('S10 no distingue ausencia de objetivos de una propuesta válida');
+
+const contextualActivityHelp=w.activityGuidance(
+ 'Proceso de formación instrumental implementado',
+ 'Mejorar el acceso a procesos de formación instrumental',
+ {population:'Integrantes de la banda',territory:'Municipio de prueba',existingActivities:['Convocar a los participantes']}
+);
+if(!contextualActivityHelp.suggestions.length)fail('S11 no genera ayuda para una actividad adicional');
+if(contextualActivityHelp.suggestions.some(x=>!x.includes('Proceso de formación instrumental implementado')))fail('La ayuda de actividad adicional no usa el resultado real');
+if(!contextualActivityHelp.questions.some(x=>x.includes('Mejorar el acceso a procesos de formación instrumental')))fail('Las preguntas de actividad adicional no usan el objetivo específico real');
+if(!contextualActivityHelp.questions.some(x=>x.includes('Integrantes de la banda')))fail('La ayuda de actividad adicional no usa la población real cuando existe');
+if(contextualActivityHelp.suggestions.some(x=>/\b(\d+|seis|diez|veinte)\b/i.test(x)))fail('La ayuda de actividad adicional inventa cantidades');
