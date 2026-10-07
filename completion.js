@@ -126,7 +126,7 @@ function indicatorSources(){
  return out
 }
 function ensureS12(){
- let s=read('S12');const src=indicatorSources(),sig='s12-context-v2|'+src.map(x=>`${x.type}:${x.source.id}:${x.source.text}`).join('|');
+ let s=read('S12');const src=indicatorSources(),sig='s12-context-v3|'+src.map(x=>`${x.type}:${x.source.id}:${x.source.text}`).join('|');
  if(!s.items||s.sourceSignature!==sig){
    const old=s.items||[],used=new Set(),items=[];let seq=0;
    for(const x of src){
