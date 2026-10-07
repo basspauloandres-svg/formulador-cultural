@@ -54,3 +54,9 @@
 .indicator-assist-card textarea{width:100%;min-height:54px;border:1px solid #cbd9d1;border-radius:9px;padding:8px;font:inherit}
 .indicator-assist-options{display:flex;flex-wrap:wrap;gap:6px}
 .indicator-assist-options button,.indicator-assist-card .secondary{border:1px solid #a8cbb9;background:#f5fbf7;color:#245e44;border-radius:999px;padding:7px 10px;font:inherit}
+
+/* S12 definition vs technical completion */
+.indicator-status-summary{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0}
+.indicator-status-summary span{border-radius:999px;padding:6px 10px;font-size:.78rem;font-weight:800;border:1px solid #d8e4dd}
+.indicator-status-summary .ok{background:#edf8f2;color:#1e6748;border-color:#b9d9c8}
+.indicator-status-summary .pending{background:#fff8df;color:#785d08;border-color:#eadc9b}
