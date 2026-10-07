@@ -68,3 +68,9 @@
 .indicator-schedule-reconciliation button small{color:#66756d;font-weight:750}
 .indicator-schedule-reconciliation button span{font-weight:800}
 @media(max-width:640px){.indicator-schedule-reconciliation button{grid-template-columns:1fr}}
+
+/* Direct correction focus from S16 */
+.s16-focus-banner{display:grid;gap:6px;border:1px solid #b9d9c8;background:#f5fbf7;border-radius:11px;padding:11px;margin:10px 0}
+.s16-focus-banner strong{color:#245e44}
+.s16-focus-banner p,.s16-focus-banner span{margin:0;color:#526760}
+.s16-focus-banner button{justify-self:start;border:1px solid #2d8a61;background:#fff;color:#176b49;border-radius:9px;padding:9px 12px;font:inherit;font-weight:800}
