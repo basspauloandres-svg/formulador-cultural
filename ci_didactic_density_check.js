@@ -87,3 +87,8 @@ if(!completion.includes('Corrección solicitada desde S16'))fail('S11 no informa
 if(!coherence.includes('fcGetCurrentValidationSnapshot'))fail('Coherencia no expone una estructura vigente común');
 if(!review.includes('fcGetCurrentValidationSnapshot'))fail('S16 no usa la misma estructura vigente del diagnóstico');
 if(review.includes("const missingValue=v=>"))fail('S16 volvió a duplicar la lógica de validación de indicadores');
+
+const deliverables=fs.readFileSync('deliverables.js','utf8'),exports=fs.readFileSync('export_completion.js','utf8'),objectivesSrc=fs.readFileSync('objectives.js','utf8');
+if(!objectivesSrc.includes('fcGetObjectives'))fail('No existe getter de objetivos vigentes');
+if(!deliverables.includes('window.fcGetObjectives'))fail('Las exportaciones documentales no usan objetivos vigentes');
+if(!exports.includes('rowsFrom(window.fcGetObjectives)'))fail('El Excel técnico no usa objetivos vigentes');
