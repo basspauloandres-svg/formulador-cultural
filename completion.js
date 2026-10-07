@@ -218,6 +218,8 @@ function renderS11(){
       <small>Resultado que debe producirse</small><p>• ${esc(ctx.result)}</p>
       <small>Objetivo específico relacionado</small><p>• ${esc(ctx.objective)}</p>
       ${ctx.problem&&ctx.problem!=='[POR VERIFICAR]'?'<small>Problema central</small><p>• '+esc(ctx.problem)+'</p>':''}
+      ${help.context?.population?'<small>Población registrada</small><p>• '+esc(help.context.population)+'</p>':''}
+      ${help.context?.territory?'<small>Territorio registrado</small><p>• '+esc(help.context.territory)+'</p>':''}
       ${help.context?.existingActivities?.length?'<small>Actividades ya aprobadas para este resultado</small>'+help.context.existingActivities.map(v=>'<p>• '+esc(v)+'</p>').join(''):''}
     </div>
     <p>Elige una propuesta solo si corresponde a la realidad del proyecto. El sistema no agrega cantidades, responsables, fechas ni recursos que no hayas proporcionado.</p>
