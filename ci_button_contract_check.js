@@ -1,12 +1,14 @@
 const fs=require('fs');
 function fail(m){console.error('BUTTON CONTRACT ERROR:',m);process.exitCode=1}
-const files=['vester.js','tree.js','simple_tree_ui.js','objectives.js','completion.js','planning.js','review_dashboard.js','guided_experience.js','workflow.js'];
+const files=['vester.js','tree.js','simple_tree_ui.js','s07_front.js','objectives.js','completion.js','planning.js','review_dashboard.js','guided_experience.js','workflow.js'];
 const src=Object.fromEntries(files.map(f=>[f,fs.readFileSync(f,'utf8')]));
 const must=[
  ['tree.js','data-tree-help','bindTop'],
  ['tree.js','data-tree-phase','dataset.treePhase'],
  ['simple_tree_ui.js','data-role','dataset.role'],
  ['simple_tree_ui.js','data-depth','dataset.depth'],
+ ['simple_tree_ui.js','stContinue',"fcNavigate('S08')"],
+ ['s07_front.js','s07Objectives',"fcNavigate('S08')"],
  ['objectives.js','data-confirm','dataset.confirm'],
  ['objectives.js','objectiveNext','onclick'],
  ['completion.js','data-alt-confirm','dataset.altConfirm'],
@@ -24,4 +26,6 @@ for(const [f,a,b] of must){if(!src[f].includes(a))fail(f+' no contiene control '
 if(src['planning.js'].includes("host.querySelectorAll('[data-risk]').forEach(el=>el.onchange"))fail('S15 vuelve a usar onchange con re-render durante edición de riesgos');
 if(!src['planning.js'].includes("Falta completar: "))fail('Confirmar riesgo no explica qué campos faltan');
 if(!src['tree.js'].includes("scrollIntoView({behavior:'smooth',block:'center'})"))fail('La ayuda de S07 no lleva visualmente a la respuesta');
+if(src['simple_tree_ui.js'].includes("querySelector('[data-tree-phase=\"review\"]')?.click()"))fail('El botón Continuar de S07 vuelve a abrir una revisión técnica oculta en vez de avanzar');
+if(!src['simple_tree_ui.js'].includes("Continuar al problema central"))fail('S07 no explica a qué sección avanza el botón principal');
 if(!process.exitCode)console.log('Button contract audit OK');
