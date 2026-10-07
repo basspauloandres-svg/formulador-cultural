@@ -67,3 +67,7 @@ if(!completion.includes('indicatorMissingFields')||!completion.includes('indicat
 if(!completion.includes('Todavía no tengo este dato'))fail('S12 no permite conservar explícitamente [POR VERIFICAR] durante la ayuda');
 if(!planning.includes('risk-finish-box')||!planning.includes('Continuar a S16 · revisión final'))fail('S15 no muestra una salida clara después de la matriz de riesgos');
 if(!planning.includes('de '+"'"+'+targets.length+'+"'"+' elementos revisados'))fail('S15 no muestra progreso de revisión de riesgos');
+
+if(!completion.includes('Indicador definido ✓'))fail('S12 no distingue la definición del indicador de la ficha técnica');
+if(!completion.includes('Ficha técnica pendiente'))fail('S12 no muestra el estado técnico pendiente por separado');
+if(!completion.includes("definitionStatus='DEFINIDO'")||!completion.includes("technicalStatus=q.ok?'COMPLETA':'PENDIENTE'"))fail('S12 no guarda estados separados de definición y completitud técnica');
