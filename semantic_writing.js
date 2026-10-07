@@ -48,7 +48,7 @@ function objectiveWritingReview(text,zone){
 
 function strategyProposals(items){
  const src=(items||[]).map(clean).filter(Boolean);
- if(!src.length)return ['[POR REVISAR] Definir una estrategia coherente con los objetivos específicos confirmados.'];
+ if(!src.length)return ['[POR REVISAR] Faltan objetivos específicos confirmados para formular una alternativa.'];
  const joined=src.join(' | ');
  if(/frecuencia de acompañamiento especializado/i.test(joined))return uniq([
   'Organizar un esquema de acompañamiento especializado que distribuya de manera equilibrada la atención entre las familias instrumentales',
@@ -58,7 +58,26 @@ function strategyProposals(items){
   'Desarrollar una estrategia de acompañamiento diferenciado orientada a reducir las brechas de dominio instrumental entre integrantes',
   'Articular acciones de acompañamiento que respondan a las diferencias de dominio instrumental identificadas'
  ]);
- return ['[POR REVISAR] Definir una estrategia que permita alcanzar: '+src.join('; ')+'.']
+ if(/acceso a .*formaci[oó]n|acceso a .*taller|acceso a .*acompañamiento/i.test(joined))return uniq([
+  'Desarrollar una estrategia de acceso y acompañamiento formativo orientada a '+low(src[0]),
+  'Articular una ruta de acceso a procesos formativos que contribuya a '+low(src[0])
+ ]);
+ if(/nivelaci[oó]n|trayectorias formativas diferentes|brechas iniciales de formaci[oó]n/i.test(joined))return uniq([
+  'Desarrollar una estrategia de nivelación que contribuya a '+low(src[0]),
+  'Articular acciones de diagnóstico y nivelación orientadas a '+low(src[0])
+ ]);
+ if(/participaci[oó]n .*cert[aá]men|participaci[oó]n .*encuentro|participaci[oó]n .*evento/i.test(joined))return uniq([
+  'Fortalecer la preparación y participación del proceso artístico para contribuir a '+low(src[0]),
+  'Desarrollar una estrategia de preparación progresiva orientada a '+low(src[0])
+ ]);
+ if(src.length===1)return [
+  'Desarrollar una estrategia orientada a '+low(src[0]),
+  'Articular acciones coherentes con el objetivo específico: '+src[0]
+ ];
+ return [
+  'Desarrollar una estrategia integrada orientada a '+src.map(low).join(' y '),
+  'Articular acciones que respondan de manera conjunta a: '+src.join('; ')
+ ]
 }
 function resultProposal(objective){
  const t=clean(objective);const rules=[
