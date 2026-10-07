@@ -199,6 +199,11 @@ function baseIndicator(source,type){
  }
  if(type==='Objetivo'){
   if(/Reducir las diferencias en los niveles de dominio instrumental/i.test(t))return 'Cambio en la diferencia de niveles de dominio instrumental entre integrantes de una misma sección respecto de la línea base.';
+  if(/Incrementar la participación de la banda en certámenes musicales de mayor exigencia interpretativa/i.test(t))return 'Variación en el número de certámenes musicales de mayor exigencia interpretativa en los que participa la banda respecto de la línea base.';
+  if(/incrementar la participación.+(?:certámenes|encuentros|eventos|festivales)/i.test(t)){
+   const m=t.match(/incrementar la participación(?: de .+?)? en (.+)$/i),scope=clean(m?.[1]||'los espacios definidos');
+   return 'Variación en el número de '+scope+' con participación registrada respecto de la línea base.'
+  }
   return '[POR REVISAR] Definir un indicador de cambio para: '+t+'.'
  }
  return '[POR REVISAR]'
@@ -222,7 +227,13 @@ function indicatorBattery(source,type,context={}){
    add({indicatorFamily:'resultado_acceso',indicator:baseIndicator(t,'Resultado'),formula:'Número de '+target+' con acceso registrado a '+resource+' en seguimiento − número de '+target+' con acceso registrado a '+resource+' en la línea base',unidad:target,verificationSuggestions:['Registros de inscripción o participación','Listas de asistencia','Informe de seguimiento del acceso']});
   }else add({indicatorFamily:change?'resultado_cambio':'resultado',indicator:baseIndicator(t,'Resultado'),verificationSuggestions:change?['Instrumento de valoración inicial y final','Rúbrica de seguimiento']:['Informe de resultados','Registro del producto o resultado']});
  }
- if(type==='Objetivo')add({indicatorFamily:'objetivo_cambio',indicator:baseIndicator(t,'Objetivo'),verificationSuggestions:['Fuente de seguimiento del objetivo']});
+ if(type==='Objetivo'){
+  const participation=/incrementar la participación.+(?:certámenes|encuentros|eventos|festivales)/i.test(t);
+  if(participation){
+   const m=t.match(/incrementar la participación(?: de .+?)? en (.+)$/i),scope=clean(m?.[1]||'los espacios definidos');
+   add({indicatorFamily:'objetivo_participacion',indicator:baseIndicator(t,'Objetivo'),formula:'Número de '+scope+' con participación registrada en seguimiento − número de '+scope+' con participación registrada en la línea base',unidad:'espacios de participación',verificationSuggestions:['Registros de inscripción o participación','Certificaciones o constancias de participación','Informes de participación']});
+  }else add({indicatorFamily:'objetivo_cambio',indicator:baseIndicator(t,'Objetivo'),verificationSuggestions:['Fuente de seguimiento del objetivo']});
+ }
  return items.length?items:[{...common,indicatorFamily:'pendiente',indicator:'[POR REVISAR]',formula:'[POR VERIFICAR]',unidad:'[POR VERIFICAR]',lineaBase:'[POR VERIFICAR]',meta:'[POR VERIFICAR]',medioVerificacion:'[POR VERIFICAR]',periodicidad:'[POR VERIFICAR]',responsable:'[POR VERIFICAR]',plazo:'[POR VERIFICAR]',verificationSuggestions:[]}]
 }
 function indicatorProposal(source,type){return indicatorBattery(source,type)[0]?.indicator||'[POR REVISAR]'}
