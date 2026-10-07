@@ -20,6 +20,7 @@ const must=[
  ['planning.js','confirmSchedule','onclick'],
  ['planning.js','confirmBudgetActivity','onclick'],
  ['planning.js','confirmRisk','onclick'],
+ ['planning.js','riskNext',"fcNavigate('S16')"],
  ['planning.js','data-risk-assess','dataset.riskAssess'],
  ['guided_experience.js','data-code','dataset.code'],
  ['workflow.js','#prev','navigateTo'],

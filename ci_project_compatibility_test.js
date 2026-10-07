@@ -140,6 +140,16 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  const confirmRisk=w.document.querySelector('#confirmRisk');assert(confirmRisk,'No existe botón Confirmar riesgo');confirmRisk.click();await wait(60);
  assert((w.fcGetRiskState().items||[]).some(x=>x.confirmed),'Confirmar riesgo no dejó ningún riesgo confirmado');
 
+ const totalRiskTargets=(w.fcGetRiskState().targets||[]).length;
+ for(let i=1;i<totalRiskTargets;i++){
+   const next=w.document.querySelector('#riskNext');assert(next,'S15 perdió el botón Siguiente');next.click();await wait(35);
+   const no=w.document.querySelector('[data-risk-assess="no"]');assert(no,'S15 no permite resolver sin riesgo el elemento '+(i+1));no.click();await wait(35);
+ }
+ const finishRisks=w.document.querySelector('#riskNext');assert(finishRisks,'S15 no muestra el control final de avance');
+ assert(/Continuar a S16/.test(finishRisks.textContent),'El último paso de S15 no explica que continúa a S16');
+ finishRisks.click();await wait(80);
+ assert(w.localStorage.getItem('fc_active')==='S16'||w.document.querySelector('#counter')?.textContent.startsWith('S16'),'S15 no avanzó a S16 después de completar la revisión de riesgos');
+
  await w.fcNavigate('S07');await wait(60);
  const easy=w.document.querySelector('[data-tree-help="easy"]');assert(easy,'S07 no muestra Explícame fácil');easy.click();await wait(20);
  const assist=w.document.querySelector('#treeAssist');assert(assist&&!assist.classList.contains('hidden')&&/Ayuda para razonar/.test(assist.textContent),'El botón Explícame fácil no produce respuesta visible');

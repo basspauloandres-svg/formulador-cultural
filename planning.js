@@ -100,7 +100,7 @@ function renderS15(){
  host.innerHTML='<section class="plan-wrap"><div class="plan-note"><strong>Revisar qué podría salir diferente a lo esperado</strong><p><b>Un problema ya existe. Un riesgo todavía podría ocurrir.</b> Revisa un elemento por vez y decide si vale la pena registrarlo como riesgo.</p></div>'+
  (t?'<div class="plan-progress">Revisión '+(cursors.S15+1)+' de '+targets.length+'</div><article class="plan-card"><small>'+esc(t.type)+'</small><h3>'+esc(t.text)+'</h3><div class="plan-question">¿Hay algo que podría ocurrir y dificultar este elemento?</div><div class="choice-row"><button data-risk-assess="yes" class="'+(assessment==='yes'?'selected':'')+'">Sí, hay un riesgo</button><button data-risk-assess="no" class="'+(assessment==='no'?'selected':'')+'">No veo un riesgo aquí</button><button data-risk-assess="pending" class="'+(assessment==='pending'?'selected':'')+'">Dejar por revisar</button></div>'+
  (assessment==='yes'&&r?'<div class="plan-grid"><label>¿Qué podría ocurrir?<textarea data-risk="event">'+esc(r.event)+'</textarea></label><label>¿Qué podría afectar?<textarea data-risk="effect">'+esc(r.effect)+'</textarea></label><label>Probabilidad<select data-risk="probability"><option '+(r.probability==='Baja'?'selected':'')+'>Baja</option><option '+(r.probability==='Media'?'selected':'')+'>Media</option><option '+(r.probability==='Alta'?'selected':'')+'>Alta</option></select></label><label>Impacto<select data-risk="impact"><option '+(r.impact==='Bajo'?'selected':'')+'>Bajo</option><option '+(r.impact==='Medio'?'selected':'')+'>Medio</option><option '+(r.impact==='Alto'?'selected':'')+'>Alto</option></select></label><label>¿Qué podemos hacer antes?<textarea data-risk="preventiveResponse">'+esc(r.preventiveResponse)+'</textarea></label><label>¿Qué haremos si ocurre?<textarea data-risk="contingencyResponse">'+esc(r.contingencyResponse)+'</textarea></label><label>Responsable<input data-risk="owner" value="'+esc(r.owner)+'"></label><label>Señal de alerta<input data-risk="trigger" value="'+esc(r.trigger)+'"></label></div><div class="risk-level">Nivel orientativo: <b>'+esc(r.riskLevel)+'</b></div><button id="confirmRisk" class="primary">Confirmar riesgo</button>':'')+'</article>':'<div class="plan-note">No hay elementos para revisar.</div>')+
- '<div class="plan-nav"><button id="riskPrev">← Anterior</button><button id="riskNext">Siguiente →</button></div><details class="plan-summary"><summary>Ver matriz de riesgos</summary><div class="table-scroll"><table><thead><tr><th>Origen</th><th>Riesgo</th><th>Prob.</th><th>Impacto</th><th>Nivel</th><th>Responsable</th></tr></thead><tbody>'+(s.items||[]).map(x=>'<tr><td>'+esc(x.linkedObjectType)+'</td><td>'+esc(x.event)+'</td><td>'+esc(x.probability)+'</td><td>'+esc(x.impact)+'</td><td>'+esc(x.riskLevel)+'</td><td>'+esc(x.owner)+'</td></tr>').join('')+'</tbody></table></div></details></section>';
+ '<div class="plan-nav"><button id="riskPrev">← Anterior</button><button id="riskNext">'+(cursors.S15>=targets.length-1?'Continuar a S16 →':'Siguiente →')+'</button></div><details class="plan-summary"><summary>Ver matriz de riesgos</summary><div class="table-scroll"><table><thead><tr><th>Origen</th><th>Riesgo</th><th>Prob.</th><th>Impacto</th><th>Nivel</th><th>Responsable</th></tr></thead><tbody>'+(s.items||[]).map(x=>'<tr><td>'+esc(x.linkedObjectType)+'</td><td>'+esc(x.event)+'</td><td>'+esc(x.probability)+'</td><td>'+esc(x.impact)+'</td><td>'+esc(x.riskLevel)+'</td><td>'+esc(x.owner)+'</td></tr>').join('')+'</tbody></table></div></details></section>';
  if(!t)return;
  host.querySelectorAll('[data-risk-assess]').forEach(b=>b.onclick=()=>{s.assessments[t.id]=b.dataset.riskAssess;if(b.dataset.riskAssess==='yes')ensureRisk(s,t);write('S15','risk_state',s);renderS15()});
  if(r){
@@ -117,7 +117,17 @@ function renderS15(){
    });
    $('#riskToActivity')&&($('#riskToActivity').onclick=()=>{if(createPreventiveActivity(r)){alert('La respuesta preventiva quedó creada como actividad y entrará al cronograma y presupuesto.');window.fcRenderJourney?.()}})
  }
- $('#riskPrev').onclick=()=>{cursors.S15=Math.max(0,cursors.S15-1);renderS15()};$('#riskNext').onclick=()=>{cursors.S15=Math.min(targets.length-1,cursors.S15+1);renderS15()}
+ $('#riskPrev').onclick=()=>{cursors.S15=Math.max(0,cursors.S15-1);renderS15()};
+ $('#riskNext').onclick=async()=>{
+   const currentAssessment=s.assessments[t.id]||'pending';
+   const currentRisk=s.items.find(x=>x.targetId===t.id);
+   if(currentAssessment==='yes'&&(!currentRisk||!currentRisk.confirmed)){
+     alert('Confirma este riesgo antes de continuar.');return
+   }
+   if(cursors.S15<targets.length-1){cursors.S15+=1;renderS15();return}
+   write('S15','risk_state',s);sync('S15');window.fcRenderJourney?.();
+   if(typeof window.fcNavigate==='function')await window.fcNavigate('S16')
+ }
 }
 function mount(){const c=($('#counter')?.textContent||'').slice(0,3);if(c==='S13'&&!$('#fields .plan-wrap'))renderS13();else if(c==='S14'&&!$('#fields .plan-wrap'))renderS14();else if(c==='S15'&&!$('#fields .plan-wrap'))renderS15()}
 window.fcGetSchedule=()=>scheduleState().items||[];window.fcGetScheduleIssues=()=>scheduleIssues(scheduleState());window.fcGetBudget=()=>budgetState().items||[];window.fcGetBudgetState=()=>budgetState();window.fcGetBudgetSummary=()=>budgetSummary(budgetState());window.fcGetRisks=()=>riskState().items||[];window.fcGetRiskState=()=>riskState();
