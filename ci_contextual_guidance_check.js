@@ -21,3 +21,7 @@ if(!cleanup.includes("x?.confirmed||x?.source==='usuario'"))fail('La depuración
 if(!cleanup.includes("archiveReason:'propuesta_anterior_no_confirmada'"))fail('La depuración no archiva las propuestas anteriores');
 if(!cleanup.includes("s.staleItems=[]"))fail('La depuración no retira elementos obsoletos del flujo activo');
 if(!process.exitCode)console.log('Contextual guidance and cleanup audit OK');
+const completion=fs.readFileSync('completion.js','utf8');
+if(completion.includes('Objetivos previamente registrados [POR VERIFICAR]'))fail('S10 conserva ayuda genérica sin mostrar los objetivos reales');
+if(!completion.includes('La herramienta está usando como base estos objetivos específicos confirmados'))fail('S10 no explicita los objetivos reales usados como base');
+if(!completion.includes('registeredSpecificObjectives'))fail('S10 no recupera objetivos específicos registrados para explicar el bloqueo');
