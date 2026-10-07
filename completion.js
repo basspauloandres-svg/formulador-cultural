@@ -126,7 +126,7 @@ function indicatorSources(){
  return out
 }
 function ensureS12(){
- let s=read('S12');const src=indicatorSources(),sig=src.map(x=>`${x.type}:${x.source.id}:${x.source.text}`).join('|');
+ let s=read('S12');const src=indicatorSources(),sig='s12-context-v2|'+src.map(x=>`${x.type}:${x.source.id}:${x.source.text}`).join('|');
  if(!s.items||s.sourceSignature!==sig){
    const old=s.items||[],used=new Set(),items=[];let seq=0;
    for(const x of src){
@@ -139,8 +139,9 @@ function ensureS12(){
        if(!prev&&idx===0)prev=old.find(o=>!used.has(o)&&(o.linkedType||'Actividad')===x.type&&(o.linkedId||o.activityId||o.resultId||o.objectiveId)===x.source.id&&!o.indicatorFamily);
        const fresh=indicatorProposal(x.source,seq++,x.type,tpl);
        if(prev){
-         used.add(prev);const changed=String(prev.linkedText||'')!==String(text||'');
-         items.push({...fresh,...prev,id:prev.id||fresh.id,indicatorId:prev.indicatorId||prev.id||fresh.id,linkedType:x.type,linkedId:x.source.id,linkedText:text,activityId:fresh.activityId,resultId:fresh.resultId,objectiveId:fresh.objectiveId,indicatorFamily:family,verificationSuggestions:tpl.verificationSuggestions||prev.verificationSuggestions||[],confirmed:changed?false:!!prev.confirmed,verificationStatus:changed?'REQUIERE_REVISIÓN':(prev.verificationStatus||fresh.verificationStatus),stale:false})
+         used.add(prev);const changed=String(prev.linkedText||'')!==String(text||''),placeholder=window.fcWriting?.isPlaceholder?.(prev.indicator);
+         const refreshed=placeholder&&!window.fcWriting?.isPlaceholder?.(fresh.indicator);
+         items.push({...fresh,...prev,...(refreshed?{indicator:fresh.indicator,formula:fresh.formula,unidad:fresh.unidad,medioVerificacion:fresh.medioVerificacion,verificationSuggestions:fresh.verificationSuggestions}:{}),id:prev.id||fresh.id,indicatorId:prev.indicatorId||prev.id||fresh.id,linkedType:x.type,linkedId:x.source.id,linkedText:text,activityId:fresh.activityId,resultId:fresh.resultId,objectiveId:fresh.objectiveId,indicatorFamily:family,verificationSuggestions:tpl.verificationSuggestions||prev.verificationSuggestions||[],confirmed:(changed||refreshed)?false:!!prev.confirmed,verificationStatus:(changed||refreshed)?'REQUIERE_REVISIÓN':(prev.verificationStatus||fresh.verificationStatus),stale:false})
        }else items.push(fresh)
      })
    }
@@ -249,7 +250,20 @@ function bindS11(s){
  $('#actPrev')&&($('#actPrev').onclick=()=>{cursors.S11=Math.max(0,cursors.S11-1);renderS11()});$('#actNext')&&($('#actNext').onclick=()=>{cursors.S11=Math.min(s.items.length-1,cursors.S11+1);renderS11()});
  $('#goS12')?.addEventListener('click',()=>window.fcNavigate?.('S12'))
 }
-function indicatorHelp(x){return window.fcWriting?.indicatorGuidance?window.fcWriting.indicatorGuidance(x.linkedText||x.activityText||'',x.linkedType||'Actividad',x.indicatorFamily):{level:'Indicador',purpose:'Define una medida verificable.',question:'¿Qué vamos a medir?',formulaHint:'Explica cómo se obtiene el dato.',unitHint:'Define una unidad.',suggestions:[x.indicator],formulaExamples:[]}}
+function indicatorProjectContext(x){
+ const obj=(objectives().items||[]).find(o=>o.id===x?.objectiveId)||{};
+ const results=confirmedResults();
+ const result=results.find(r=>r.id===x?.resultId)||{};
+ const acts=confirmedActivities();
+ const activity=acts.find(a=>a.id===x?.activityId)||{};
+ const population=participantContext();
+ const territory=draft?.S02?.territorio_o_lugar_de_intervencion||draft?.S01?.municipio||'';
+ return {objectiveText:obj.text||result.objectiveText||activity.objectiveText||'',resultText:result.text||activity.resultText||'',activityText:activity.text||x?.activityText||'',population,territory}
+}
+function indicatorHelp(x){
+ const context=indicatorProjectContext(x);
+ return window.fcWriting?.indicatorGuidance?window.fcWriting.indicatorGuidance(x.linkedText||x.activityText||'',x.linkedType||'Actividad',x.indicatorFamily,context):{level:'Indicador',purpose:'Define una medida verificable.',question:'¿Qué vamos a medir?',formulaHint:'Explica cómo se obtiene el dato.',unitHint:'Define una unidad.',suggestions:[x.indicator],formulaExamples:[],context}
+}
 function indicatorQuality(x){return window.fcWriting?.indicatorQuality?window.fcWriting.indicatorQuality(x):{ok:false,issues:['Completa los datos del indicador.']}}
 function indicatorStepHtml(x,step){
  const g=indicatorHelp(x);
@@ -267,9 +281,10 @@ function renderS12(){
   <div class="indicator-level"><small>${esc(x.linkedType||'Elemento')} relacionado</small><strong>${esc(g.level)}</strong></div>
   <div class="didactic-context">${esc(x.linkedText||x.activityText||'')}</div>
   <div class="battery-overview"><small>Batería sugerida para este elemento</small><div>${same.map(i=>`<button type="button" data-ind-jump="${i.id}" class="${i.id===x.id?'selected':''}">${esc((i.indicatorFamily||'indicador').replaceAll('_',' '))}</button>`).join('')}</div></div>
-  <div class="proposal-box"><small>Propuesta del sistema</small><label class="didactic-main-label">Indicador<textarea data-ind-field="${x.id}:indicator">${esc(x.indicator)}</textarea></label><p>${esc(g.purpose)}</p></div>
-  <div class="indicator-quality ${q.ok?'ok':'pending'}"><strong>${q.ok?'Ficha técnica completa':'Puede usarse con datos pendientes'}</strong>${q.ok?'<p>Los elementos técnicos mínimos están completos.</p>':'<p>Los datos que todavía necesitan respaldo permanecen como [POR VERIFICAR].</p><ul>'+q.issues.map(i=>'<li>'+esc(i)+'</li>').join('')+'</ul>'}</div>
+  <div class="proposal-box"><small>Propuesta del sistema</small><p class="indicator-main-question">${esc(g.question)}</p><label class="didactic-main-label">Indicador<textarea data-ind-field="${x.id}:indicator">${esc(x.indicator)}</textarea></label><p>${esc(g.purpose)}</p><div class="indicator-help"><button type="button" data-ind-help="${x.id}">Ayúdame a formularlo</button><div class="writing-help-panel ${x.showHelp?'':'hidden'}" data-ind-help-panel="${x.id}"><strong>Ayuda basada en este proyecto</strong>${g.context?.objectiveText?'<p><small>Objetivo:</small> '+esc(g.context.objectiveText)+'</p>':''}${g.context?.resultText?'<p><small>Resultado:</small> '+esc(g.context.resultText)+'</p>':''}${g.context?.activityText?'<p><small>Actividad:</small> '+esc(g.context.activityText)+'</p>':''}${g.context?.population?'<p><small>Población:</small> '+esc(g.context.population)+'</p>':''}${g.context?.territory?'<p><small>Territorio:</small> '+esc(g.context.territory)+'</p>':''}<div class="writing-proposals">${(g.suggestions||[]).map((v,i)=>`<article><small>Propuesta ${i+1}</small><p>${esc(v)}</p><button type="button" data-use-indicator="${x.id}:${i}">Usar esta propuesta</button></article>`).join('')}</div></div></div></div>
+  <div class="indicator-quality ${q.ok?'ok':'pending'}"><strong>${q.ok?'Ficha técnica completa':'Faltan '+q.issues.length+' dato(s) por verificar'}</strong><p>${q.ok?'Los elementos técnicos mínimos están completos.':'Puedes continuar sin inventarlos. Permanecerán como [POR VERIFICAR].'}</p></div>
   <details class="indicator-tech-detail"><summary>Ver y completar ficha técnica</summary>
+   ${!q.ok?'<div class="indicator-pending-list"><strong>Datos pendientes</strong><ul>'+q.issues.map(i=>'<li>'+esc(i)+'</li>').join('')+'</ul></div>':''}
    <div class="completion-grid"><label>Fórmula o criterio<textarea data-ind-field="${x.id}:formula">${esc(x.formula)}</textarea></label><label>Unidad<textarea data-ind-field="${x.id}:unidad">${esc(x.unidad)}</textarea></label><label>Línea base<textarea data-ind-field="${x.id}:lineaBase">${esc(x.lineaBase)}</textarea></label><label>Meta<textarea data-ind-field="${x.id}:meta">${esc(x.meta)}</textarea></label><label>Medio de verificación<textarea data-ind-field="${x.id}:medioVerificacion">${esc(x.medioVerificacion)}</textarea></label><label>Periodicidad<textarea data-ind-field="${x.id}:periodicidad">${esc(x.periodicidad)}</textarea></label><label>Responsable<textarea data-ind-field="${x.id}:responsable">${esc(x.responsable)}</textarea></label><label>Plazo<textarea data-ind-field="${x.id}:plazo">${esc(x.plazo)}</textarea></label></div>
    ${(x.verificationSuggestions||[]).length?`<div class="verification-suggestions"><small>Fuentes que podrían servir, si existen en tu proyecto:</small>${x.verificationSuggestions.map((v,i)=>`<button type="button" data-use-verification="${x.id}:${i}">${esc(v)}</button>`).join('')}</div>`:''}
   </details>
@@ -278,6 +293,8 @@ function renderS12(){
  <div class="completion-toolbar"><button id="exportFull">Ver respaldo técnico en Excel</button></div></section>`;bindS12(s)
 }
 function bindS12(s){
+ document.querySelectorAll('[data-ind-help]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.indHelp);if(!x)return;x.showHelp=!x.showHelp;write('S12',s);renderS12()});
+ document.querySelectorAll('[data-use-indicator]').forEach(b=>b.onclick=()=>{const [id,idx]=b.dataset.useIndicator.split(':');const x=s.items.find(i=>i.id===id);if(!x)return;const g=indicatorHelp(x),v=(g.suggestions||[])[Number(idx)];if(v){x.indicator=v;x.confirmed=false;x.verificationStatus='POR_VERIFICAR';x.showHelp=false;write('S12',s);renderS12()}});
  document.querySelectorAll('[data-ind-field]').forEach(el=>el.onchange=()=>{const [id,k]=el.dataset.indField.split(':');const x=s.items.find(i=>i.id===id);x[k]=el.value.trim()||'[POR VERIFICAR]';x.confirmed=false;x.verificationStatus='POR_VERIFICAR';write('S12',s);renderS12()});
  document.querySelectorAll('[data-ind-jump]').forEach(b=>b.onclick=()=>{const idx=s.items.findIndex(i=>i.id===b.dataset.indJump);if(idx>=0){cursors.S12=idx;renderS12()}});
  document.querySelectorAll('[data-use-verification]').forEach(b=>b.onclick=()=>{const [id,idx]=b.dataset.useVerification.split(':');const x=s.items.find(i=>i.id===id),v=(x.verificationSuggestions||[])[Number(idx)];if(v){x.medioVerificacion=v;x.confirmed=false;x.verificationStatus='POR_VERIFICAR';write('S12',s);renderS12()}});

@@ -190,6 +190,10 @@ function baseIndicator(source,type){
  if(type==='Resultado'){
   if(/Reducción verificable de las diferencias en los niveles de dominio instrumental/i.test(t))return 'Variación de la brecha entre niveles de dominio instrumental respecto de la línea base.';
   if(/equilibrio en la frecuencia de acompañamiento especializado/i.test(t))return 'Variación entre frecuencias de acompañamiento especializado por familia instrumental respecto de la línea base.';
+  if(/ampliaci[oó]n verificable del acceso a/i.test(t)||/mejora verificable del acceso a/i.test(t)||/mayor acceso a/i.test(t)){
+   const m=t.match(/acceso a\s+(.+?)(?:\s+para\s+(.+))?$/i),resource=clean(m?.[1]||'los procesos definidos'),target=clean(m?.[2]||'la población vinculada').replace(/^algunas?\s+/i,'');
+   return 'Variación en el número de '+target+' con acceso registrado a '+resource+' respecto de la línea base.'
+  }
   if(/mejora|aprendizaje|desempeño|dominio|capacidad|formativ/i.test(t))return 'Porcentaje de participantes que muestran mejora entre la valoración inicial y la valoración final.';
   return '[POR REVISAR] Definir un indicador de resultado para: '+t+'.'
  }
@@ -211,18 +215,23 @@ function indicatorBattery(source,type,context={}){
   if(/taller|sesion|sesión|formaci[oó]n|capacitaci[oó]n/i.test(t))add({indicatorFamily:'calidad',indicator:'Porcentaje de '+noun+' desarrollados con los criterios de registro y seguimiento definidos.',formula:'('+noun.charAt(0).toUpperCase()+noun.slice(1)+' que cumplen criterios / '+noun+' revisados) × 100',unidad:'%',verificationSuggestions:['Lista de chequeo','Actas o informes de seguimiento']});
  }
  if(type==='Resultado'){
-  add({indicatorFamily:/mejora|aprendizaje|desempeño|dominio|capacidad|formativ/i.test(t)?'resultado_cambio':'resultado',indicator:baseIndicator(t,'Resultado'),verificationSuggestions:/mejora|aprendizaje|desempeño|dominio|capacidad|formativ/i.test(t)?['Instrumento de valoración inicial y final','Rúbrica de seguimiento']:['Informe de resultados','Registro del producto o resultado']});
+  const access=/ampliaci[oó]n verificable del acceso a|mejora verificable del acceso a|mayor acceso a/i.test(t);
+  const change=/mejora|aprendizaje|desempeño|dominio|capacidad|formativ/i.test(t);
+  if(access){
+   const m=t.match(/acceso a\s+(.+?)(?:\s+para\s+(.+))?$/i),resource=clean(m?.[1]||'los procesos definidos'),target=clean(m?.[2]||'la población vinculada').replace(/^algunas?\s+/i,'');
+   add({indicatorFamily:'resultado_acceso',indicator:baseIndicator(t,'Resultado'),formula:'Número de '+target+' con acceso registrado a '+resource+' en seguimiento − número de '+target+' con acceso registrado a '+resource+' en la línea base',unidad:target,verificationSuggestions:['Registros de inscripción o participación','Listas de asistencia','Informe de seguimiento del acceso']});
+  }else add({indicatorFamily:change?'resultado_cambio':'resultado',indicator:baseIndicator(t,'Resultado'),verificationSuggestions:change?['Instrumento de valoración inicial y final','Rúbrica de seguimiento']:['Informe de resultados','Registro del producto o resultado']});
  }
  if(type==='Objetivo')add({indicatorFamily:'objetivo_cambio',indicator:baseIndicator(t,'Objetivo'),verificationSuggestions:['Fuente de seguimiento del objetivo']});
  return items.length?items:[{...common,indicatorFamily:'pendiente',indicator:'[POR REVISAR]',formula:'[POR VERIFICAR]',unidad:'[POR VERIFICAR]',lineaBase:'[POR VERIFICAR]',meta:'[POR VERIFICAR]',medioVerificacion:'[POR VERIFICAR]',periodicidad:'[POR VERIFICAR]',responsable:'[POR VERIFICAR]',plazo:'[POR VERIFICAR]',verificationSuggestions:[]}]
 }
 function indicatorProposal(source,type){return indicatorBattery(source,type)[0]?.indicator||'[POR REVISAR]'}
-function indicatorGuidance(source,type,family){
- const t=clean(source),battery=indicatorBattery(t,type),candidate=battery.find(x=>x.indicatorFamily===family)||battery[0];
- if(type==='Objetivo')return {level:'Indicador de cambio',purpose:'Debe mostrar si el problema principal realmente está cambiando. Evita medir talleres, reuniones o actividades realizadas.',question:'¿Qué cambio observable demostraría que el objetivo general está avanzando?',formulaHint:'Expresa cómo compararás el cambio frente a la línea base.',unitHint:'Porcentaje, diferencia, índice, nivel, frecuencia u otra unidad directamente relacionada con el cambio.',suggestions:battery.map(x=>x.indicator),formulaExamples:['Valor de seguimiento − línea base','((Valor de seguimiento − línea base) / línea base) × 100, cuando la línea base sea distinta de cero']};
- if(type==='Resultado')return {level:'Indicador de resultado',purpose:'Debe comprobar que el resultado esperado existe o que ocurrió el cambio previsto. Contar actividades no es suficiente.',question:'¿Qué dato demostraría que este resultado fue realmente alcanzado?',formulaHint:'Define el criterio que permite decidir cuándo el resultado se considera logrado.',unitHint:'Cantidad, porcentaje, proporción, nivel de calidad u otra unidad del resultado.',suggestions:battery.map(x=>x.indicator),formulaExamples:['Valor observado comparado con la meta definida','(Personas que alcanzan el criterio / personas evaluadas) × 100']};
+function indicatorGuidance(source,type,family,context={}){
+ const t=clean(source),battery=indicatorBattery(t,type,context),candidate=battery.find(x=>x.indicatorFamily===family)||battery[0],objective=clean(context.objectiveText),result=clean(context.resultText),population=clean(context.population),territory=clean(context.territory);
+ if(type==='Objetivo')return {level:'Indicador de cambio',purpose:'Debe comprobar el avance del objetivo real “'+t+'”. Evita sustituirlo por el conteo de actividades.',question:'¿Qué cambio observable demostraría que “'+t+'” está avanzando?',formulaHint:'Compara el cambio de “'+t+'” frente a su línea base o criterio inicial.',unitHint:'Usa una unidad directamente relacionada con el cambio del objetivo.',suggestions:battery.map(x=>x.indicator),formulaExamples:battery.map(x=>x.formula).filter(x=>!/^\[POR/.test(x)),context:{objectiveText:t,population,territory}};
+ if(type==='Resultado')return {level:'Indicador de resultado',purpose:'Debe comprobar el resultado real “'+t+'”. Contar las actividades que lo producen no es suficiente.',question:'¿Qué dato demostraría que “'+t+'” fue alcanzado?',formulaHint:'Define cómo compararás “'+t+'” con la línea base o con un criterio verificable.',unitHint:'Usa una unidad propia del resultado, sin inventar una cifra.',suggestions:battery.map(x=>x.indicator),formulaExamples:battery.map(x=>x.formula).filter(x=>!/^\[POR/.test(x)),context:{objectiveText:objective,resultText:t,population,territory}};
  const labels={cumplimiento:'Cumplimiento',participacion:'Participación',calidad:'Calidad',producto:'Producto',oportunidad:'Oportunidad',eficiencia:'Eficiencia'};
- return {level:labels[candidate?.indicatorFamily]||'Indicador de ejecución',purpose:'Mide una dimensión concreta de la actividad. Este dato no demuestra por sí solo el cambio del proyecto.',question:'¿Cómo comprobaremos que esta parte de la actividad ocurrió?',formulaHint:'El sistema propone una fórmula cuando puede derivarla sin inventar datos.',unitHint:'Número, porcentaje, personas, productos u otra unidad pertinente.',suggestions:battery.map(x=>x.indicator),formulaExamples:battery.map(x=>x.formula).filter(x=>!/^\[POR/.test(x))}
+ return {level:labels[candidate?.indicatorFamily]||'Indicador de ejecución',purpose:'Mide una dimensión concreta de la actividad real “'+t+'”. Este dato no demuestra por sí solo el cambio del proyecto.',question:'¿Cómo comprobaremos que “'+t+'” ocurrió como estaba previsto?',formulaHint:'El sistema propone una fórmula solo cuando puede derivarla de los datos ya registrados.',unitHint:'Usa una unidad pertinente a esta actividad.',suggestions:battery.map(x=>x.indicator),formulaExamples:battery.map(x=>x.formula).filter(x=>!/^\[POR/.test(x)),context:{activityText:t,resultText:result,objectiveText:objective,population,territory}}
 }
 function indicatorQuality(x){
  const missing=v=>!String(v||'').trim()||/^\s*\[POR (VERIFICAR|REVISAR|DEFINIR)\]/i.test(String(v||''));

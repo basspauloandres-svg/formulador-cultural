@@ -49,3 +49,14 @@ if(contextualActivityHelp.suggestions.some(x=>!x.includes('Proceso de formación
 if(!contextualActivityHelp.questions.some(x=>x.includes('Mejorar el acceso a procesos de formación instrumental')))fail('Las preguntas de actividad adicional no usan el objetivo específico real');
 if(!contextualActivityHelp.questions.some(x=>x.includes('Integrantes de la banda')))fail('La ayuda de actividad adicional no usa la población real cuando existe');
 if(contextualActivityHelp.suggestions.some(x=>/\b(\d+|seis|diez|veinte)\b/i.test(x)))fail('La ayuda de actividad adicional inventa cantidades');
+
+const accessResult='Ampliación verificable del acceso a talleres especializados para algunas familias instrumentales.';
+const accessResultBattery=w.indicatorBattery(accessResult,'Resultado');
+if(accessResultBattery.some(x=>/^\[POR REVISAR\]/.test(x.indicator)))fail('S12 devuelve un indicador genérico para un resultado real de ampliación de acceso');
+if(!accessResultBattery.some(x=>/familias instrumentales.*acceso registrado.*talleres especializados/i.test(x.indicator)))fail('S12 no conserva los datos reales del resultado de acceso');
+const accessIndicator=accessResultBattery[0];
+if(!/línea base/i.test(accessIndicator.formula)||!accessIndicator.unidad)fail('S12 no deriva una fórmula/unidad pertinente para el resultado de acceso');
+if(!/^\[POR VERIFICAR\]/.test(accessIndicator.meta))fail('S12 inventó la meta del resultado de acceso');
+const contextualIndicator=w.indicatorGuidance(accessResult,'Resultado',accessIndicator.indicatorFamily,{objectiveText:'Ampliar el acceso a talleres especializados',population:'Integrantes de la banda',territory:'Municipio de prueba'});
+if(!/Ampliación verificable del acceso a talleres especializados/i.test(contextualIndicator.question))fail('S12 no formula la pregunta con el resultado real');
+if(!contextualIndicator.context.population.includes('Integrantes de la banda'))fail('S12 no conserva la población real en la ayuda');
