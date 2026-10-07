@@ -1,0 +1,44 @@
+name: Model A/B evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      openai_model:
+        description: "OpenAI model ID"
+        required: true
+        default: "gpt-5.6"
+      qwen_model:
+        description: "Qwen model ID"
+        required: true
+        default: "qwen3.8-max"
+      qwen_base_url:
+        description: "Qwen OpenAI-compatible base URL"
+        required: true
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install minimal dependency
+        run: pip install "httpx>=0.27,<1"
+      - name: Run controlled A/B evaluation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ inputs.openai_model }}
+          OPENAI_BASE_URL: https://api.openai.com/v1
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          QWEN_MODEL: ${{ inputs.qwen_model }}
+          QWEN_BASE_URL: ${{ inputs.qwen_base_url }}
+        run: python experiments/eval_runner.py
+      - name: Upload evaluation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-ab-evaluation
+          path: experiments/results/*.json
+          if-no-files-found: error
