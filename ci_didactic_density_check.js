@@ -71,3 +71,8 @@ if(!planning.includes('de '+"'"+'+targets.length+'+"'"+' elementos revisados'))f
 if(!completion.includes('Indicador definido ✓'))fail('S12 no distingue la definición del indicador de la ficha técnica');
 if(!completion.includes('Ficha técnica pendiente'))fail('S12 no muestra el estado técnico pendiente por separado');
 if(!completion.includes("definitionStatus='DEFINIDO'")||!completion.includes("technicalStatus=q.ok?'COMPLETA':'PENDIENTE'"))fail('S12 no guarda estados separados de definición y completitud técnica');
+
+if(!completion.includes('El cronograma ya aporta datos que puedes reutilizar'))fail('S12 no muestra propuestas provenientes del cronograma');
+if(!completion.includes('scheduleReconciliationForIndicator')||!completion.includes('fcReconcileIndicatorsFromSchedule'))fail('No existe reconciliación estructurada S12↔S13');
+if(!completion.includes('data-accept-schedule'))fail('S12 no permite confirmar explícitamente un dato sugerido desde S13');
+if(!planning.includes('No se aplican sin tu confirmación'))fail('S13 no explica que responsable y plazo se proponen sin sobrescribir el indicador');
