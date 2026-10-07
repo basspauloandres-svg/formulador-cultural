@@ -13,6 +13,17 @@ const acts=w.activityProposals(result,'Equilibrar la frecuencia de acompañamien
 if(acts.length<2||acts.some(x=>/^\[POR REVISAR\]/.test(x)))fail('No se generaron actividades específicas para el caso conocido');
 const ind=w.indicatorProposal(result,'Resultado');
 if(!/frecuencias? de acompañamiento especializado/i.test(ind))fail('El indicador de resultado no mide el cambio esperado');
+const plain=w.activityFromPlainLanguage('Se necesitan 6 talleres de trombón.','Proceso de formación implementado','Mejorar el acceso a procesos de formación','');
+if(!/^Realizar 6 talleres de trombón/i.test(plain))fail('La redacción asistida no conserva la cantidad suministrada por el usuario');
+const battery=w.indicatorBattery('Realizar 6 talleres de trombón.','Actividad');
+if(!battery.some(x=>x.indicatorFamily==='cumplimiento'&&/6 programados/.test(x.indicator)&&/100 %/.test(x.meta)))fail('La batería no deriva un indicador de cumplimiento desde 6 talleres');
+if(!battery.some(x=>x.indicatorFamily==='participacion'&&/^\[POR VERIFICAR\]/.test(x.meta)))fail('La batería inventa una meta de participación');
+if(battery.some(x=>/80\s*%|90\s*%/.test(String(x.meta))))fail('La batería inventa porcentajes de meta');
+const resultBattery=w.indicatorBattery('Mejora verificable en el proceso formativo de trombón','Resultado');
+if(!resultBattery.some(x=>x.indicatorFamily==='resultado_cambio'&&/mejora/i.test(x.indicator)))fail('No se genera indicador de cambio para un resultado formativo');
+if(resultBattery.some(x=>/(número|cantidad) de talleres/i.test(x.indicator)))fail('El indicador de resultado se limita a contar talleres');
+const suff=w.activitySufficiency([{text:'Convocar participantes',confirmed:true}],'Proceso de formación implementado');
+if(suff.ok)fail('La suficiencia no detecta un conjunto limitado a convocatoria');
 const objectives=fs.readFileSync('objectives.js','utf8');
 if(!objectives.includes('no se convierte automáticamente en objetivo específico'))fail('S09 no distingue medios indirectos de objetivos específicos');
 const results=fs.readFileSync('results_layer.js','utf8');

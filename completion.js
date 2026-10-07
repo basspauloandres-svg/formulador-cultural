@@ -39,9 +39,10 @@ function activityProposals(){
  const allowed=new Set(alt.sourceIds||[]),res=confirmedResults().filter(r=>allowed.has(r.objectiveId));
  let out=[];
  for(const r of res){
-   const base={objectiveId:r.objectiveId,objectiveText:r.objectiveText||'',resultId:r.id,resultText:r.text,status:'propuesta',note:''};
+   const obj=(objectives().items||[]).find(o=>o.id===r.objectiveId)||{};
+   const base={objectiveId:r.objectiveId,objectiveText:r.objectiveText||'',causeId:obj.id||r.objectiveId,resultId:r.id,resultText:r.text,status:'propuesta',source:'sistema',provenance:'resultado_confirmado',note:''};
    const proposals=window.fcWriting?.activityProposals?window.fcWriting.activityProposals(r.text,r.objectiveText):['[POR REVISAR] Definir una actividad concreta para: '+r.text];
-   proposals.forEach((text,i)=>out.push({...base,id:`ACT-${r.id}-${i+1}`,text,confirmed:false}))
+   proposals.forEach((text,i)=>out.push({...base,id:`ACT-${r.id}-${i+1}`,activityId:`ACT-${r.id}-${i+1}`,text,confirmed:false,updatedAt:null}))
  }
  return out
 }
@@ -51,24 +52,43 @@ function ensureS11(){
  if(!s.items||s.sourceSignature!==sig){
    const old=s.items||[],validResultIds=new Set(res.map(r=>r.id)),items=[];
    for(const r of res){
+     const obj=(objectives().items||[]).find(o=>o.id===r.objectiveId)||{};
      const existing=old.filter(x=>x.resultId===r.id||(!x.resultId&&x.objectiveId===r.objectiveId));
      if(existing.length){
-       for(const x of existing)items.push({...x,objectiveId:r.objectiveId,objectiveText:r.objectiveText||x.objectiveText||'',resultId:r.id,resultText:r.text})
-     }else{
-       items.push(...activityProposals().filter(x=>x.resultId===r.id))
-     }
+       for(const x of existing)items.push({...x,id:x.id||x.activityId,activityId:x.activityId||x.id,objectiveId:r.objectiveId,objectiveText:r.objectiveText||x.objectiveText||'',causeId:x.causeId||obj.id||r.objectiveId,resultId:r.id,resultText:r.text,source:x.source||'histórico',provenance:x.provenance||'compatibilidad',updatedAt:x.updatedAt||null})
+     }else items.push(...activityProposals().filter(x=>x.resultId===r.id))
    }
    for(const x of old){
-     if(x.status==='risk_response'&&x.resultId&&validResultIds.has(x.resultId)&&!items.some(y=>y.id===x.id))items.push(x)
+     if(x.status==='risk_response'&&x.resultId&&validResultIds.has(x.resultId)&&!items.some(y=>y.id===x.id))items.push({...x,activityId:x.activityId||x.id})
+     else if(!x.resultId&&!x.objectiveId&&!items.some(y=>y.id===x.id))items.push({...x,activityId:x.activityId||x.id,status:x.status||'manual_sin_vinculo',confirmed:false})
    }
-   s={sourceSignature:sig,alternativeId:alt?.id||'',alternativeText:alt?.text||'',items,updatedAt:new Date().toISOString()};write('S11',s)
+   s={...s,sourceSignature:sig,alternativeId:alt?.id||'',alternativeText:alt?.text||'',items,updatedAt:new Date().toISOString()};write('S11',s)
  }
  return s
 }
-function indicatorProposal(source,i,type='Actividad'){
+function activityContext(x){
+ const obj=(objectives().items||[]).find(o=>o.id===x?.objectiveId)||{};
+ const tree=draft?.S07?.tree_state?.nodes||[];
+ const central=tree.find(n=>n.zone==='central');
+ const cause=tree.find(n=>n.id===(x?.causeId||x?.objectiveId));
+ return {problem:central?.text||'[POR VERIFICAR]',cause:cause?.text||obj.sourceText||'[POR VERIFICAR]',objective:x?.objectiveText||obj.text||'[POR VERIFICAR]',result:x?.resultText||'[POR VERIFICAR]'}
+}
+function participantContext(){
+ return draft?.S03?.poblacion_participante||draft?.S03?.población_participante||draft?.S03?.poblacion_atendida||draft?.S03?.población_atendida||''
+}
+function activityHelp(x){
+ return window.fcWriting?.activityGuidance?window.fcWriting.activityGuidance(x?.resultText||'',x?.objectiveText||''):{suggestions:[],questions:[]}
+}
+function activitySufficiencyFor(x,s){
+ const related=(s.items||[]).filter(i=>i.resultId&&i.resultId===x?.resultId&&i.confirmed);
+ return window.fcWriting?.activitySufficiency?window.fcWriting.activitySufficiency(related,x?.resultText||''):{ok:true,issues:[]}
+}
+function indicatorProposal(source,i,type='Actividad',template=null){
  const linkedId=source.id,linkedText=source.text||source.activityText||source.objectiveText||'';
- const indicator=window.fcWriting?.indicatorProposal?window.fcWriting.indicatorProposal(linkedText,type):'[POR REVISAR]';
- return{id:`I${i+1}`,linkedType:type,linkedId,linkedText,activityId:type==='Actividad'?linkedId:'',activityText:type==='Actividad'?linkedText:'',resultId:type==='Resultado'?linkedId:'',objectiveId:type==='Objetivo'?linkedId:'',indicator,formula:'[POR VERIFICAR]',meta:'[POR VERIFICAR]',lineaBase:'[POR VERIFICAR]',unidad:'[POR VERIFICAR]',periodicidad:'[POR VERIFICAR]',medioVerificacion:'[POR VERIFICAR]',responsable:'[POR VERIFICAR]',plazo:'[POR VERIFICAR]',confirmed:false}
+ const t=template||(window.fcWriting?.indicatorBattery?window.fcWriting.indicatorBattery(linkedText,type,{source})[0]:null)||{};
+ const family=t.indicatorFamily||'principal';
+ const safe=String(family).replace(/[^a-z0-9_-]/gi,'_');
+ return{id:`I-${type}-${linkedId}-${safe}`,indicatorId:`I-${type}-${linkedId}-${safe}`,linkedType:type,linkedId,linkedText,activityId:type==='Actividad'?linkedId:(source.activityId||''),activityText:type==='Actividad'?linkedText:(source.activityText||''),resultId:type==='Resultado'?linkedId:(source.resultId||''),objectiveId:type==='Objetivo'?linkedId:(source.objectiveId||''),indicatorFamily:family,indicator:t.indicator||'[POR REVISAR]',formula:t.formula||'[POR VERIFICAR]',meta:t.meta||'[POR VERIFICAR]',lineaBase:t.lineaBase||'[POR VERIFICAR]',unidad:t.unidad||'[POR VERIFICAR]',periodicidad:t.periodicidad||'[POR VERIFICAR]',medioVerificacion:t.medioVerificacion||'[POR VERIFICAR]',responsable:t.responsable||'[POR VERIFICAR]',plazo:t.plazo||'[POR VERIFICAR]',verificationSuggestions:t.verificationSuggestions||[],provenance:t.provenance||'propuesta_sistema',verificationStatus:t.verificationStatus||'POR_VERIFICAR',confirmed:false,stale:false}
 }
 function indicatorSources(){
  const out=[];confirmedActivities().forEach(x=>out.push({source:x,type:'Actividad'}));
@@ -76,7 +96,30 @@ function indicatorSources(){
  try{const central=(draft?.S09?.objectives_state?.items||[]).find(x=>x.confirmed&&x.zone==='central');if(central)out.push({source:central,type:'Objetivo'})}catch{}
  return out
 }
-function ensureS12(){let s=read('S12');const src=indicatorSources(),sig=src.map(x=>`${x.type}:${x.source.id}:${x.source.text}`).join('|');if(!s.items||s.sourceSignature!==sig){const old=new Map((s.items||[]).map(x=>[(x.linkedType||'Actividad')+':'+(x.linkedId||x.activityId),x]));s={sourceSignature:sig,items:src.map((x,i)=>{const prev=old.get(x.type+':'+x.source.id);return prev?{...prev,formula:prev.formula||'[POR VERIFICAR]',linkedType:x.type,linkedId:x.source.id,linkedText:x.source.text||x.source.activityText||x.source.objectiveText||'',activityId:x.type==='Actividad'?x.source.id:'',activityText:x.type==='Actividad'?(x.source.text||''):'',resultId:x.type==='Resultado'?x.source.id:'',objectiveId:x.type==='Objetivo'?x.source.id:(prev.objectiveId||'')}:indicatorProposal(x.source,i,x.type)}),updatedAt:null};write('S12',s)}return s}
+function ensureS12(){
+ let s=read('S12');const src=indicatorSources(),sig=src.map(x=>`${x.type}:${x.source.id}:${x.source.text}`).join('|');
+ if(!s.items||s.sourceSignature!==sig){
+   const old=s.items||[],used=new Set(),items=[];let seq=0;
+   for(const x of src){
+     const text=x.source.text||x.source.activityText||x.source.objectiveText||'';
+     const battery=window.fcWriting?.indicatorBattery?window.fcWriting.indicatorBattery(text,x.type,{source:x.source}):[];
+     const templates=battery.length?battery:[{}];
+     templates.forEach((tpl,idx)=>{
+       const family=tpl.indicatorFamily||'principal';
+       let prev=old.find(o=>!used.has(o)&&o.linkedType===x.type&&(o.linkedId||o.activityId||o.resultId||o.objectiveId)===x.source.id&&o.indicatorFamily===family);
+       if(!prev&&idx===0)prev=old.find(o=>!used.has(o)&&(o.linkedType||'Actividad')===x.type&&(o.linkedId||o.activityId||o.resultId||o.objectiveId)===x.source.id&&!o.indicatorFamily);
+       const fresh=indicatorProposal(x.source,seq++,x.type,tpl);
+       if(prev){
+         used.add(prev);const changed=String(prev.linkedText||'')!==String(text||'');
+         items.push({...fresh,...prev,id:prev.id||fresh.id,indicatorId:prev.indicatorId||prev.id||fresh.id,linkedType:x.type,linkedId:x.source.id,linkedText:text,activityId:fresh.activityId,resultId:fresh.resultId,objectiveId:fresh.objectiveId,indicatorFamily:family,verificationSuggestions:tpl.verificationSuggestions||prev.verificationSuggestions||[],confirmed:changed?false:!!prev.confirmed,verificationStatus:changed?'REQUIERE_REVISIÓN':(prev.verificationStatus||fresh.verificationStatus),stale:false})
+       }else items.push(fresh)
+     })
+   }
+   const removed=old.filter(o=>!used.has(o)).map(o=>({...o,confirmed:false,stale:true,status:'desactualizado',verificationStatus:'REQUIERE_REVISIÓN'}));
+   s={...s,sourceSignature:sig,items,staleItems:[...(s.staleItems||[]),...removed].slice(-100),updatedAt:null};write('S12',s)
+ }
+ return s
+}
 function sync(code){if(typeof session!=='undefined'&&session&&typeof syncSection==='function')syncSection(code).catch(()=>{})}
 function renderS10(){
  const host=$('#fields');if(!host)return;const gate=window.fcS09TransitionStatus?.();
@@ -127,21 +170,41 @@ function bindS10(s){
  $('#goS11')?.addEventListener('click',()=>window.fcNavigate?.('S11'))
 }
 function renderS11(){
- const host=$('#fields');if(!host)return;const s=ensureS11(),xs=s.items||[];cursors.S11=Math.min(cursors.S11,Math.max(0,xs.length-1));const x=xs[cursors.S11];
- host.innerHTML=`<section id="completionS11" class="completion-wrap didactic-flow"><div class="didactic-intro"><strong>Elegir las actividades necesarias</strong><p>Revisa una actividad por vez. Cada actividad debe ayudar a producir un resultado ya aprobado.</p></div>
- ${x?`<div class="didactic-progress">Actividad ${cursors.S11+1} de ${xs.length}</div><article class="didactic-card"><small>Resultado al que aporta</small><div class="didactic-context">${esc(x.resultText||x.objectiveText||'[POR VERIFICAR]')}</div><div class="didactic-question">¿Esta actividad es necesaria para lograr ese resultado?</div><label class="didactic-main-label">Actividad propuesta<textarea data-act-text="${x.id}">${esc(x.text)}</textarea></label><div class="didactic-actions"><button data-act-confirm="${x.id}" class="${x.confirmed?'primary':''}">${x.confirmed?'Actividad aprobada ✓':'Sí, aprobar actividad'}</button><button data-act-delete="${x.id}">No, eliminarla</button></div><details class="didactic-detail"><summary>Agregar una observación</summary><textarea data-act-note="${x.id}" placeholder="Opcional">${esc(x.note||'')}</textarea></details></article><div class="didactic-nav"><button id="actPrev" ${cursors.S11===0?'disabled':''}>← Anterior</button><button id="actNext" ${cursors.S11>=xs.length-1?'disabled':''}>Siguiente →</button></div>`:'<div class="completion-note"><strong>Faltan resultados aprobados.</strong><p>Confirma primero al menos un resultado en esta sección.</p></div>'}
- <div class="completion-toolbar"><button id="addAct">+ Añadir otra actividad</button><button id="goS12" class="primary" ${xs.some(i=>i.confirmed)?'':'disabled'}>Continuar</button></div></section>`;bindS11(s)
+ const host=$('#fields');if(!host)return;const s=ensureS11(),xs=s.items||[];cursors.S11=Math.min(cursors.S11,Math.max(0,xs.length-1));const x=xs[cursors.S11],ctx=x?activityContext(x):null,help=x?activityHelp(x):null,suff=x?activitySufficiencyFor(x,s):null;
+ host.innerHTML=`<section id="completionS11" class="completion-wrap didactic-flow">
+ <div class="didactic-intro"><strong>Construir las actividades desde el objetivo</strong><p>Trabajaremos un resultado por vez. Puedes escribir con tus propias palabras y el sistema te ayudará a convertir la idea en una actividad técnicamente formulada.</p></div>
+ ${x?`<div class="didactic-progress">Actividad ${cursors.S11+1} de ${xs.length}</div>
+ <article class="didactic-card activity-assistant-card">
+  <details class="trace-context" open><summary>Viene de</summary><div class="trace-context-grid"><p><b>Problema central</b><span>${esc(ctx.problem)}</span></p><p><b>Causa directa</b><span>${esc(ctx.cause)}</span></p><p><b>Objetivo específico</b><span>${esc(ctx.objective)}</span></p><p><b>Resultado esperado</b><span>${esc(ctx.result)}</span></p></div></details>
+  ${(!x.resultId||!x.objectiveId)?`<div class="activity-warning"><strong>Actividad sin vínculo metodológico</strong><p>Esta actividad histórica o manual todavía debe asociarse a un objetivo específico y a un resultado antes de aprobarse.</p></div>`:''}
+  <div class="didactic-question">¿Qué debe ocurrir para lograr este resultado?</div>
+  <p class="assistant-lead">Responde con ideas sencillas. El sistema las convertirá en actividades bien formuladas.</p>
+  <label class="didactic-main-label">Tu idea<textarea data-act-plain="${x.id}" placeholder="Ejemplo: Se necesitan 6 talleres de trombón.">${esc(x.plainText||'')}</textarea></label>
+  <div class="activity-ai-actions"><button type="button" data-act-help="${x.id}">Ayúdame con IA</button><button type="button" data-act-convert="${x.id}" ${x.plainText?'':'disabled'}>Convertir en actividad técnica</button></div>
+  <div class="writing-help-panel ${x.showActivityHelp?'':'hidden'}" data-act-help-panel="${x.id}"><strong>Ideas para pensar esta actividad</strong><p>Selecciona una idea solo si corresponde a tu proyecto.</p><div class="activity-suggestion-pills">${(help.suggestions||[]).map((v,i)=>`<button type="button" data-act-suggestion="${x.id}:${i}">${esc(v)}</button>`).join('')}</div><details><summary>Preguntas orientadoras</summary>${(help.questions||[]).map(v=>`<p>• ${esc(v)}</p>`).join('')}</details></div>
+  <div class="proposal-box"><small>Propuesta de redacción</small><label class="didactic-main-label">Actividad propuesta<textarea data-act-text="${x.id}">${esc(x.text)}</textarea></label><p>La propuesta puede editarse. Los datos que no existan todavía no deben agregarse como hechos.</p></div>
+  <div class="didactic-question compact">¿Esta acción contribuye de manera necesaria y plausible a producir el resultado?</div>
+  <div class="didactic-actions"><button data-act-confirm="${x.id}" class="${x.confirmed?'primary':''}">${x.confirmed?'Actividad aprobada ✓':'Aprobar esta actividad'}</button><button data-act-delete="${x.id}">Eliminar propuesta</button></div>
+  ${suff&&!suff.ok?`<div class="activity-warning"><strong>Revisa si falta alguna acción</strong>${suff.issues.map(v=>`<p>${esc(v)}</p>`).join('')}</div>`:''}
+  <details class="didactic-detail"><summary>Agregar una observación</summary><textarea data-act-note="${x.id}" placeholder="Opcional">${esc(x.note||'')}</textarea></details>
+ </article>
+ <div class="didactic-nav"><button id="actPrev" ${cursors.S11===0?'disabled':''}>← Anterior</button><button id="actNext" ${cursors.S11>=xs.length-1?'disabled':''}>Siguiente →</button></div>`:'<div class="completion-note"><strong>Faltan resultados aprobados.</strong><p>Confirma primero al menos un resultado derivado de un objetivo específico.</p></div>'}
+ <div class="completion-toolbar"><button id="addAct">+ Añadir otra actividad para este resultado</button><button id="goS12" class="primary" ${xs.some(i=>i.confirmed)?'':'disabled'}>Continuar a indicadores</button></div></section>`;bindS11(s)
 }
 function bindS11(s){
- document.querySelectorAll('[data-act-text]').forEach(el=>el.onchange=()=>{const x=s.items.find(i=>i.id===el.dataset.actText);x.text=el.value.trim();x.confirmed=false;write('S11',s)});
+ document.querySelectorAll('[data-act-plain]').forEach(el=>el.oninput=()=>{const x=s.items.find(i=>i.id===el.dataset.actPlain);x.plainText=el.value;x.confirmed=false;write('S11',s)});
+ document.querySelectorAll('[data-act-text]').forEach(el=>el.onchange=()=>{const x=s.items.find(i=>i.id===el.dataset.actText);x.text=el.value.trim();x.confirmed=false;x.source='usuario_editado';x.updatedAt=new Date().toISOString();write('S11',s)});
  document.querySelectorAll('[data-act-note]').forEach(el=>el.onchange=()=>{const x=s.items.find(i=>i.id===el.dataset.actNote);x.note=el.value.trim();write('S11',s)});
- document.querySelectorAll('[data-act-confirm]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.actConfirm);x.confirmed=!!x.text.trim()&&!window.fcWriting?.isPlaceholder?.(x.text);if(!x.confirmed&&window.fcWriting?.isPlaceholder?.(x.text)){alert('Antes de aprobar la actividad, reemplaza la marca [POR REVISAR] por una acción concreta.')}write('S11',s);sync('S11');renderS11()});
+ document.querySelectorAll('[data-act-help]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.actHelp);x.showActivityHelp=!x.showActivityHelp;write('S11',s);renderS11()});
+ document.querySelectorAll('[data-act-suggestion]').forEach(b=>b.onclick=()=>{const [id,idx]=b.dataset.actSuggestion.split(':');const x=s.items.find(i=>i.id===id),h=activityHelp(x),v=(h.suggestions||[])[Number(idx)];if(!v)return;x.plainText=v;x.text=window.fcWriting?.activityFromPlainLanguage?window.fcWriting.activityFromPlainLanguage(v,x.resultText,x.objectiveText,participantContext()):v;x.source='propuesta_sistema';x.provenance='respuesta_guiada';x.confirmed=false;x.showActivityHelp=false;x.updatedAt=new Date().toISOString();write('S11',s);renderS11()});
+ document.querySelectorAll('[data-act-convert]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.actConvert);if(!x?.plainText?.trim())return;x.text=window.fcWriting?.activityFromPlainLanguage?window.fcWriting.activityFromPlainLanguage(x.plainText,x.resultText,x.objectiveText,participantContext()):x.plainText.trim();x.source='propuesta_sistema';x.provenance='lenguaje_cotidiano';x.confirmed=false;x.updatedAt=new Date().toISOString();write('S11',s);renderS11()});
+ document.querySelectorAll('[data-act-confirm]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.actConfirm);const linked=!!x.resultId&&!!x.objectiveId;x.confirmed=linked&&!!x.text.trim()&&!window.fcWriting?.isPlaceholder?.(x.text);if(!linked){alert('Antes de aprobar esta actividad, debe quedar vinculada a un objetivo específico y a un resultado.')}else if(!x.confirmed){alert('Antes de aprobar la actividad, reemplaza la marca [POR REVISAR] por una acción concreta.')}x.updatedAt=new Date().toISOString();write('S11',s);sync('S11');renderS11()});
  document.querySelectorAll('[data-act-delete]').forEach(b=>b.onclick=()=>{s.items=s.items.filter(i=>i.id!==b.dataset.actDelete);cursors.S11=Math.max(0,Math.min(cursors.S11,s.items.length-1));write('S11',s);renderS11()});
- $('#addAct')&&($('#addAct').onclick=()=>{const id=`ACT${s.items.length+1}-${Date.now().toString().slice(-4)}`;s.items.push({id,objectiveId:'',objectiveText:'Actividad adicional',resultId:'',resultText:'[POR VERIFICAR]',text:'',confirmed:false,status:'manual',note:''});cursors.S11=s.items.length-1;write('S11',s);renderS11()});
+ $('#addAct')&&($('#addAct').onclick=()=>{const current=s.items[cursors.S11],id=`ACT${s.items.length+1}-${Date.now().toString().slice(-4)}`;s.items.push({id,activityId:id,objectiveId:current?.objectiveId||'',objectiveText:current?.objectiveText||'',causeId:current?.causeId||current?.objectiveId||'',resultId:current?.resultId||'',resultText:current?.resultText||'[POR VERIFICAR]',text:'',plainText:'',confirmed:false,status:'manual',source:'usuario',provenance:'actividad_adicional',note:'',updatedAt:null});cursors.S11=s.items.length-1;write('S11',s);renderS11()});
  $('#actPrev')&&($('#actPrev').onclick=()=>{cursors.S11=Math.max(0,cursors.S11-1);renderS11()});$('#actNext')&&($('#actNext').onclick=()=>{cursors.S11=Math.min(s.items.length-1,cursors.S11+1);renderS11()});
  $('#goS12')?.addEventListener('click',()=>window.fcNavigate?.('S12'))
 }
-function indicatorHelp(x){return window.fcWriting?.indicatorGuidance?window.fcWriting.indicatorGuidance(x.linkedText||x.activityText||'',x.linkedType||'Actividad'):{level:'Indicador',purpose:'Define una medida verificable.',question:'¿Qué vamos a medir?',formulaHint:'Explica cómo se obtiene el dato.',unitHint:'Define una unidad.',suggestions:[x.indicator],formulaExamples:[]}}
+function indicatorHelp(x){return window.fcWriting?.indicatorGuidance?window.fcWriting.indicatorGuidance(x.linkedText||x.activityText||'',x.linkedType||'Actividad',x.indicatorFamily):{level:'Indicador',purpose:'Define una medida verificable.',question:'¿Qué vamos a medir?',formulaHint:'Explica cómo se obtiene el dato.',unitHint:'Define una unidad.',suggestions:[x.indicator],formulaExamples:[]}}
 function indicatorQuality(x){return window.fcWriting?.indicatorQuality?window.fcWriting.indicatorQuality(x):{ok:false,issues:['Completa los datos del indicador.']}}
 function indicatorStepHtml(x,step){
  const g=indicatorHelp(x);
@@ -151,18 +214,29 @@ function indicatorStepHtml(x,step){
  return `<div class="indicator-step"><span class="indicator-step-tag">Paso 4 de 4</span><h4>Definir cómo y cuándo lo vamos a comprobar</h4><label class="didactic-main-label">Medio o fuente de verificación<textarea data-ind-field="${x.id}:medioVerificacion">${esc(x.medioVerificacion)}</textarea></label><div class="completion-grid"><label>Periodicidad<textarea data-ind-field="${x.id}:periodicidad">${esc(x.periodicidad)}</textarea></label><label>Plazo<textarea data-ind-field="${x.id}:plazo">${esc(x.plazo)}</textarea></label><label>Responsable<textarea data-ind-field="${x.id}:responsable">${esc(x.responsable)}</textarea></label></div></div>`
 }
 function renderS12(){
- const host=$('#fields');if(!host)return;const s=ensureS12(),xs=s.items||[];cursors.S12=Math.min(cursors.S12,Math.max(0,xs.length-1));const x=xs[cursors.S12];const step=x?(indicatorSteps[x.id]||1):1;const g=x?indicatorHelp(x):null;const q=x?indicatorQuality(x):null;
- host.innerHTML=`<section id="completionS12" class="completion-wrap didactic-flow"><div class="didactic-intro"><strong>Construir la batería de indicadores</strong><p>Trabajaremos un indicador por vez y en cuatro pasos. El sistema te ayudará a distinguir si estás midiendo ejecución, un resultado o el cambio del objetivo.</p></div>
- ${x?`<div class="didactic-progress">Indicador ${cursors.S12+1} de ${xs.length}</div><article class="didactic-card indicator-card"><div class="indicator-level"><small>${esc(x.linkedType||'Elemento')} relacionado</small><strong>${esc(g.level)}</strong></div><div class="didactic-context">${esc(x.linkedText||x.activityText||'')}</div><div class="didactic-suggestion"><small>Qué debe medir este nivel</small><p>${esc(g.purpose)}</p></div>${indicatorStepHtml(x,step)}<div class="indicator-step-nav"><button id="indicatorStepPrev" ${step===1?'disabled':''}>← Paso anterior</button><button id="indicatorStepNext" ${step===4?'disabled':''}>Siguiente paso →</button></div><div class="indicator-quality ${q.ok?'ok':'pending'}"><strong>${q.ok?'Indicador listo para aprobar':'Antes de aprobar, revisa:'}</strong>${q.ok?'<p>La ficha contiene los elementos mínimos para seguimiento.</p>':'<ul>'+q.issues.map(i=>'<li>'+esc(i)+'</li>').join('')+'</ul>'}</div><div class="didactic-actions"><button data-ind-confirm="${x.id}" class="${x.confirmed?'primary':''}" ${q.ok?'':'disabled'}>${x.confirmed?'Indicador aprobado ✓':'Aprobar indicador'}</button></div></article><div class="didactic-nav"><button id="indPrev" ${cursors.S12===0?'disabled':''}>← Indicador anterior</button><button id="indNext" ${cursors.S12>=xs.length-1?'disabled':''}>Siguiente indicador →</button></div>`:'<div class="completion-note"><strong>Aún no hay indicadores para revisar.</strong><p>Confirma primero resultados y actividades.</p></div>'}
+ const host=$('#fields');if(!host)return;const s=ensureS12(),xs=s.items||[];cursors.S12=Math.min(cursors.S12,Math.max(0,xs.length-1));const x=xs[cursors.S12];const g=x?indicatorHelp(x):null,q=x?indicatorQuality(x):null;
+ const same=x?xs.filter(i=>i.linkedType===x.linkedType&&i.linkedId===x.linkedId):[];
+ host.innerHTML=`<section id="completionS12" class="completion-wrap didactic-flow">
+ <div class="didactic-intro"><strong>¿Cómo comprobaremos que esto ocurrió?</strong><p>El sistema propone una batería de indicadores a partir de actividades, resultados y objetivos confirmados. Tú decides cuáles usar y completas únicamente los datos que realmente conoces.</p></div>
+ ${x?`<div class="didactic-progress">Indicador ${cursors.S12+1} de ${xs.length}</div><article class="didactic-card indicator-card">
+  <div class="indicator-level"><small>${esc(x.linkedType||'Elemento')} relacionado</small><strong>${esc(g.level)}</strong></div>
+  <div class="didactic-context">${esc(x.linkedText||x.activityText||'')}</div>
+  <div class="battery-overview"><small>Batería sugerida para este elemento</small><div>${same.map(i=>`<button type="button" data-ind-jump="${i.id}" class="${i.id===x.id?'selected':''}">${esc((i.indicatorFamily||'indicador').replaceAll('_',' '))}</button>`).join('')}</div></div>
+  <div class="proposal-box"><small>Propuesta del sistema</small><label class="didactic-main-label">Indicador<textarea data-ind-field="${x.id}:indicator">${esc(x.indicator)}</textarea></label><p>${esc(g.purpose)}</p></div>
+  <div class="indicator-quality ${q.ok?'ok':'pending'}"><strong>${q.ok?'Ficha técnica completa':'Puede usarse con datos pendientes'}</strong>${q.ok?'<p>Los elementos técnicos mínimos están completos.</p>':'<p>Los datos que todavía necesitan respaldo permanecen como [POR VERIFICAR].</p><ul>'+q.issues.map(i=>'<li>'+esc(i)+'</li>').join('')+'</ul>'}</div>
+  <details class="indicator-tech-detail"><summary>Ver y completar ficha técnica</summary>
+   <div class="completion-grid"><label>Fórmula o criterio<textarea data-ind-field="${x.id}:formula">${esc(x.formula)}</textarea></label><label>Unidad<textarea data-ind-field="${x.id}:unidad">${esc(x.unidad)}</textarea></label><label>Línea base<textarea data-ind-field="${x.id}:lineaBase">${esc(x.lineaBase)}</textarea></label><label>Meta<textarea data-ind-field="${x.id}:meta">${esc(x.meta)}</textarea></label><label>Medio de verificación<textarea data-ind-field="${x.id}:medioVerificacion">${esc(x.medioVerificacion)}</textarea></label><label>Periodicidad<textarea data-ind-field="${x.id}:periodicidad">${esc(x.periodicidad)}</textarea></label><label>Responsable<textarea data-ind-field="${x.id}:responsable">${esc(x.responsable)}</textarea></label><label>Plazo<textarea data-ind-field="${x.id}:plazo">${esc(x.plazo)}</textarea></label></div>
+   ${(x.verificationSuggestions||[]).length?`<div class="verification-suggestions"><small>Fuentes que podrían servir, si existen en tu proyecto:</small>${x.verificationSuggestions.map((v,i)=>`<button type="button" data-use-verification="${x.id}:${i}">${esc(v)}</button>`).join('')}</div>`:''}
+  </details>
+  <div class="didactic-actions"><button data-ind-confirm="${x.id}" class="${x.confirmed?'primary':''}">${x.confirmed?'Indicador confirmado ✓':'Usar este indicador'}</button></div>
+ </article><div class="didactic-nav"><button id="indPrev" ${cursors.S12===0?'disabled':''}>← Indicador anterior</button><button id="indNext" ${cursors.S12>=xs.length-1?'disabled':''}>Siguiente indicador →</button></div>`:'<div class="completion-note"><strong>Aún no hay indicadores para revisar.</strong><p>Confirma primero resultados y actividades.</p></div>'}
  <div class="completion-toolbar"><button id="exportFull">Ver respaldo técnico en Excel</button></div></section>`;bindS12(s)
 }
 function bindS12(s){
- document.querySelectorAll('[data-ind-field]').forEach(el=>el.onchange=()=>{const [id,k]=el.dataset.indField.split(':');const x=s.items.find(i=>i.id===id);x[k]=el.value.trim()||'[POR VERIFICAR]';x.confirmed=false;write('S12',s);renderS12()});
- document.querySelectorAll('[data-ind-help]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.indHelp);x.showHelp=!x.showHelp;renderS12()});
- document.querySelectorAll('[data-use-indicator]').forEach(b=>b.onclick=()=>{const [id,idx]=b.dataset.useIndicator.split(':');const x=s.items.find(i=>i.id===id),g=indicatorHelp(x),v=(g.suggestions||[])[Number(idx)];if(v){x.indicator=v;x.confirmed=false;x.showHelp=false;write('S12',s);renderS12()}});
- document.querySelectorAll('[data-ind-confirm]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.indConfirm),q=indicatorQuality(x);x.confirmed=q.ok;if(!q.ok){alert('Aún faltan datos para aprobar este indicador. Revisa la lista de verificación.')}write('S12',s);sync('S12');renderS12()});
- $('#indicatorStepPrev')&&($('#indicatorStepPrev').onclick=()=>{const x=s.items[cursors.S12];indicatorSteps[x.id]=Math.max(1,(indicatorSteps[x.id]||1)-1);renderS12()});
- $('#indicatorStepNext')&&($('#indicatorStepNext').onclick=()=>{const x=s.items[cursors.S12];indicatorSteps[x.id]=Math.min(4,(indicatorSteps[x.id]||1)+1);renderS12()});
+ document.querySelectorAll('[data-ind-field]').forEach(el=>el.onchange=()=>{const [id,k]=el.dataset.indField.split(':');const x=s.items.find(i=>i.id===id);x[k]=el.value.trim()||'[POR VERIFICAR]';x.confirmed=false;x.verificationStatus='POR_VERIFICAR';write('S12',s);renderS12()});
+ document.querySelectorAll('[data-ind-jump]').forEach(b=>b.onclick=()=>{const idx=s.items.findIndex(i=>i.id===b.dataset.indJump);if(idx>=0){cursors.S12=idx;renderS12()}});
+ document.querySelectorAll('[data-use-verification]').forEach(b=>b.onclick=()=>{const [id,idx]=b.dataset.useVerification.split(':');const x=s.items.find(i=>i.id===id),v=(x.verificationSuggestions||[])[Number(idx)];if(v){x.medioVerificacion=v;x.confirmed=false;x.verificationStatus='POR_VERIFICAR';write('S12',s);renderS12()}});
+ document.querySelectorAll('[data-ind-confirm]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.indConfirm);const invalid=!x.indicator?.trim()||window.fcWriting?.isPlaceholder?.(x.indicator);if(invalid){alert('Antes de usar este indicador, la redacción debe ser suficientemente precisa.');return}const q=indicatorQuality(x);x.confirmed=true;x.verificationStatus=q.ok?'VERIFICADO':'POR_VERIFICAR';write('S12',s);sync('S12');renderS12()});
  $('#indPrev')&&($('#indPrev').onclick=()=>{cursors.S12=Math.max(0,cursors.S12-1);renderS12()});$('#indNext')&&($('#indNext').onclick=()=>{cursors.S12=Math.min(s.items.length-1,cursors.S12+1);renderS12()});
  $('#exportFull')&&($('#exportFull').onclick=()=>window.fcExportCompleteWorkbook?.())
 }

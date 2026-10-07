@@ -96,6 +96,9 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(indicators.some(x=>x.linkedType==='Actividad'),'S12 no propuso indicador de actividad');
  assert(indicators.some(x=>x.linkedType==='Resultado'),'S12 no propuso indicador de resultado');
  assert(indicators.some(x=>x.linkedType==='Objetivo'),'S12 no propuso indicador del objetivo general');
+ assert(indicators.filter(x=>x.linkedType==='Actividad').length>=1,'S12 perdió la batería de indicadores de actividad');
+ assert(indicators.some(x=>x.indicatorFamily),'S12 no conserva la familia/dimensión del indicador');
+ assert(indicators.every(x=>x.indicatorId||x.id),'S12 generó indicadores sin identificador estable');
 
  await w.fcNavigate('S13');await wait(60);
  assert(w.fcGetSchedule().length===confirmedActs.length,'S13 no creó un ítem de cronograma por actividad confirmada');

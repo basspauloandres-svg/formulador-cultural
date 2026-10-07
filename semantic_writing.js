@@ -65,20 +65,79 @@ function activityProposals(result,objective){
   'Implementar acciones de acompañamiento acordes con las diferencias identificadas entre integrantes',
   'Realizar una verificación periódica de los cambios observados en los niveles de dominio instrumental'
  ]);
+ if(/formaci[oó]n|taller|capacitaci[oó]n|acompañamiento/i.test(base))return uniq([
+  'Preparar las condiciones necesarias para desarrollar el proceso formativo',
+  'Implementar las acciones formativas previstas',
+  'Registrar y revisar el desarrollo del proceso formativo'
+ ]);
  return ['[POR REVISAR] Definir actividades concretas que produzcan el resultado: '+r+'.']
 }
-function indicatorProposal(source,type){
+function normalizeQuantityWord(v){
+ const m={un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10,once:11,doce:12,trece:13,catorce:14,quince:15,dieciseis:16,dieciséis:16,diecisiete:17,dieciocho:18,diecinueve:19,veinte:20};
+ const k=String(v||'').toLowerCase();return m[k]||null
+}
+function extractQuantity(text){
+ const t=clean(text);
+ let m=t.match(/\b(\d+)\s+([a-záéíóúñü]+(?:\s+de\s+[a-záéíóúñü]+)?)/i);
+ if(m)return {value:Number(m[1]),raw:m[1],unit:m[2]};
+ m=t.match(/\b(un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|diecis[eé]is|diecisiete|dieciocho|diecinueve|veinte)\s+([a-záéíóúñü]+(?:\s+de\s+[a-záéíóúñü]+)?)/i);
+ if(m)return {value:normalizeQuantityWord(m[1]),raw:m[1],unit:m[2]};
+ return null
+}
+function activityGuidance(result,objective){
+ const r=clean(result),o=clean(objective),t=(o+' '+r).toLowerCase(),suggestions=[],questions=[];
+ if(/formaci[oó]n|taller|capacitaci[oó]n|aprendizaje|acompañamiento/.test(t)){
+  suggestions.push('Convocar o seleccionar participantes','Preparar contenidos, materiales o condiciones','Realizar las acciones formativas previstas','Registrar asistencia o participación','Realizar seguimiento al proceso');
+  questions.push('¿Hay que preparar algo antes?','¿Qué acción produce directamente el resultado?','¿Con qué población se realizará?','¿Hace falta registrar o hacer seguimiento?')
+ }else{
+  suggestions.push('Preparar las condiciones necesarias','Realizar la acción principal que produce el resultado','Registrar lo realizado','Revisar el resultado obtenido');
+  questions.push('¿Qué debe estar listo antes?','¿Qué acción produce directamente el resultado?','¿Qué debe registrarse o revisarse después?')
+ }
+ return {suggestions:[...new Set(suggestions)].slice(0,5),questions:[...new Set(questions)].slice(0,4)}
+}
+function activityFromPlainLanguage(input,result,objective,population){
+ const t=clean(input);if(!t)return '[POR REVISAR]';
+ const q=extractQuantity(t);let out=t;
+ out=out.replace(/^se\s+(?:necesitan?|requieren?)\s+/i,'').replace(/^necesitamos\s+/i,'');
+ if(q&&/(taller|sesion|sesión|jornada|encuentro|capacitaci[oó]n|actividad)/i.test(out)){
+  out='Realizar '+out.replace(/^realizar\s+/i,'');
+ }else if(!/^(realizar|implementar|desarrollar|organizar|preparar|convocar|vincular|registrar|evaluar|hacer|llevar a cabo)\b/i.test(out)){
+  out='Realizar '+low(out)
+ }
+ out=finish(out);
+ const pop=clean(population);
+ if(pop&&!/participantes?|poblaci[oó]n|personas|beneficiari/i.test(out))out=out.replace(/[.]$/,'')+' dirigido a '+low(pop)+'.';
+ return out
+}
+function activitySufficiency(items,result){
+ const xs=(items||[]).filter(x=>x&&x.confirmed!==false).map(x=>clean(x.text||x)).filter(Boolean),r=clean(result).toLowerCase();
+ const joined=xs.join(' | ').toLowerCase(),issues=[];
+ if(!xs.length)return {ok:false,issues:['Todavía no hay actividades confirmadas para este resultado.']};
+ if(/implementad|formaci[oó]n|proceso|taller|servicio|programa/.test(r)&&!/(realizar|implementar|desarrollar|ejecutar|llevar a cabo|prestar|producir)/.test(joined))issues.push('Las actividades actuales preparan o apoyan el proceso, pero todavía no aparece una acción que produzca directamente el resultado.');
+ if(xs.every(x=>/convocar|seleccionar|difundir|invitar/i.test(x)))issues.push('El conjunto se concentra en convocatoria o vinculación; falta revisar cómo se ejecutará el resultado.');
+ return {ok:issues.length===0,issues}
+}
+function sourceNoun(text){
+ const t=clean(text),q=extractQuantity(t);
+ if(q)return q.unit.replace(/\s+de\s+$/i,'');
+ const m=t.match(/\b(taller(?:es)?|sesion(?:es)?|sesión(?:es)?|jornada(?:s)?|encuentro(?:s)?|actividad(?:es)?|capacitaci[oó]n(?:es)?)\b/i);
+ return m?m[1]:'acciones'
+}
+function baseIndicator(source,type){
  const t=clean(source);
  if(type==='Actividad'){
   if(/^Caracterizar\b/i.test(t))return 'Caracterización elaborada y documentada.';
   if(/^Definir e implementar una programación\b/i.test(t))return 'Porcentaje de cumplimiento de la programación definida.';
   if(/^Registrar y revisar\b/i.test(t))return 'Número de revisiones documentadas de la programación.';
   if(/^Implementar\b/i.test(t))return 'Porcentaje de acciones previstas efectivamente realizadas.';
+  const q=extractQuantity(t),noun=sourceNoun(t);
+  if(q)return 'Porcentaje de '+noun+' realizados respecto de los '+q.raw+' programados.';
   return '[POR REVISAR] Definir un indicador de ejecución para: '+t+'.'
  }
  if(type==='Resultado'){
   if(/Reducción verificable de las diferencias en los niveles de dominio instrumental/i.test(t))return 'Variación de la brecha entre niveles de dominio instrumental respecto de la línea base.';
   if(/equilibrio en la frecuencia de acompañamiento especializado/i.test(t))return 'Variación entre frecuencias de acompañamiento especializado por familia instrumental respecto de la línea base.';
+  if(/mejora|aprendizaje|desempeño|dominio|capacidad|formativ/i.test(t))return 'Porcentaje de participantes que muestran mejora entre la valoración inicial y la valoración final.';
   return '[POR REVISAR] Definir un indicador de resultado para: '+t+'.'
  }
  if(type==='Objetivo'){
@@ -87,36 +146,30 @@ function indicatorProposal(source,type){
  }
  return '[POR REVISAR]'
 }
-
-function indicatorGuidance(source,type){
- const t=clean(source);
- if(type==='Objetivo')return {
-  level:'Indicador de cambio',
-  purpose:'Debe mostrar si el problema principal realmente está cambiando. Evita medir talleres, reuniones o actividades realizadas.',
-  question:'¿Qué cambio observable demostraría que el objetivo general está avanzando?',
-  formulaHint:'Expresa cómo compararás el cambio frente a la línea base.',
-  unitHint:'Porcentaje, diferencia, índice, nivel, frecuencia u otra unidad directamente relacionada con el cambio.',
-  suggestions:[indicatorProposal(t,'Objetivo')].filter(Boolean),
-  formulaExamples:['Valor de seguimiento − línea base','((Valor de seguimiento − línea base) / línea base) × 100, cuando la línea base sea distinta de cero']
- };
- if(type==='Resultado')return {
-  level:'Indicador de resultado',
-  purpose:'Debe comprobar que el resultado o producto esperado existe y tiene la condición prevista. No basta con contar actividades.',
-  question:'¿Qué dato demostraría que este resultado fue realmente alcanzado?',
-  formulaHint:'Define el criterio que permite decidir cuándo el resultado se considera logrado.',
-  unitHint:'Cantidad, porcentaje, cobertura, proporción, nivel de calidad u otra unidad del resultado.',
-  suggestions:[indicatorProposal(t,'Resultado')].filter(Boolean),
-  formulaExamples:['Valor observado comparado con la meta definida','(Resultado alcanzado / resultado previsto) × 100, cuando el resultado sea cuantificable']
- };
- return {
-  level:'Indicador de ejecución',
-  purpose:'Debe mostrar si la actividad se realizó en la cantidad, cobertura, tiempo o condición prevista. Este indicador no demuestra por sí solo el cambio del proyecto.',
-  question:'¿Qué dato demostraría que esta actividad se realizó como estaba prevista?',
-  formulaHint:'Indica cómo calcularás el avance o cumplimiento de la actividad.',
-  unitHint:'Número, porcentaje de cumplimiento, sesiones, participantes, productos u otra unidad de ejecución.',
-  suggestions:[indicatorProposal(t,'Actividad')].filter(Boolean),
-  formulaExamples:['(Cantidad realizada / cantidad programada) × 100','Número de acciones efectivamente realizadas, cuando corresponda']
+function indicatorBattery(source,type,context={}){
+ const t=clean(source),items=[],q=extractQuantity(t),noun=sourceNoun(t);
+ const common={linkedType:type,linkedText:t,provenance:'propuesta_sistema',verificationStatus:'POR_VERIFICAR'};
+ const add=x=>items.push({...common,formula:'[POR VERIFICAR]',unidad:'[POR VERIFICAR]',lineaBase:'[POR VERIFICAR]',meta:'[POR VERIFICAR]',medioVerificacion:'[POR VERIFICAR]',periodicidad:'[POR VERIFICAR]',responsable:'[POR VERIFICAR]',plazo:'[POR VERIFICAR]',verificationSuggestions:[],...x});
+ if(type==='Actividad'){
+  if(q){
+   add({indicatorFamily:'cumplimiento',indicator:'Porcentaje de '+noun+' realizados respecto de los '+q.raw+' programados.',formula:'('+noun.charAt(0).toUpperCase()+noun.slice(1)+' realizados / '+q.value+') × 100',unidad:'%',lineaBase:'0 '+noun+' ejecutados al inicio del periodo de ejecución (línea base operativa)',meta:q.raw+' '+noun+' realizados / 100 % de ejecución',verificationStatus:'PROPUESTA_DERIVADA',verificationSuggestions:['Registros de ejecución','Actas o informes de actividad']});
+  }else add({indicatorFamily:'cumplimiento',indicator:baseIndicator(t,'Actividad'),verificationSuggestions:['Registros de ejecución','Actas o informes de actividad']});
+  if(/taller|sesion|sesión|jornada|encuentro|formaci[oó]n|capacitaci[oó]n/i.test(t))add({indicatorFamily:'participacion',indicator:'Promedio de participantes asistentes por '+(noun==='acciones'?'actividad':noun.replace(/s$/,''))+'.',formula:'Total de asistencias registradas / '+(q?q.value:'número de actividades realizadas'),unidad:'personas por actividad',verificationSuggestions:['Registros de asistencia']});
+  if(/taller|sesion|sesión|formaci[oó]n|capacitaci[oó]n/i.test(t))add({indicatorFamily:'calidad',indicator:'Porcentaje de '+noun+' desarrollados con los criterios de registro y seguimiento definidos.',formula:'('+noun.charAt(0).toUpperCase()+noun.slice(1)+' que cumplen criterios / '+noun+' revisados) × 100',unidad:'%',verificationSuggestions:['Lista de chequeo','Actas o informes de seguimiento']});
  }
+ if(type==='Resultado'){
+  add({indicatorFamily:/mejora|aprendizaje|desempeño|dominio|capacidad|formativ/i.test(t)?'resultado_cambio':'resultado',indicator:baseIndicator(t,'Resultado'),verificationSuggestions:/mejora|aprendizaje|desempeño|dominio|capacidad|formativ/i.test(t)?['Instrumento de valoración inicial y final','Rúbrica de seguimiento']:['Informe de resultados','Registro del producto o resultado']});
+ }
+ if(type==='Objetivo')add({indicatorFamily:'objetivo_cambio',indicator:baseIndicator(t,'Objetivo'),verificationSuggestions:['Fuente de seguimiento del objetivo']});
+ return items.length?items:[{...common,indicatorFamily:'pendiente',indicator:'[POR REVISAR]',formula:'[POR VERIFICAR]',unidad:'[POR VERIFICAR]',lineaBase:'[POR VERIFICAR]',meta:'[POR VERIFICAR]',medioVerificacion:'[POR VERIFICAR]',periodicidad:'[POR VERIFICAR]',responsable:'[POR VERIFICAR]',plazo:'[POR VERIFICAR]',verificationSuggestions:[]}]
+}
+function indicatorProposal(source,type){return indicatorBattery(source,type)[0]?.indicator||'[POR REVISAR]'}
+function indicatorGuidance(source,type,family){
+ const t=clean(source),battery=indicatorBattery(t,type),candidate=battery.find(x=>x.indicatorFamily===family)||battery[0];
+ if(type==='Objetivo')return {level:'Indicador de cambio',purpose:'Debe mostrar si el problema principal realmente está cambiando. Evita medir talleres, reuniones o actividades realizadas.',question:'¿Qué cambio observable demostraría que el objetivo general está avanzando?',formulaHint:'Expresa cómo compararás el cambio frente a la línea base.',unitHint:'Porcentaje, diferencia, índice, nivel, frecuencia u otra unidad directamente relacionada con el cambio.',suggestions:battery.map(x=>x.indicator),formulaExamples:['Valor de seguimiento − línea base','((Valor de seguimiento − línea base) / línea base) × 100, cuando la línea base sea distinta de cero']};
+ if(type==='Resultado')return {level:'Indicador de resultado',purpose:'Debe comprobar que el resultado esperado existe o que ocurrió el cambio previsto. Contar actividades no es suficiente.',question:'¿Qué dato demostraría que este resultado fue realmente alcanzado?',formulaHint:'Define el criterio que permite decidir cuándo el resultado se considera logrado.',unitHint:'Cantidad, porcentaje, proporción, nivel de calidad u otra unidad del resultado.',suggestions:battery.map(x=>x.indicator),formulaExamples:['Valor observado comparado con la meta definida','(Personas que alcanzan el criterio / personas evaluadas) × 100']};
+ const labels={cumplimiento:'Cumplimiento',participacion:'Participación',calidad:'Calidad',producto:'Producto',oportunidad:'Oportunidad',eficiencia:'Eficiencia'};
+ return {level:labels[candidate?.indicatorFamily]||'Indicador de ejecución',purpose:'Mide una dimensión concreta de la actividad. Este dato no demuestra por sí solo el cambio del proyecto.',question:'¿Cómo comprobaremos que esta parte de la actividad ocurrió?',formulaHint:'El sistema propone una fórmula cuando puede derivarla sin inventar datos.',unitHint:'Número, porcentaje, personas, productos u otra unidad pertinente.',suggestions:battery.map(x=>x.indicator),formulaExamples:battery.map(x=>x.formula).filter(x=>!/^\[POR/.test(x))}
 }
 function indicatorQuality(x){
  const missing=v=>!String(v||'').trim()||/^\s*\[POR (VERIFICAR|REVISAR|DEFINIR)\]/i.test(String(v||''));
@@ -126,7 +179,7 @@ function indicatorQuality(x){
  if(missing(x.unidad))issues.push('Falta definir la unidad de medida.');
  if(missing(x.lineaBase))issues.push('Falta la línea base.');
  if(missing(x.meta))issues.push('Falta una meta verificable.');
- if(missing(x.medioVerificacion))issues.push('Falta una fuente o medio de verificación.');
+ if(missing(x.medioVerificacion))issues.push('Falta una fuente o medio de verificación confirmada.');
  if(missing(x.periodicidad))issues.push('Falta indicar cada cuánto se medirá.');
  if(missing(x.responsable))issues.push('Falta asignar responsable.');
  if(missing(x.plazo))issues.push('Falta definir el plazo o momento de cumplimiento.');
@@ -137,5 +190,5 @@ function indicatorQuality(x){
 }
 
 function isPlaceholder(v){return /^\s*\[POR (REVISAR|VERIFICAR|DEFINIR)\]/i.test(String(v||''))}
-window.fcWriting={clean,objectiveProposals,strategyProposals,resultProposal,activityProposals,indicatorProposal,indicatorGuidance,indicatorQuality,isPlaceholder};
+window.fcWriting={clean,objectiveProposals,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorQuality,isPlaceholder};
 })();

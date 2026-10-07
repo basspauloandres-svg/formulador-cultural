@@ -54,3 +54,18 @@ body.guided-mode .completion-wrap .completion-note+ .completion-card{margin-top:
 .indicator-baseline-note{border:1px solid #eadc9b;background:#fff8df;border-radius:9px;padding:9px;font-size:.84rem;color:#5d646b}
 .indicator-quality{border-radius:10px;padding:10px 11px}.indicator-quality.ok{background:#eef8f1;border:1px solid #bddfc7}.indicator-quality.pending{background:#fff8df;border:1px solid #eadc9b}.indicator-quality ul{margin:6px 0 0;padding-left:18px}.indicator-quality p{margin:4px 0}
 @media(max-width:700px){.indicator-level{display:grid}.indicator-step-nav{display:grid}.indicator-step-nav button,.indicator-help>button{width:100%}}
+
+/* Assisted S11-S12 2026-10-06 */
+.trace-context{border:1px solid #d8e5dd;background:#fbfdfb;border-radius:12px;padding:10px 12px}
+.trace-context summary{cursor:pointer;font-weight:800;color:#205e43}.trace-context-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-top:8px}
+.trace-context-grid p{margin:0;display:grid;gap:3px;padding:7px 0;border-top:1px solid #edf2ef}.trace-context-grid b{font-size:.76rem;color:#60706a}.trace-context-grid span{font-size:.88rem;line-height:1.35}
+.assistant-lead{margin:-3px 0 0;color:var(--muted);font-size:.9rem}.activity-ai-actions{display:flex;gap:8px;flex-wrap:wrap}
+.activity-ai-actions button,.activity-suggestion-pills button,.battery-overview button,.verification-suggestions button{border:1px solid #aeb8c2;background:#fff;border-radius:999px;padding:8px 11px;font:inherit}
+.activity-ai-actions button:first-child{border-color:#2b7a58;color:#155c3e;background:#f1faf5;font-weight:750}
+.activity-suggestion-pills{display:flex;gap:7px;flex-wrap:wrap}.activity-suggestion-pills button{background:#f3f8f5;border-color:#d3e4da}
+.proposal-box{border:1px solid #cfe2d7;background:#f7fcf9;border-radius:12px;padding:11px;display:grid;gap:8px}.proposal-box>small{color:#39745b;font-weight:800}.proposal-box>p{margin:0;color:var(--muted);font-size:.82rem}
+.activity-warning{border:1px solid #eadc9b;background:#fff8df;border-radius:10px;padding:10px}.activity-warning p{margin:4px 0;color:#5d646b;font-size:.84rem}
+.didactic-question.compact{font-size:.98rem}.battery-overview{border:1px solid #e1e7e3;background:#fbfcfb;border-radius:11px;padding:10px;display:grid;gap:8px}.battery-overview small{color:var(--muted);font-weight:700}.battery-overview>div{display:flex;gap:7px;flex-wrap:wrap}.battery-overview button.selected{background:#1f7a50;color:#fff;border-color:#1f7a50}
+.indicator-tech-detail{border-top:1px solid #edf0f3;padding-top:9px}.indicator-tech-detail summary{cursor:pointer;font-weight:700;color:#52606d}.indicator-tech-detail .completion-grid{margin-top:10px}
+.verification-suggestions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.verification-suggestions small{width:100%;color:var(--muted)}
+@media(max-width:700px){.trace-context-grid{grid-template-columns:1fr}.activity-ai-actions{display:grid}.activity-ai-actions button{width:100%}.battery-overview>div,.verification-suggestions{display:grid}.battery-overview button,.verification-suggestions button{width:100%;text-align:left}}
