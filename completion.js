@@ -265,6 +265,31 @@ function indicatorHelp(x){
  return window.fcWriting?.indicatorGuidance?window.fcWriting.indicatorGuidance(x.linkedText||x.activityText||'',x.linkedType||'Actividad',x.indicatorFamily,context):{level:'Indicador',purpose:'Define una medida verificable.',question:'¿Qué vamos a medir?',formulaHint:'Explica cómo se obtiene el dato.',unitHint:'Define una unidad.',suggestions:[x.indicator],formulaExamples:[],context}
 }
 function indicatorQuality(x){return window.fcWriting?.indicatorQuality?window.fcWriting.indicatorQuality(x):{ok:false,issues:['Completa los datos del indicador.']}}
+function indicatorMissingFields(x){
+ const miss=v=>!String(v||'').trim()||/^\s*\[POR (VERIFICAR|REVISAR|DEFINIR)\]/i.test(String(v||''));
+ const defs=[
+  ['lineaBase','Línea base','¿Cuál es el valor actual antes de ejecutar el proyecto?'],
+  ['meta','Meta','¿Qué valor quieres alcanzar con este indicador?'],
+  ['periodicidad','Periodicidad','¿Cada cuánto revisarás este indicador?'],
+  ['responsable','Responsable','¿Quién consolidará o verificará este dato?'],
+  ['plazo','Plazo','¿En qué fecha o momento debe comprobarse el cumplimiento?']
+ ];
+ return defs.filter(([k])=>miss(x[k]))
+}
+function indicatorScheduleSuggestions(x){
+ const sch=draft?.S13?.schedule_state?.items||[];let rows=[];
+ if(x.activityId)rows=sch.filter(r=>r.activityId===x.activityId&&r.confirmed);
+ else if(x.resultId){const ids=new Set(confirmedActivities().filter(a=>a.resultId===x.resultId).map(a=>a.id));rows=sch.filter(r=>ids.has(r.activityId)&&r.confirmed)}
+ else if(x.objectiveId){const ids=new Set(confirmedActivities().filter(a=>a.objectiveId===x.objectiveId).map(a=>a.id));rows=sch.filter(r=>ids.has(r.activityId)&&r.confirmed)}
+ const responsible=[...new Set(rows.map(r=>String(r.responsible||r.responsable||'').trim()).filter(Boolean))];
+ const dates=rows.map(r=>String(r.endDate||r.end||'').trim()).filter(Boolean).sort();
+ return {responsible,plazo:dates.length?[dates[dates.length-1]]:[]}
+}
+function indicatorAssistHtml(x){
+ const missing=indicatorMissingFields(x),sch=indicatorScheduleSuggestions(x);
+ if(!missing.length)return '<div class="indicator-assist-done"><b>No hay datos pendientes en esta ficha.</b></div>';
+ return '<div class="indicator-completion-assist"><strong>Completar datos pendientes, uno por uno</strong><p>Responde solo con información real. Si todavía no la tienes, puedes dejarla como <b>[POR VERIFICAR]</b>.</p>'+missing.map(([k,label,q])=>{let opts=[];if(k==='periodicidad')opts=['Al inicio y al cierre','Mensual','Trimestral','Al cierre del proyecto'];if(k==='responsable')opts=sch.responsible;if(k==='plazo')opts=sch.plazo;return '<article class="indicator-assist-card"><small>'+label+'</small><b>'+esc(q)+'</b>'+(opts.length?'<div class="indicator-assist-options">'+opts.map(v=>'<button type="button" data-ind-assist="'+x.id+':'+k+':'+esc(v)+'">'+esc(v)+'</button>').join('')+'</div>':'')+'<textarea data-ind-field="'+x.id+':'+k+'">'+esc(x[k])+'</textarea><button type="button" class="secondary" data-ind-keep-pending="'+x.id+':'+k+'">Todavía no tengo este dato</button></article>'}).join('')+'</div>'
+}
 function indicatorStepHtml(x,step){
  const g=indicatorHelp(x);
  if(step===1)return `<div class="indicator-step"><span class="indicator-step-tag">Paso 1 de 4</span><h4>Definir qué vamos a medir</h4><p>${esc(g.question)}</p><label class="didactic-main-label">Indicador<textarea data-ind-field="${x.id}:indicator">${esc(x.indicator)}</textarea></label><div class="indicator-help"><button type="button" data-ind-help="${x.id}">Ayúdame a formularlo</button><div class="writing-help-panel ${x.showHelp?'':'hidden'}"><strong>${esc(g.level)}</strong><p>${esc(g.purpose)}</p>${(g.suggestions||[]).map((s,i)=>`<article><small>Propuesta ${i+1}</small><p>${esc(s)}</p><button type="button" data-use-indicator="${x.id}:${i}">Usar esta propuesta</button></article>`).join('')}</div></div></div>`;
@@ -283,7 +308,9 @@ function renderS12(){
   <div class="battery-overview"><small>Batería sugerida para este elemento</small><div>${same.map(i=>`<button type="button" data-ind-jump="${i.id}" class="${i.id===x.id?'selected':''}">${esc((i.indicatorFamily||'indicador').replaceAll('_',' '))}</button>`).join('')}</div></div>
   <div class="proposal-box"><small>Propuesta del sistema</small><p class="indicator-main-question">${esc(g.question)}</p><label class="didactic-main-label">Indicador<textarea data-ind-field="${x.id}:indicator">${esc(x.indicator)}</textarea></label><p>${esc(g.purpose)}</p><div class="indicator-help"><button type="button" data-ind-help="${x.id}">Ayúdame a formularlo</button><div class="writing-help-panel ${x.showHelp?'':'hidden'}" data-ind-help-panel="${x.id}"><strong>Ayuda basada en este proyecto</strong>${g.context?.objectiveText?'<p><small>Objetivo:</small> '+esc(g.context.objectiveText)+'</p>':''}${g.context?.resultText?'<p><small>Resultado:</small> '+esc(g.context.resultText)+'</p>':''}${g.context?.activityText?'<p><small>Actividad:</small> '+esc(g.context.activityText)+'</p>':''}${g.context?.population?'<p><small>Población:</small> '+esc(g.context.population)+'</p>':''}${g.context?.territory?'<p><small>Territorio:</small> '+esc(g.context.territory)+'</p>':''}<div class="writing-proposals">${(g.suggestions||[]).map((v,i)=>`<article><small>Propuesta ${i+1}</small><p>${esc(v)}</p><button type="button" data-use-indicator="${x.id}:${i}">Usar esta propuesta</button></article>`).join('')}</div></div></div></div>
   <div class="indicator-quality ${q.ok?'ok':'pending'}"><strong>${q.ok?'Ficha técnica completa':'Puedes continuar con '+q.issues.length+' dato(s) por verificar'}</strong><p>${q.ok?'Los elementos técnicos mínimos están completos.':'Estos datos no bloquean el avance. El sistema los conservará como [POR VERIFICAR] hasta que tengas respaldo.'}</p>${!q.ok?'<div class="indicator-progress-hint"><span>Para avanzar ahora:</span><b>1. Revisa el indicador propuesto · 2. Pulsa “Usar este indicador y continuar”.</b></div>':''}</div>
-  <details class="indicator-tech-detail"><summary>Ver y completar ficha técnica</summary>
+  ${!q.ok?'<button type="button" class="indicator-complete-btn" data-open-indicator-completion="'+x.id+'">Completar datos pendientes con ayuda</button>':''}
+  <div class="indicator-completion-panel ${x.showCompletionHelp?'':'hidden'}" data-indicator-completion-panel="${x.id}">${indicatorAssistHtml(x)}</div>
+  <details class="indicator-tech-detail"><summary>Ver ficha técnica completa</summary>
    ${!q.ok?'<div class="indicator-pending-list"><strong>Datos pendientes</strong><ul>'+q.issues.map(i=>'<li>'+esc(i)+'</li>').join('')+'</ul></div>':''}
    <div class="completion-grid"><label>Fórmula o criterio<textarea data-ind-field="${x.id}:formula">${esc(x.formula)}</textarea></label><label>Unidad<textarea data-ind-field="${x.id}:unidad">${esc(x.unidad)}</textarea></label><label>Línea base<textarea data-ind-field="${x.id}:lineaBase">${esc(x.lineaBase)}</textarea></label><label>Meta<textarea data-ind-field="${x.id}:meta">${esc(x.meta)}</textarea></label><label>Medio de verificación<textarea data-ind-field="${x.id}:medioVerificacion">${esc(x.medioVerificacion)}</textarea></label><label>Periodicidad<textarea data-ind-field="${x.id}:periodicidad">${esc(x.periodicidad)}</textarea></label><label>Responsable<textarea data-ind-field="${x.id}:responsable">${esc(x.responsable)}</textarea></label><label>Plazo<textarea data-ind-field="${x.id}:plazo">${esc(x.plazo)}</textarea></label></div>
    ${(x.verificationSuggestions||[]).length?`<div class="verification-suggestions"><small>Fuentes que podrían servir, si existen en tu proyecto:</small>${x.verificationSuggestions.map((v,i)=>`<button type="button" data-use-verification="${x.id}:${i}">${esc(v)}</button>`).join('')}</div>`:''}
@@ -293,6 +320,9 @@ function renderS12(){
  <div class="completion-toolbar"><button id="exportFull">Ver respaldo técnico en Excel</button></div></section>`;bindS12(s)
 }
 function bindS12(s){
+ document.querySelectorAll('[data-open-indicator-completion]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.openIndicatorCompletion);if(!x)return;x.showCompletionHelp=!x.showCompletionHelp;write('S12',s);renderS12()});
+ document.querySelectorAll('[data-ind-assist]').forEach(b=>b.onclick=()=>{const [id,k,...rest]=b.dataset.indAssist.split(':');const x=s.items.find(i=>i.id===id);if(!x)return;x[k]=rest.join(':');x.confirmed=false;x.verificationStatus='POR_VERIFICAR';write('S12',s);renderS12()});
+ document.querySelectorAll('[data-ind-keep-pending]').forEach(b=>b.onclick=()=>{const [id,k]=b.dataset.indKeepPending.split(':');const x=s.items.find(i=>i.id===id);if(!x)return;x[k]='[POR VERIFICAR]';x.confirmed=false;x.verificationStatus='POR_VERIFICAR';write('S12',s);renderS12()});
  document.querySelectorAll('[data-ind-help]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.indHelp);if(!x)return;x.showHelp=!x.showHelp;write('S12',s);renderS12()});
  document.querySelectorAll('[data-use-indicator]').forEach(b=>b.onclick=()=>{const [id,idx]=b.dataset.useIndicator.split(':');const x=s.items.find(i=>i.id===id);if(!x)return;const g=indicatorHelp(x),v=(g.suggestions||[])[Number(idx)];if(v){x.indicator=v;x.confirmed=false;x.verificationStatus='POR_VERIFICAR';x.showHelp=false;write('S12',s);renderS12()}});
  document.querySelectorAll('[data-ind-field]').forEach(el=>el.onchange=()=>{const [id,k]=el.dataset.indField.split(':');const x=s.items.find(i=>i.id===id);x[k]=el.value.trim()||'[POR VERIFICAR]';x.confirmed=false;x.verificationStatus='POR_VERIFICAR';write('S12',s);renderS12()});
