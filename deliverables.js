@@ -3,7 +3,7 @@ const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replac
 const clean=v=>String(v??'').replace(/\s+/g,' ').trim();
 function filename(){return (clean(draft?.S01?.nombre_del_proyecto)||'proyecto-cultural').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60)||'proyecto-cultural'}
 function problemNodes(){try{return (draft?.S07?.tree_state?.nodes||[]).filter(n=>n.zone!=='outside')}catch{return []}}
-function objectiveNodes(){try{return draft?.S09?.objectives_state?.items||[]}catch{return []}}
+function objectiveNodes(){try{return window.fcGetObjectives?.()||draft?.S09?.objectives_state?.items||[]}catch{return []}}
 function rows(fn){try{return fn?.()||[]}catch{return []}}
 function svgFor(kind='problem'){
  const problem=kind==='problem',nodes=problem?problemNodes():objectiveNodes(),W=1400,cardW=270,cardH=74,gapY=125;
