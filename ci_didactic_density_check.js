@@ -83,3 +83,7 @@ if(!review.includes('data-focus-indicator')||!review.includes('Abrir este indica
 if(!review.includes('Falta: '))fail('S16 no enumera únicamente los campos realmente pendientes');
 if(!completion.includes('fcFocusIndicator')||!completion.includes('fcFocusResultActivities'))fail('El formulador no expone navegación al componente específico desde S16');
 if(!completion.includes('Corrección solicitada desde S16'))fail('S11 no informa cuando se abre un resultado específico desde la revisión final');
+
+if(!coherence.includes('fcGetCurrentValidationSnapshot'))fail('Coherencia no expone una estructura vigente común');
+if(!review.includes('fcGetCurrentValidationSnapshot'))fail('S16 no usa la misma estructura vigente del diagnóstico');
+if(review.includes("const missingValue=v=>"))fail('S16 volvió a duplicar la lógica de validación de indicadores');
