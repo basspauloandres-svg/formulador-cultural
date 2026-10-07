@@ -196,6 +196,8 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(w.document.querySelector('#counter')?.textContent.startsWith('S12'),'El acceso directo de S16 no abrió S12');
  const currentIndicator=w.fcGetIndicators().find(x=>x.id===targetIndicator||x.indicatorId===targetIndicator);
  assert(currentIndicator,'El indicador objetivo del acceso directo dejó de existir');
+ const fieldAssist=w.fcWriting.indicatorFieldAssist(currentIndicator.linkedText||currentIndicator.activityText||'',currentIndicator.linkedType||'Actividad',currentIndicator.indicatorFamily,{},currentIndicator);
+ assert(fieldAssist&&typeof fieldAssist==='object','No existe asistencia técnica contextual para completar el indicador');
  const panel=w.document.querySelector('[data-indicator-completion-panel="'+currentIndicator.id+'"]');
  assert(panel&&!panel.classList.contains('hidden'),'S16 no abrió la ayuda de completitud del indicador específico');
  const sharedValidation=w.fcGetCurrentValidationSnapshot();
