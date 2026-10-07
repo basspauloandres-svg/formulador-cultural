@@ -60,3 +60,7 @@ if(!/^\[POR VERIFICAR\]/.test(accessIndicator.meta))fail('S12 inventó la meta d
 const contextualIndicator=w.indicatorGuidance(accessResult,'Resultado',accessIndicator.indicatorFamily,{objectiveText:'Ampliar el acceso a talleres especializados',population:'Integrantes de la banda',territory:'Municipio de prueba'});
 if(!/Ampliación verificable del acceso a talleres especializados/i.test(contextualIndicator.question))fail('S12 no formula la pregunta con el resultado real');
 if(!contextualIndicator.context.population.includes('Integrantes de la banda'))fail('S12 no conserva la población real en la ayuda');
+
+const longPopulationActivity=w.activityFromPlainLanguage('Se necesitan 6 talleres de trombón','Proceso formativo implementado','Mejorar la formación','Integrantes de la banda con trayectorias distintas, niveles de dominio diversos y criterios de selección específicos');
+if(longPopulationActivity.includes('trayectorias distintas')||longPopulationActivity.length>100)fail('La actividad sigue incrustando la caracterización poblacional en el enunciado');
+if(!/6 talleres de trombón/i.test(longPopulationActivity))fail('La actividad perdió el dato operativo suministrado por el usuario');

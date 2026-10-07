@@ -158,8 +158,6 @@ function activityFromPlainLanguage(input,result,objective,population){
   out='Realizar '+low(out)
  }
  out=finish(out);
- const pop=clean(population);
- if(pop&&!/participantes?|poblaci[oó]n|personas|beneficiari/i.test(out))out=out.replace(/[.]$/,'')+' dirigido a '+low(pop)+'.';
  return out
 }
 function activitySufficiency(items,result){
