@@ -64,13 +64,55 @@ const didacticGuidance={
 'S12:Medios de verificación':['¿Dónde se podrá comprobar el resultado: acta, registro, informe, base de datos, fotografía, medición u otra fuente?']
 };
 
+function fcText(v){return String(v||'').trim()}
+function fcTree(){try{return draft?.S07?.tree_state||JSON.parse(localStorage.getItem('formulador-cultural-problem-tree-v1')||'{}')}catch{return {}}}
+function fcObjectives(){try{return draft?.S09?.objectives_state||JSON.parse(localStorage.getItem('formulador-cultural-objectives-v1')||'{}')}catch{return {}}}
+function fcActivities(){try{return draft?.S11?.completion_state||JSON.parse(localStorage.getItem('formulador-cultural-activities-v1')||'{}')}catch{return {}}}
+function fcResults(){try{return draft?.S11?.results_state||JSON.parse(localStorage.getItem('formulador-cultural-results-v1')||'{}')}catch{return {}}}
+function fcIndicators(){try{return draft?.S12?.completion_state||JSON.parse(localStorage.getItem('formulador-cultural-indicators-v1')||'{}')}catch{return {}}}
+function fcCurrentContext(code,label){
+ const tree=fcTree(),obj=fcObjectives(),acts=fcActivities(),res=fcResults(),inds=fcIndicators();
+ const central=fcText((tree.nodes||[]).find(n=>n.zone==='central')?.text);
+ const directCauses=(tree.nodes||[]).filter(n=>n.zone==='direct_cause').map(n=>fcText(n.text)).filter(Boolean);
+ const directEffects=(tree.nodes||[]).filter(n=>n.zone==='direct_effect').map(n=>fcText(n.text)).filter(Boolean);
+ const objective=fcText((obj.items||[]).find(x=>x.confirmed&&x.zone==='central')?.text);
+ const specific=(obj.items||[]).filter(x=>x.confirmed&&x.zone==='direct_cause').map(x=>fcText(x.text)).filter(Boolean);
+ const result=(res.items||[]).find(x=>x.confirmed);
+ const activity=(acts.items||[]).find(x=>x.confirmed);
+ const indicator=(inds.items||[]).find(x=>x.confirmed);
+ const pop=fcText(draft?.S03?.poblacion_participante||draft?.S03?.poblacion_atendida||draft?.S03?.poblacion_afectada);
+ const territory=fcText(draft?.S02?.territorio_o_lugar_de_intervencion||draft?.S01?.municipio);
+ const situations=fcText(draft?.S05?.situaciones_observables).split(/\n+/).map(s=>s.trim()).filter(Boolean);
+ const ctx={
+  S01:territory?'Este proyecto se está ubicando en '+territory+'.':'',
+  S02:territory?'Estamos describiendo el contexto de '+territory+'.':'',
+  S03:pop?'La población definida hasta ahora es: “'+pop+'”.':'',
+  S04:central?'La evidencia que registres debe ayudar a respaldar el problema vigente: “'+central+'”.':'',
+  S05:situations.length?'Ya registraste '+situations.length+' situación(es). Revisa cada nueva situación frente a las que ya existen para evitar duplicaciones.':'',
+  S06:situations.length>1?'Compara las situaciones reales del proyecto, por ejemplo “'+situations[0]+'” y “'+situations[1]+'”, en ambas direcciones.':'',
+  S07:central?'El problema central vigente es “'+central+'”. Toda causa o efecto que revises debe relacionarse explícitamente con este enunciado.':'',
+  S08:central?'La síntesis debe conservar como punto de partida el problema central vigente: “'+central+'”.':'',
+  S09:central?'Estás transformando el árbol cuyo problema central es “'+central+'”.'+(directCauses.length?' Las causas directas confirmadas incluyen: “'+directCauses[0]+'”.':''):'',
+  S10:specific.length?'La alternativa debe responder a los objetivos específicos confirmados, entre ellos: “'+specific[0]+'”.':'',
+  S11:result?.text?'El resultado que estás operando es “'+fcText(result.text)+'”.'+(result.objectiveText?' Responde al objetivo “'+fcText(result.objectiveText)+'”.':''):'',
+  S12:activity?.text?'La medición debe responder a la actividad real “'+fcText(activity.text)+'”.'+(result?.text?' y al resultado “'+fcText(result.text)+'”.':''):'',
+  S13:activity?.text?'Ubica en el tiempo la actividad real “'+fcText(activity.text)+'”.':'',
+  S14:activity?.text?'Relaciona recursos y costos con la actividad real “'+fcText(activity.text)+'”.':'',
+  S15:activity?.text?'Revisa riesgos que puedan afectar elementos reales del proyecto, por ejemplo la actividad “'+fcText(activity.text)+'”.':'',
+  S16:objective?'La revisión final debe comprobar la trazabilidad desde “'+objective+'” hasta actividades, indicadores, tiempo, presupuesto y riesgos.':''
+ };
+ return ctx[code]||''
+}
 guide=function(label){
   const key=`${active}:${label}`;
-  return didacticGuidance[key]||[
+  const base=didacticGuidance[key]||[
     '¿Qué necesitas decidir en este paso?',
     '¿Qué información ya tienes para responder?',
     '¿Qué dato todavía debes dejar como [POR VERIFICAR]?'
   ];
+  const context=fcCurrentContext(active,label);
+  return context?[context,...base]:base;
 };
 
+window.fcCurrentContext=fcCurrentContext;
 if(typeof render==='function')render();
