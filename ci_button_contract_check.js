@@ -1,8 +1,10 @@
 const fs=require('fs');
 function fail(m){console.error('BUTTON CONTRACT ERROR:',m);process.exitCode=1}
-const files=['vester.js','tree.js','simple_tree_ui.js','s07_front.js','objectives.js','completion.js','planning.js','review_dashboard.js','guided_experience.js','workflow.js'];
+const files=['synthesis.js','vester.js','tree.js','simple_tree_ui.js','s07_front.js','objectives.js','completion.js','planning.js','review_dashboard.js','guided_experience.js','workflow.js'];
 const src=Object.fromEntries(files.map(f=>[f,fs.readFileSync(f,'utf8')]));
 const must=[
+ ['synthesis.js','confirmFinal','confirmAndContinue'],
+ ['synthesis.js','mSave','persistEditors'],
  ['tree.js','data-tree-help','bindTop'],
  ['tree.js','data-tree-phase','dataset.treePhase'],
  ['simple_tree_ui.js','data-role','dataset.role'],
