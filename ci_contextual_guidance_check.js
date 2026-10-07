@@ -3,6 +3,7 @@ function fail(m){console.error('CONTEXTUAL GUIDANCE ERROR:',m);process.exitCode=
 const guidance=fs.readFileSync('guidance.js','utf8');
 const tree=fs.readFileSync('tree.js','utf8');
 const cleanup=fs.readFileSync('data_cleanup.js','utf8');
+const bridge=fs.readFileSync('tree_validation_bridge.js','utf8');
 if(!guidance.includes('fcCurrentContext'))fail('No existe capa global de contexto real');
 for(const code of ['S05','S06','S07','S08','S09','S10','S11','S12','S13','S14','S15','S16'])if(!guidance.includes(code+':'))fail('Falta contexto para '+code);
 if(!guidance.includes('situaciones_observables'))fail('La ayuda no recupera situaciones reales de S05');
@@ -11,6 +12,10 @@ if(!guidance.includes("x.confirmed&&x.zone==='direct_cause'"))fail('La ayuda no 
 if(tree.includes('Pregunta central: ¿este elemento contribuye'))fail('S07 conserva ayuda genérica en lugar de datos reales');
 if(!tree.includes("Estamos revisando si “'+n.text+'”"))fail('S07 no inserta el texto real del elemento revisado');
 if(!tree.includes("centralText=c?.text||'[POR VERIFICAR]'"))fail('S07 no inserta el problema central real');
+if(bridge.includes('Las orientaciones siguientes son pistas para organizar el árbol'))fail('El puente S06→S07 conserva lenguaje genérico');
+if(!bridge.includes('Datos que llegan desde S06')||!bridge.includes('Estas son las situaciones que confirmaste'))fail('El puente S06→S07 no muestra el contexto real');
+if(!bridge.includes('vars.map'))fail('El puente S06→S07 no lista las variables reales confirmadas');
+if(!bridge.includes('decisionText(p)'))fail('El puente S06→S07 no conserva las relaciones reales revisadas');
 if(!cleanup.includes('preserve_confirmed_and_user_data_remove_generated_pending'))fail('La depuración no documenta política de conservación');
 if(!cleanup.includes("x?.confirmed||x?.source==='usuario'"))fail('La depuración no protege actividades confirmadas o creadas por usuario');
 if(!cleanup.includes("s.staleItems=[]"))fail('La depuración no elimina propuestas obsoletas acumuladas');
