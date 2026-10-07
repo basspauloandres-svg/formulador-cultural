@@ -28,3 +28,11 @@
 .completion-table th,.completion-table td{border-color:#dfe8e3}
 .completion-table th{background:#eef7f2;color:#1f4f3b}
 .completion-actions{gap:8px}
+
+/* S12 contextual assistant */
+.indicator-main-question{font-weight:800;color:#10213a;margin:7px 0 10px;line-height:1.35}
+.indicator-pending-list{border:1px solid #eadc9b;background:#fff8df;border-radius:12px;padding:10px 12px;margin:10px 0}
+.indicator-pending-list strong{color:#6d5600}
+.indicator-pending-list ul{margin:7px 0 0;padding-left:20px;color:#625c48}
+.indicator-help{margin-top:10px}
+.indicator-help>button{border:1px solid #8ebca4;background:#f4fbf7;color:#1d6747;border-radius:11px;padding:9px 12px;font:inherit;font-weight:750}
