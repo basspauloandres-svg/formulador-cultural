@@ -146,6 +146,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
  await wait(60);
  assert(w.fcGetSchedule().length===confirmedActs.length,'S13 no creó un ítem de cronograma por actividad confirmada');
+ assert(w.fcGetSchedule().every(x=>x.activityText===w.fcGetActivities().find(a=>a.id===x.activityId)?.text),'S13 conserva una copia textual obsoleta de la actividad');
  const start=w.document.querySelector('[data-sch="startDate"]'),responsible=w.document.querySelector('[data-sch="responsible"]');
  assert(start&&responsible,'S13 no muestra fecha y responsable para reconciliar indicadores');
  start.value='2026-10-07';start.dispatchEvent(new w.Event('change',{bubbles:true}));await wait(30);
