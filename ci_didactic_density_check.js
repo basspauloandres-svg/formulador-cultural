@@ -92,3 +92,7 @@ const deliverables=fs.readFileSync('deliverables.js','utf8'),exportSrc=fs.readFi
 if(!objectivesSrc.includes('fcGetObjectives'))fail('No existe getter de objetivos vigentes');
 if(!deliverables.includes('window.fcGetObjectives'))fail('Las exportaciones documentales no usan objetivos vigentes');
 if(!exportSrc.includes('rowsFrom(window.fcGetObjectives)'))fail('El Excel técnico no usa objetivos vigentes');
+
+if(!completion.includes('activityStoredContext'))fail('S11 no conserva contexto separado del texto de actividad');
+if(!completion.includes('context=activityStoredContext'))fail('Las actividades asistidas no guardan su contexto estructurado');
+if(semantic.includes("+' dirigido a '+low(pop)"))fail('La redacción de actividad vuelve a incrustar toda la población en el texto');
