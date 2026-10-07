@@ -117,7 +117,13 @@ function indicatorProposal(source,i,type='Actividad',template=null){
  const t=template||(window.fcWriting?.indicatorBattery?window.fcWriting.indicatorBattery(linkedText,type,{source})[0]:null)||{};
  const family=t.indicatorFamily||'principal';
  const safe=String(family).replace(/[^a-z0-9_-]/gi,'_');
- return{id:`I-${type}-${linkedId}-${safe}`,indicatorId:`I-${type}-${linkedId}-${safe}`,linkedType:type,linkedId,linkedText,activityId:type==='Actividad'?linkedId:(source.activityId||''),activityText:type==='Actividad'?linkedText:(source.activityText||''),resultId:type==='Resultado'?linkedId:(source.resultId||''),objectiveId:type==='Objetivo'?linkedId:(source.objectiveId||''),indicatorFamily:family,indicator:t.indicator||'[POR REVISAR]',formula:t.formula||'[POR VERIFICAR]',meta:t.meta||'[POR VERIFICAR]',lineaBase:t.lineaBase||'[POR VERIFICAR]',unidad:t.unidad||'[POR VERIFICAR]',periodicidad:t.periodicidad||'[POR VERIFICAR]',medioVerificacion:t.medioVerificacion||'[POR VERIFICAR]',responsable:t.responsable||'[POR VERIFICAR]',plazo:t.plazo||'[POR VERIFICAR]',verificationSuggestions:t.verificationSuggestions||[],provenance:t.provenance||'propuesta_sistema',verificationStatus:t.verificationStatus||'POR_VERIFICAR',confirmed:false,stale:false}
+ return{id:`I-${type}-${linkedId}-${safe}`,indicatorId:`I-${type}-${linkedId}-${safe}`,linkedType:type,linkedId,linkedText,activityId:type==='Actividad'?linkedId:(source.activityId||''),activityText:type==='Actividad'?linkedText:(source.activityText||''),resultId:type==='Resultado'?linkedId:(source.resultId||''),objectiveId:type==='Objetivo'?linkedId:(source.objectiveId||''),indicatorFamily:family,indicator:t.indicator||'[POR REVISAR]',formula:t.formula||'[POR VERIFICAR]',meta:t.meta||'[POR VERIFICAR]',lineaBase:t.lineaBase||'[POR VERIFICAR]',unidad:t.unidad||'[POR VERIFICAR]',periodicidad:t.periodicidad||'[POR VERIFICAR]',medioVerificacion:t.medioVerificacion||'[POR VERIFICAR]',responsable:t.responsable||'[POR VERIFICAR]',plazo:t.plazo||'[POR VERIFICAR]',verificationSuggestions:t.verificationSuggestions||[],provenance:t.provenance||'propuesta_sistema',verificationStatus:t.verificationStatus||'POR_VERIFICAR',definitionStatus:'PENDIENTE',technicalStatus:'PENDIENTE',confirmed:false,stale:false}
+}
+function normalizeIndicatorState(x){
+ const q=indicatorQuality(x);
+ x.definitionStatus=x.confirmed?'DEFINIDO':'PENDIENTE';
+ x.technicalStatus=q.ok?'COMPLETA':'PENDIENTE';
+ return x
 }
 function indicatorSources(){
  const out=[];confirmedActivities().forEach(x=>out.push({source:x,type:'Actividad'}));
@@ -146,8 +152,11 @@ function ensureS12(){
      })
    }
    const removed=old.filter(o=>!used.has(o)).map(o=>({...o,confirmed:false,stale:true,status:'desactualizado',verificationStatus:'REQUIERE_REVISIÓN'}));
+   items.forEach(normalizeIndicatorState);
    s={...s,sourceSignature:sig,items,staleItems:[...(s.staleItems||[]),...removed].slice(-100),updatedAt:null};write('S12',s)
  }
+ let normalized=false;(s.items||[]).forEach(x=>{const d=x.confirmed?'DEFINIDO':'PENDIENTE',t=indicatorQuality(x).ok?'COMPLETA':'PENDIENTE';if(x.definitionStatus!==d||x.technicalStatus!==t){x.definitionStatus=d;x.technicalStatus=t;normalized=true}});
+ if(normalized)write('S12',s);
  return s
 }
 function sync(code){if(typeof session!=='undefined'&&session&&typeof syncSection==='function')syncSection(code).catch(()=>{})}
