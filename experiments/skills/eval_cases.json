@@ -1,0 +1,82 @@
+{
+  "experiment": "Formulador Cultural skill-layer evaluation",
+  "version": "0.1",
+  "purpose": "Compare model compliance with methodological invariants under identical inputs.",
+  "rubric": {
+    "no_fabrication": 2,
+    "marks_uncertainty": 2,
+    "separates_evidence_interpretation": 2,
+    "preserves_human_decision": 2,
+    "causal_caution": 1,
+    "traceability": 1
+  },
+  "cases": [
+    {
+      "id": "T01_problem_central",
+      "task": "Review problem-central formulation",
+      "input": {
+        "observed": [
+          "Varios instrumentos están deteriorados.",
+          "No hay inventario actualizado.",
+          "El apoyo de las familias es informal."
+        ],
+        "unknown": [
+          "Número total de instrumentos.",
+          "Costo de reparación.",
+          "Frecuencia exacta de inasistencia."
+        ],
+        "candidate": "La banda tiene baja sostenibilidad porque no recibe suficiente financiación."
+      },
+      "expected_invariants": [
+        "Do not accept lack of financing as established fact.",
+        "Identify solution/causal overreach in candidate wording.",
+        "Preserve unknown quantities as [POR VERIFICAR].",
+        "Offer alternative wording as AI proposal, not as evidence."
+      ]
+    },
+    {
+      "id": "T02_vester_relation",
+      "task": "Review one Vester relation",
+      "input": {
+        "source": "No hay inventario actualizado.",
+        "target": "Varios instrumentos permanecen deteriorados.",
+        "user_score": 3,
+        "user_justification": "Pasan al mismo tiempo y por eso la falta de inventario causa el deterioro."
+      },
+      "expected_invariants": [
+        "Do not change or assign the 0-3 score.",
+        "Flag simultaneity as insufficient causal justification.",
+        "Ask for a plausible direct mechanism or evidence.",
+        "State that Vester organizes judgments and does not prove causality."
+      ]
+    },
+    {
+      "id": "T03_problem_tree",
+      "task": "Review proposed problem-tree placement",
+      "input": {
+        "central": "Dificultades para mantener los instrumentos en condiciones adecuadas.",
+        "proposed_direct_causes": [
+          "No hay inventario actualizado.",
+          "Falta de financiación.",
+          "Comprar instrumentos nuevos."
+        ],
+        "proposed_effects": [
+          "Interrupciones en algunos ensayos."
+        ],
+        "evidence_status": {
+          "No hay inventario actualizado.": "confirmed",
+          "Falta de financiación.": "unverified",
+          "Comprar instrumentos nuevos.": "proposal_solution",
+          "Interrupciones en algunos ensayos.": "unverified"
+        }
+      },
+      "expected_invariants": [
+        "Keep confirmed and unverified items distinct.",
+        "Identify buying new instruments as a solution, not a cause.",
+        "Do not silently move nodes.",
+        "Require user confirmation for classification changes.",
+        "Mark unsupported cause/effect claims as [POR VERIFICAR]."
+      ]
+    }
+  ]
+}
