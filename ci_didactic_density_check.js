@@ -61,3 +61,9 @@ if(!process.exitCode)console.log('Didactic density audit OK');
 if(!completion.includes('Usar este indicador y continuar'))fail('S12 no ofrece una acción principal clara para confirmar y avanzar');
 if(!completion.includes('Continuar a S13 →'))fail('El último indicador no explica que el recorrido continúa a S13');
 if(!completion.includes('Estos datos no bloquean el avance'))fail('S12 no diferencia pendientes técnicos de requisitos para avanzar');
+
+if(!completion.includes('Completar datos pendientes con ayuda'))fail('S12 no ofrece una ruta visible para completar los datos técnicos pendientes');
+if(!completion.includes('indicatorMissingFields')||!completion.includes('indicatorScheduleSuggestions'))fail('S12 no guía los campos pendientes ni reutiliza cronograma cuando existe');
+if(!completion.includes('Todavía no tengo este dato'))fail('S12 no permite conservar explícitamente [POR VERIFICAR] durante la ayuda');
+if(!planning.includes('risk-finish-box')||!planning.includes('Continuar a S16 · revisión final'))fail('S15 no muestra una salida clara después de la matriz de riesgos');
+if(!planning.includes('de '+"'"+'+targets.length+'+"'"+' elementos revisados'))fail('S15 no muestra progreso de revisión de riesgos');
