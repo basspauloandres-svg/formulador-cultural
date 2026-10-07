@@ -52,6 +52,7 @@ jobs:
             visualization.js \
             s07_front.js \
             simple_tree_ui.js \
+            semantic_writing.js \
             objectives.js \
             workflow.js \
             completion.js \
@@ -72,6 +73,8 @@ jobs:
         run: node ci_architecture_check.js
       - name: Ejecutar auditoría de densidad didáctica
         run: node ci_didactic_density_check.js
+      - name: Ejecutar auditoría semántica
+        run: node ci_semantic_writing_check.js
       - name: Ejecutar auditoría de botones
         run: node ci_button_contract_check.js
       - name: Ejecutar prueba de compatibilidad del proyecto
