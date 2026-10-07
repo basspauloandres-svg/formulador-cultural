@@ -143,6 +143,16 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
  await wait(60);
  assert(w.fcGetSchedule().length===confirmedActs.length,'S13 no creó un ítem de cronograma por actividad confirmada');
+ const start=w.document.querySelector('[data-sch="startDate"]'),responsible=w.document.querySelector('[data-sch="responsible"]');
+ assert(start&&responsible,'S13 no muestra fecha y responsable para reconciliar indicadores');
+ start.value='2026-10-07';start.dispatchEvent(new w.Event('change',{bubbles:true}));await wait(30);
+ const responsible2=w.document.querySelector('[data-sch="responsible"]');responsible2.value='Responsable de prueba';responsible2.dispatchEvent(new w.Event('change',{bubbles:true}));await wait(30);
+ const confirmSchedule=w.document.querySelector('#confirmSchedule');assert(confirmSchedule,'S13 no muestra Confirmar esta actividad');confirmSchedule.click();await wait(50);
+ const activityIndicatorAfterSchedule=w.fcGetIndicators().find(x=>x.linkedType==='Actividad'&&x.activityId===confirmedActs[0].id);
+ assert(activityIndicatorAfterSchedule?.scheduleReconciliation?.fields?.responsable?.value==='Responsable de prueba','S13 no propuso el responsable confirmado para el indicador');
+ assert(activityIndicatorAfterSchedule?.scheduleReconciliation?.fields?.plazo?.value,'S13 no propuso el plazo confirmado para el indicador');
+ assert(/^\[POR VERIFICAR\]/.test(activityIndicatorAfterSchedule.responsable),'La reconciliación sobrescribió silenciosamente el responsable del indicador');
+ assert(/^\[POR VERIFICAR\]/.test(activityIndicatorAfterSchedule.plazo),'La reconciliación sobrescribió silenciosamente el plazo del indicador');
 
  await w.fcNavigate('S14');await wait(60);
  assert(w.fcGetBudgetState().activityStatus[confirmedActs[0].id]==='pending','S14 no inicializó la decisión financiera de la actividad');
