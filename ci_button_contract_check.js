@@ -18,6 +18,7 @@ const must=[
  ['completion.js','data-act-link-result','dataset.actLinkResult'],
  ['completion.js','data-ind-confirm','dataset.indConfirm'],
  ['completion.js','data-open-indicator-completion','dataset.openIndicatorCompletion'],
+ ['completion.js','data-accept-schedule','dataset.acceptSchedule'],
  ['completion.js','indNext',"fcNavigate('S13')"],
  ['planning.js','confirmSchedule','onclick'],
  ['planning.js','confirmBudgetActivity','onclick'],
