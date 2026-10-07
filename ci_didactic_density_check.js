@@ -106,3 +106,8 @@ if(!planning.includes('compactLabel')||!planning.includes('riskWritingIssues'))f
 const deliverableSrc=fs.readFileSync('deliverables.js','utf8'),exportSrc2=fs.readFileSync('export_completion.js','utf8');
 if(!deliverableSrc.includes('compact(x.activityText,28)'))fail('Los documentos finales no compactan etiquetas operativas repetitivas');
 if(!exportSrc2.includes('Texto_original'))fail('El respaldo técnico no preserva el texto original cuando muestra una versión compacta');
+
+if(!completion.includes("['formula','Fórmula o criterio'"))fail('La ayuda de S12 no incluye fórmula o criterio');
+if(!completion.includes("['unidad','Unidad de medida'"))fail('La ayuda de S12 no incluye unidad de medida');
+if(!completion.includes("['medioVerificacion','Medio de verificación'"))fail('La ayuda de S12 no incluye medio de verificación');
+if(!completion.includes('indicatorFieldAssist'))fail('S12 no usa asistencia contextual por campo');
