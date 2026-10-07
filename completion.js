@@ -139,8 +139,9 @@ function ensureS12(){
        if(!prev&&idx===0)prev=old.find(o=>!used.has(o)&&(o.linkedType||'Actividad')===x.type&&(o.linkedId||o.activityId||o.resultId||o.objectiveId)===x.source.id&&!o.indicatorFamily);
        const fresh=indicatorProposal(x.source,seq++,x.type,tpl);
        if(prev){
-         used.add(prev);const changed=String(prev.linkedText||'')!==String(text||'');
-         items.push({...fresh,...prev,id:prev.id||fresh.id,indicatorId:prev.indicatorId||prev.id||fresh.id,linkedType:x.type,linkedId:x.source.id,linkedText:text,activityId:fresh.activityId,resultId:fresh.resultId,objectiveId:fresh.objectiveId,indicatorFamily:family,verificationSuggestions:tpl.verificationSuggestions||prev.verificationSuggestions||[],confirmed:changed?false:!!prev.confirmed,verificationStatus:changed?'REQUIERE_REVISIÓN':(prev.verificationStatus||fresh.verificationStatus),stale:false})
+         used.add(prev);const changed=String(prev.linkedText||'')!==String(text||''),placeholder=window.fcWriting?.isPlaceholder?.(prev.indicator);
+         const refreshed=placeholder&&!window.fcWriting?.isPlaceholder?.(fresh.indicator);
+         items.push({...fresh,...prev,...(refreshed?{indicator:fresh.indicator,formula:fresh.formula,unidad:fresh.unidad,medioVerificacion:fresh.medioVerificacion,verificationSuggestions:fresh.verificationSuggestions}:{}),id:prev.id||fresh.id,indicatorId:prev.indicatorId||prev.id||fresh.id,linkedType:x.type,linkedId:x.source.id,linkedText:text,activityId:fresh.activityId,resultId:fresh.resultId,objectiveId:fresh.objectiveId,indicatorFamily:family,verificationSuggestions:tpl.verificationSuggestions||prev.verificationSuggestions||[],confirmed:(changed||refreshed)?false:!!prev.confirmed,verificationStatus:(changed||refreshed)?'REQUIERE_REVISIÓN':(prev.verificationStatus||fresh.verificationStatus),stale:false})
        }else items.push(fresh)
      })
    }
