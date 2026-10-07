@@ -39,6 +39,14 @@ function guidanceFor(x){
  if(x.zone==='indirect_cause')return 'Este elemento funciona como medio de apoyo. Ayuda a explicar cómo alcanzar un objetivo específico, pero no se convierte automáticamente en objetivo específico.';
  return 'Este elemento expresa un fin esperado. Sirve para mostrar qué mejora podría observarse como consecuencia del proyecto.'
 }
+function writingReviewFor(x){
+ return window.fcWriting?.objectiveWritingReview?window.fcWriting.objectiveWritingReview(x?.text||'',x?.zone||''):{ok:true,issues:[]}
+}
+function writingReviewHtml(x){
+ const r=writingReviewFor(x);if(r.ok)return '';
+ return '<div class="objective-writing-warning"><strong>Antes de confirmar</strong>'+r.issues.map(v=>'<p>'+esc(v)+'</p>').join('')+'<p>Puedes usar <b>Ayúdame a redactarlo</b> para convertir la idea en una formulación adecuada para este nivel. Confirma una redacción limpia, sin [POR REVISAR].</p></div>'
+}
+
 function listHtml(){
  if(!state.items.length)return '<div class="objectives-warning"><strong>S07 no contiene un árbol utilizable.</strong><p>Define al menos el problema central y sus relaciones antes de construir S09.</p></div>';
  cursor=Math.min(cursor,Math.max(0,state.items.length-1));const x=state.items[cursor];
@@ -52,6 +60,7 @@ function listHtml(){
      <div class="objective-source-box"><small>Viene del árbol de problemas</small><p>${esc(cleanProblemText(x.sourceText))}</p></div>
      <div class="objective-suggestion"><small>Orientación</small><p>${esc(guidanceFor(x))}</p></div>
      <label class="objective-main-label">Redacción propuesta<textarea data-obj-text="${x.id}" placeholder="Escribe el cambio deseado, no una actividad.">${esc(x.text)}</textarea></label>
+     ${writingReviewHtml(x)}
      <div class="objective-writing-help">
        <button type="button" data-toggle-objective-help="${x.id}">Ayúdame a redactarlo</button>
        <div class="objective-proposals ${x.showHelp?'':'hidden'}">${objectiveProposals(x.sourceText,x.zone).map((p,i)=>`<article><small>Propuesta ${i+1}</small><p>${esc(p)}</p><button type="button" data-use-objective="${x.id}:${i}">Usar esta propuesta</button></article>`).join('')}</div>
@@ -78,8 +87,8 @@ function render(){
 function bindItems(){
  document.querySelectorAll('[data-toggle-objective-help]').forEach(b=>b.onclick=()=>{const item=state.items.find(x=>x.id===b.dataset.toggleObjectiveHelp);if(!item)return;item.showHelp=!item.showHelp;render()});
  document.querySelectorAll('[data-use-objective]').forEach(b=>b.onclick=()=>{const [id,idx]=b.dataset.useObjective.split(':');const item=state.items.find(x=>x.id===id);if(!item)return;item.text=objectiveProposals(item.sourceText,item.zone)[Number(idx)]||item.text;item.confirmed=false;item.showHelp=false;save();render()});
- document.querySelectorAll('[data-confirm]').forEach(b=>b.onclick=()=>{const item=state.items.find(x=>x.id===b.dataset.confirm),ta=document.querySelector(`[data-obj-text="${b.dataset.confirm}"]`);if(!item||!ta)return;item.text=ta.value.trim();if(!item.text||/\[POR REVISAR\]/i.test(item.text)){item.confirmed=false;alert('Antes de confirmar, elige o escribe una formulación limpia, sin [POR REVISAR].');save();render();return}item.confirmed=true;save();render()});
- document.querySelectorAll('[data-obj-text]').forEach(ta=>ta.oninput=()=>{const item=state.items.find(x=>x.id===ta.dataset.objText);if(item){item.confirmed=false;item.text=ta.value}});
+ document.querySelectorAll('[data-confirm]').forEach(b=>b.onclick=()=>{const item=state.items.find(x=>x.id===b.dataset.confirm),ta=document.querySelector(`[data-obj-text="${b.dataset.confirm}"]`);if(!item||!ta)return;item.text=ta.value.trim();const review=writingReviewFor(item);if(!review.ok){item.confirmed=false;item.showHelp=true;save();render();return}item.confirmed=true;save();render()});
+ document.querySelectorAll('[data-obj-text]').forEach(ta=>ta.oninput=()=>{const item=state.items.find(x=>x.id===ta.dataset.objText);if(!item)return;item.confirmed=false;item.text=ta.value;const card=ta.closest('.objective-card');card?.querySelector('.objective-writing-warning')?.remove();const review=writingReviewFor(item);if(!review.ok&&card){const box=document.createElement('div');box.className='objective-writing-warning';box.innerHTML='<strong>Antes de confirmar</strong>'+review.issues.map(v=>'<p>'+esc(v)+'</p>').join('')+'<p>Puedes usar <b>Ayúdame a redactarlo</b> para convertir la idea en una formulación adecuada para este nivel.</p>';ta.closest('label')?.insertAdjacentElement('afterend',box)}});
  $('#objectivePrev')&&($('#objectivePrev').onclick=()=>{cursor=Math.max(0,cursor-1);render()});
  $('#objectiveNext')&&($('#objectiveNext').onclick=()=>{cursor=Math.min(state.items.length-1,cursor+1);render()})
 }

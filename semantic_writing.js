@@ -12,6 +12,8 @@ function objectiveProposals(text,zone){
  if(/^diferencias? en\b/i.test(t)){const rest=t.replace(/^diferencias? en\s*/i,'');out.push('Reducir las diferencias en '+rest);out.push('Disminuir las brechas observadas en '+rest)}
  else if(/^frecuencia desigual de\b/i.test(t)){const rest=t.replace(/^frecuencia desigual de\s*/i,'');out.push('Equilibrar la frecuencia de '+rest);out.push('Regularizar la frecuencia de '+rest)}
  else if(/^baja participación (?:de|en)\b/i.test(t)){out.push(t.replace(/^baja participación/i,'Incrementar la participación'))}
+ else if(/^participación limitada (?:de|en)\b/i.test(t)){out.push(t.replace(/^participación limitada/i,'Incrementar la participación'))}
+ else if(/^acceso restringido a\b/i.test(t)){out.push('Ampliar el acceso a '+t.replace(/^acceso restringido a\s*/i,''));out.push('Mejorar las condiciones de acceso a '+t.replace(/^acceso restringido a\s*/i,''))}
  else if(/^disminución de\b/i.test(t)){out.push('Incrementar '+t.replace(/^disminución de\s*/i,''))}
  else if(/^insuficiencia de\b/i.test(t)||/^condiciones insuficientes de\b/i.test(t)){const rest=t.replace(/^insuficiencia de\s*/i,'').replace(/^condiciones insuficientes de\s*/i,'');out.push('Mejorar las condiciones de '+rest)}
  else if(/^limitad[oa]s?\b/i.test(t)){out.push(t.replace(/^limitad[oa]s?/i,'Ampliar'))}
@@ -19,10 +21,31 @@ function objectiveProposals(text,zone){
  else if(/^filtración sonora\b/i.test(t)){out.push('Reducir la '+low(t))}
  else if(/^interferencia\b/i.test(t)||/^interferencias\b/i.test(t)){out.push('Reducir '+low(t))}
  else if(/^deterioro de\b/i.test(t)){out.push('Mejorar '+t.replace(/^deterioro de\s*/i,''))}
+ else if(/ingreso periódico de nuevos estudiantes/i.test(t)&&/trayectorias formativas diferentes/i.test(t)){
+  out.push('Reducir las brechas iniciales de formación entre los nuevos estudiantes que ingresan al proceso');
+  out.push('Mejorar las condiciones de nivelación para nuevos estudiantes con trayectorias formativas diferentes');
+  out.push('Favorecer una incorporación formativa más equilibrada de los nuevos estudiantes')
+ }
+ if(zone==='indirect_cause'&&/nuevos estudiantes/i.test(t)&&/trayectorias formativas diferentes/i.test(t)&&!out.length){
+  out.push('Reducir las brechas iniciales de formación entre los nuevos estudiantes');
+  out.push('Mejorar las condiciones de nivelación para los nuevos estudiantes')
+ }
  if((zone==='indirect_effect'||zone==='direct_effect')&&/^reducción de\b/i.test(t)){out.unshift('Incrementar '+t.replace(/^reducción de\s*/i,''))}
  if(!out.length)return ['[POR REVISAR] Redactar el cambio deseado para: '+t+'.'];
  return uniq(out)
 }
+function looksLikeActivity(text){
+ const t=clean(text);
+ return /^(hacer|realizar|implementar|ejecutar|organizar|aplicar|desarrollar|llevar a cabo|capacitar|convocar|contratar|comprar|dictar|crear)\b/i.test(t)
+}
+function objectiveWritingReview(text,zone){
+ const t=clean(text),issues=[];
+ if(!t)return {ok:false,issues:['La redacción está vacía.']};
+ if(looksLikeActivity(t))issues.push(zone==='indirect_cause'?'La redacción parece una actividad. En este punto conviene expresar una condición de apoyo o un cambio deseado.':'La redacción parece una actividad. Conviene expresar el cambio que se busca lograr.');
+ if(/^\[POR REVISAR\]/i.test(String(text||'')))issues.push('La formulación todavía está marcada [POR REVISAR].');
+ return {ok:issues.length===0,issues}
+}
+
 function strategyProposals(items){
  const src=(items||[]).map(clean).filter(Boolean);
  if(!src.length)return ['[POR REVISAR] Definir una estrategia coherente con los objetivos específicos confirmados.'];
@@ -190,5 +213,5 @@ function indicatorQuality(x){
 }
 
 function isPlaceholder(v){return /^\s*\[POR (REVISAR|VERIFICAR|DEFINIR)\]/i.test(String(v||''))}
-window.fcWriting={clean,objectiveProposals,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorQuality,isPlaceholder};
+window.fcWriting={clean,objectiveProposals,objectiveWritingReview,looksLikeActivity,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorQuality,isPlaceholder};
 })();
