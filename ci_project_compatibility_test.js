@@ -118,6 +118,10 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(/Resultado que debe producirse/.test(helpPanel.textContent)&&helpPanel.textContent.includes(added.resultText),'La ayuda de la actividad adicional no muestra el resultado real');
 
  await w.fcNavigate('S12');await wait(80);
+ const firstCompletionHelp=w.document.querySelector('[data-open-indicator-completion]');
+ assert(firstCompletionHelp,'S12 no muestra el control para completar datos pendientes con ayuda');
+ firstCompletionHelp.click();await wait(35);
+ assert(w.document.querySelector('[data-indicator-completion-panel]')&&!w.document.querySelector('[data-indicator-completion-panel]').classList.contains('hidden'),'S12 no abre la guía de datos pendientes');
  const indicators=w.fcGetIndicators();
  assert(indicators.some(x=>x.linkedType==='Actividad'),'S12 no propuso indicador de actividad');
  assert(indicators.some(x=>x.linkedType==='Resultado'),'S12 no propuso indicador de resultado');

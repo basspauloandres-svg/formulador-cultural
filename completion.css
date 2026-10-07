@@ -43,3 +43,14 @@
 .indicator-progress-hint b{font-size:.9rem;line-height:1.4}
 .indicator-card .didactic-actions button.primary{width:100%;min-height:48px;background:linear-gradient(180deg,#23845b,#176b49);border-color:#176b49;color:#fff;font-weight:800}
 .indicator-tech-detail{margin-top:4px}
+
+/* Guided completion of pending indicator data */
+.indicator-complete-btn{width:100%;margin:9px 0;border:1px solid #2d8a61;background:#f4fbf7;color:#176b49;border-radius:11px;padding:11px 13px;font:inherit;font-weight:800}
+.indicator-completion-panel.hidden{display:none}
+.indicator-completion-assist{display:grid;gap:9px;margin:8px 0 12px}
+.indicator-completion-assist>p{margin:0;color:#66756d}
+.indicator-assist-card{display:grid;gap:7px;border:1px solid #dbe6df;border-radius:11px;padding:11px;background:#fff}
+.indicator-assist-card small{color:#66756d;font-weight:800}
+.indicator-assist-card textarea{width:100%;min-height:54px;border:1px solid #cbd9d1;border-radius:9px;padding:8px;font:inherit}
+.indicator-assist-options{display:flex;flex-wrap:wrap;gap:6px}
+.indicator-assist-options button,.indicator-assist-card .secondary{border:1px solid #a8cbb9;background:#f5fbf7;color:#245e44;border-radius:999px;padding:7px 10px;font:inherit}
