@@ -195,7 +195,7 @@ function renderS11(){
  ${x?`<div class="didactic-progress">Actividad ${cursors.S11+1} de ${xs.length}</div>
  <article class="didactic-card activity-assistant-card">
   <details class="trace-context" open><summary>Viene de</summary><div class="trace-context-grid"><p><b>Problema central</b><span>${esc(ctx.problem)}</span></p><p><b>Causa directa</b><span>${esc(ctx.cause)}</span></p><p><b>Objetivo específico</b><span>${esc(ctx.objective)}</span></p><p><b>Resultado esperado</b><span>${esc(ctx.result)}</span></p></div></details>
-  ${(!x.resultId||!x.objectiveId)?`<div class="activity-warning"><strong>Falta conectar esta actividad</strong><p>Esta actividad histórica o manual todavía debe asociarse a un objetivo específico y a un resultado antes de aprobarse.</p></div>`:''}
+  ${activityLinkerHtml(x)}
   <div class="didactic-question">¿Qué debe ocurrir para lograr este resultado?</div>
   <p class="assistant-lead">Responde con ideas sencillas. El sistema las convertirá en actividades bien formuladas.</p>
   <label class="didactic-main-label">Tu idea<textarea data-act-plain="${x.id}" placeholder="Ejemplo: Se necesitan 6 talleres de trombón.">${esc(x.plainText||'')}</textarea></label>
