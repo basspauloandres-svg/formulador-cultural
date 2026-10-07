@@ -1,6 +1,6 @@
 (()=>{
 const $=s=>document.querySelector(s);const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
-const KEYS={S10:'formulador-cultural-alternatives-v1',S11:'formulador-cultural-activities-v1',S12:'formulador-cultural-indicators-v1'};const cursors={S10:0,S11:0,S12:0};const indicatorSteps={};
+const KEYS={S10:'formulador-cultural-alternatives-v1',S11:'formulador-cultural-activities-v1',S12:'formulador-cultural-indicators-v1'};const cursors={S10:0,S11:0,S12:0};const indicatorSteps={};let focusedResultId='';
 function read(code){try{return draft?.[code]?.completion_state||JSON.parse(localStorage.getItem(KEYS[code])||'{}')}catch{return {}}}
 function write(code,state){state.updatedAt=new Date().toISOString();localStorage.setItem(KEYS[code],JSON.stringify(state));if(typeof draft!=='undefined'){draft[code]=draft[code]||{};draft[code].completion_state=state;localStorage.setItem(storeKey,JSON.stringify(draft))}}
 function objectives(){try{return draft?.S09?.objectives_state||JSON.parse(localStorage.getItem('formulador-cultural-objectives-v1')||'{}')}catch{return {}}}
@@ -211,9 +211,10 @@ function bindS10(s){
  $('#goS11')?.addEventListener('click',()=>window.fcNavigate?.('S11'))
 }
 function renderS11(){
- const host=$('#fields');if(!host)return;const s=ensureS11(),xs=s.items||[];cursors.S11=Math.min(cursors.S11,Math.max(0,xs.length-1));const x=xs[cursors.S11],ctx=x?activityContext(x):null,help=x?activityHelp(x,s):null,suff=x?activitySufficiencyFor(x,s):null;
+ const host=$('#fields');if(!host)return;const s=ensureS11(),xs=s.items||[];cursors.S11=Math.min(cursors.S11,Math.max(0,xs.length-1));const x=xs[cursors.S11],ctx=x?activityContext(x):null,help=x?activityHelp(x,s):null,suff=x?activitySufficiencyFor(x,s):null,focusedResult=focusedResultId?confirmedResults().find(r=>r.id===focusedResultId):null,focusedHasActivity=focusedResult?xs.some(a=>a.resultId===focusedResult.id):false;
  host.innerHTML=`<section id="completionS11" class="completion-wrap didactic-flow">
  <div class="didactic-intro"><strong>Construir las actividades desde el objetivo</strong><p>Trabajaremos un resultado por vez. Puedes escribir con tus propias palabras y el sistema te ayudará a convertir la idea en una actividad técnicamente formulada.</p></div>
+ ${focusedResult?`<div class="s16-focus-banner"><strong>Corrección solicitada desde S16</strong><p>Resultado pendiente: ${esc(focusedResult.text)}</p>${focusedHasActivity?'<span>Ya existe una actividad vinculada. Revísala en esta pantalla.</span>':'<button type="button" id="focusCreateActivity">Crear actividad para este resultado</button>'}</div>`:''}
  ${x?`<div class="didactic-progress">Actividad ${cursors.S11+1} de ${xs.length}</div>
  <article class="didactic-card activity-assistant-card">
   <details class="trace-context" open><summary>Viene de</summary><div class="trace-context-grid"><p><b>Problema central</b><span>${esc(ctx.problem)}</span></p><p><b>Causa directa</b><span>${esc(ctx.cause)}</span></p><p><b>Objetivo específico</b><span>${esc(ctx.objective)}</span></p><p><b>Resultado esperado</b><span>${esc(ctx.result)}</span></p></div></details>
@@ -246,6 +247,7 @@ function renderS11(){
  <div class="completion-toolbar"><button id="addAct">+ Añadir otra actividad para este resultado</button><button id="goS12" class="primary" ${xs.some(i=>i.confirmed)?'':'disabled'}>Continuar a indicadores</button></div></section>`;bindS11(s)
 }
 function bindS11(s){
+ $('#focusCreateActivity')&&($('#focusCreateActivity').onclick=()=>{const r=confirmedResults().find(x=>x.id===focusedResultId);if(!r)return;const id=`ACT${s.items.length+1}-${Date.now().toString().slice(-4)}`;s.items.push({id,activityId:id,objectiveId:r.objectiveId||'',objectiveText:r.objectiveText||'',causeId:r.causeId||r.objectiveId||'',resultId:r.id,resultText:r.text||'[POR VERIFICAR]',text:'',plainText:'',confirmed:false,status:'manual',source:'usuario',provenance:'correccion_s16',note:'',showActivityHelp:true,updatedAt:null});cursors.S11=s.items.length-1;focusedResultId='';write('S11',s);renderS11()});
  document.querySelectorAll('[data-act-plain]').forEach(el=>el.oninput=()=>{const x=s.items.find(i=>i.id===el.dataset.actPlain);x.plainText=el.value;x.confirmed=false;write('S11',s)});
  document.querySelectorAll('[data-act-text]').forEach(el=>el.onchange=()=>{const x=s.items.find(i=>i.id===el.dataset.actText);x.text=el.value.trim();x.confirmed=false;x.source='usuario_editado';x.updatedAt=new Date().toISOString();write('S11',s)});
  document.querySelectorAll('[data-act-note]').forEach(el=>el.onchange=()=>{const x=s.items.find(i=>i.id===el.dataset.actNote);x.note=el.value.trim();write('S11',s)});
@@ -363,6 +365,6 @@ function bindS12(s){
  $('#exportFull')&&($('#exportFull').onclick=()=>window.fcExportCompleteWorkbook?.())
 }
 function mount(){const c=$('#counter')?.textContent||'';if(c.startsWith('S10')&&!$('#completionS10'))renderS10();else if(c.startsWith('S11')&&!$('#completionS11'))renderS11();else if(c.startsWith('S12')&&!$('#completionS12'))renderS12()}
-window.fcRefreshCompletionSection=code=>{if(code==='S10'&&($('#counter')?.textContent||'').startsWith('S10'))renderS10();if(code==='S11'&&($('#counter')?.textContent||'').startsWith('S11'))renderS11();if(code==='S12'&&($('#counter')?.textContent||'').startsWith('S12'))renderS12()};window.fcGetAlternatives=()=>ensureS10().items||[];window.fcGetActivities=()=>ensureS11().items||[];window.fcGetIndicators=()=>ensureS12().items||[];window.fcReconcileIndicatorsFromSchedule=()=>reconcileIndicatorsFromSchedule(ensureS12());
+window.fcRefreshCompletionSection=code=>{if(code==='S10'&&($('#counter')?.textContent||'').startsWith('S10'))renderS10();if(code==='S11'&&($('#counter')?.textContent||'').startsWith('S11'))renderS11();if(code==='S12'&&($('#counter')?.textContent||'').startsWith('S12'))renderS12()};window.fcGetAlternatives=()=>ensureS10().items||[];window.fcGetActivities=()=>ensureS11().items||[];window.fcGetIndicators=()=>ensureS12().items||[];window.fcReconcileIndicatorsFromSchedule=()=>reconcileIndicatorsFromSchedule(ensureS12());window.fcFocusIndicator=async(id,{openCompletion=true}={})=>{const s=ensureS12(),idx=s.items.findIndex(x=>x.id===id||x.indicatorId===id);if(idx<0)return false;cursors.S12=idx;const x=s.items[idx];if(openCompletion)x.showCompletionHelp=true;write('S12',s);if(typeof window.fcNavigate==='function')await window.fcNavigate('S12');setTimeout(()=>renderS12(),0);return true};window.fcFocusResultActivities=async id=>{focusedResultId=id;const s=ensureS11(),idx=s.items.findIndex(x=>x.resultId===id);if(idx>=0)cursors.S11=idx;if(typeof window.fcNavigate==='function')await window.fcNavigate('S11');setTimeout(()=>renderS11(),0);return true};
 new MutationObserver(mount).observe(document.body,{subtree:true,childList:true});mount();
 })();
