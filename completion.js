@@ -4,7 +4,8 @@ const KEYS={S10:'formulador-cultural-alternatives-v1',S11:'formulador-cultural-a
 function read(code){try{return draft?.[code]?.completion_state||JSON.parse(localStorage.getItem(KEYS[code])||'{}')}catch{return {}}}
 function write(code,state){state.updatedAt=new Date().toISOString();localStorage.setItem(KEYS[code],JSON.stringify(state));if(typeof draft!=='undefined'){draft[code]=draft[code]||{};draft[code].completion_state=state;localStorage.setItem(storeKey,JSON.stringify(draft))}}
 function objectives(){try{return draft?.S09?.objectives_state||JSON.parse(localStorage.getItem('formulador-cultural-objectives-v1')||'{}')}catch{return {}}}
-function confirmedMeans(){return (objectives().items||[]).filter(x=>x.confirmed&&(x.zone==='direct_cause'||x.zone==='indirect_cause')).map(x=>({id:x.id,text:x.text,zone:x.zone}))}
+function confirmedMeans(){return (objectives().items||[]).filter(x=>x.confirmed&&x.zone==='direct_cause').map(x=>({id:x.id,text:x.text,zone:x.zone,sourceText:x.sourceText||'',confirmed:true}))}
+function registeredSpecificObjectives(){const xs=(objectives().items||[]).filter(x=>x.zone==='direct_cause'&&String(x.text||'').trim()).map(x=>({id:x.id,text:x.text,zone:x.zone,sourceText:x.sourceText||'',confirmed:!!x.confirmed}));if(xs.length)return xs;const raw=String(draft?.S09?.medios_directos||'').split(/\n+/).map(x=>x.trim()).filter(Boolean);return raw.map((text,i)=>({id:'legacy-specific-'+(i+1),text,zone:'direct_cause',sourceText:'',confirmed:false}))}
 function selectedAlternative(){return (read('S10').items||[]).find(x=>x.selected)||null}
 function confirmedActivities(){return (read('S11').items||[]).filter(x=>x.confirmed)}
 function confirmedResults(){try{return (draft?.S11?.results_state?.items||JSON.parse(localStorage.getItem('formulador-cultural-results-v1')||'{}').items||[]).filter(x=>x.confirmed)}catch{return []}}
@@ -27,10 +28,12 @@ function writingProposals(x){
 }
 function ensureS10(){
  let s=read('S10'),means=confirmedMeans(),sig=means.map(x=>`${x.id}:${x.text}`).join('|');
- if(!means.length&&Array.isArray(s.items)&&s.items.length)return s;
+ if(!means.length){
+   if(Array.isArray(s.items)&&s.items.length){s={...s,items:[],sourceSignature:'',archivedItems:[...(s.archivedItems||[]),...s.items.map(x=>({...x,archived:true,archiveReason:'sin_objetivo_especifico_confirmado',archivedAt:new Date().toISOString()}))].slice(-250),updatedAt:new Date().toISOString()};write('S10',s)}
+   return s
+ }
  if(!s.items||s.sourceSignature!==sig){
-   const old=new Map((s.items||[]).map(x=>[x.id,x]));
-   s={sourceSignature:sig,items:makeAlternatives().map(x=>old.get(x.id)||x),updatedAt:null};write('S10',s)
+   s={...s,sourceSignature:sig,items:makeAlternatives(),updatedAt:null};write('S10',s)
  }
  return s
 }
@@ -141,8 +144,10 @@ function ensureS12(){
 }
 function sync(code){if(typeof session!=='undefined'&&session&&typeof syncSection==='function')syncSection(code).catch(()=>{})}
 function renderS10(){
- const host=$('#fields');if(!host)return;const gate=window.fcS09TransitionStatus?.();
- if(gate&&!gate.ok){host.innerHTML='<section id="completionS10" class="completion-wrap didactic-flow"><div class="completion-note"><strong>Antes de elegir una alternativa, revisa el árbol de problemas.</strong><p>'+gate.issues.map(x=>esc(x.message)).join(' ')+'</p><button type="button" id="backToS07">Revisar S07 · árbol de problemas</button><button type="button" id="backToS09">Revisar S09 · objetivos</button></div></section>';$('#backToS07')?.addEventListener('click',()=>window.fcNavigate?.('S07'));$('#backToS09')?.addEventListener('click',()=>window.fcNavigate?.('S09'));return}
+ const host=$('#fields');if(!host)return;const gate=window.fcS09TransitionStatus?.(),confirmedSpecific=confirmedMeans(),registeredSpecific=registeredSpecificObjectives();
+ if((gate&&!gate.ok)||!confirmedSpecific.length){
+   const objectiveList=registeredSpecific.length?'<div class="writing-source"><small>Objetivos específicos registrados:</small>'+registeredSpecific.map(o=>'<p>• '+esc(cleanSourceText(o.text))+(o.confirmed?'':' <b>[POR VERIFICAR]</b>')+'</p>').join('')+'</div>':'<p>No hay objetivos específicos registrados todavía.</p>';
+   host.innerHTML='<section id="completionS10" class="completion-wrap didactic-flow"><div class="completion-note"><strong>Antes de definir una alternativa, necesitamos un objetivo específico confirmado.</strong><p>La alternativa se construye a partir de los objetivos reales del proyecto. El sistema no generará una estrategia genérica mientras ese vínculo no esté confirmado.</p>'+objectiveList+'<button type="button" id="backToS09">Revisar y confirmar S09 · objetivos</button></div></section>';$('#backToS09')?.addEventListener('click',()=>window.fcNavigate?.('S09'));return}
  const s=ensureS10(),xs=s.items||[];cursors.S10=Math.min(cursors.S10,Math.max(0,xs.length-1));const x=xs[cursors.S10];
  host.innerHTML=`<section id="completionS10" class="completion-wrap didactic-flow">
  <div class="didactic-intro"><strong>Elegir el camino de trabajo</strong><p>Revisa una opción cada vez. La herramienta te muestra de dónde viene; tú decides si sirve para tu proyecto.</p></div>
@@ -154,7 +159,7 @@ function renderS10(){
      <button type="button" data-writing-help="${x.id}">Ayúdame a redactarla</button>
      <div class="writing-help-panel ${x.showWritingHelp?'':'hidden'}" data-writing-panel="${x.id}">
        <div class="writing-help-explain"><strong>¿Qué debes escribir aquí?</strong><p>Una alternativa describe el <b>camino general</b> que seguirá el proyecto para alcanzar los objetivos. Todavía no escribas actividades concretas.</p></div>
-       <div class="writing-source"><small>La herramienta está usando como base:</small>${sourceMeansForAlternative(x).map(m=>`<p>• ${esc(cleanSourceText(m.text))}</p>`).join('')||'<p>• Objetivos previamente registrados [POR VERIFICAR]</p>'}</div>
+       <div class="writing-source"><small>La herramienta está usando como base estos objetivos específicos confirmados:</small>${sourceMeansForAlternative(x).map(m=>`<p>• ${esc(cleanSourceText(m.text))}</p>`).join('')}</div>
        <div class="writing-proposals">${writingProposals(x).map((p,i)=>`<article><small>Propuesta ${i+1}</small><p>${esc(p)}</p><button type="button" data-use-writing="${x.id}:${i}">Usar esta propuesta</button></article>`).join('')}</div>
      </div>
    </div>

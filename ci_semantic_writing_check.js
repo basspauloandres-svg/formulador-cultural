@@ -33,3 +33,8 @@ if(!coherence.includes('Causas directas → objetivos específicos'))fail('Coher
 const docs=fs.readFileSync('deliverables.js','utf8');
 if(!docs.includes("spec=obj.filter(x=>x.zone==='direct_cause')"))fail('Documento final mezcla causas indirectas con objetivos específicos');
 if(!process.exitCode)console.log('Semantic writing audit OK');
+const strategyContext=w.strategyProposals(['Mejorar las condiciones de nivelación para nuevos estudiantes con trayectorias formativas diferentes.']);
+if(strategyContext.some(x=>/^\[POR REVISAR\]/.test(x)))fail('S10 sigue devolviendo una estrategia genérica para un objetivo real');
+if(!strategyContext.some(x=>/nivelación|trayectorias formativas/i.test(x)))fail('S10 no conserva el contenido real del objetivo específico en la alternativa');
+const strategyMissing=w.strategyProposals([]);
+if(!strategyMissing[0].includes('Faltan objetivos específicos confirmados'))fail('S10 no distingue ausencia de objetivos de una propuesta válida');
