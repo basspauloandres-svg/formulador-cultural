@@ -44,7 +44,7 @@ function writingReviewFor(x){
 }
 function writingReviewHtml(x){
  const r=writingReviewFor(x);if(r.ok)return '';
- return '<div class="objective-writing-warning"><strong>Antes de confirmar</strong>'+r.issues.map(v=>'<p>'+esc(v)+'</p>').join('')+'<p>Puedes usar <b>Ayúdame a redactarlo</b> para convertir la idea en una formulación adecuada para este nivel.</p></div>'
+ return '<div class="objective-writing-warning"><strong>Antes de confirmar</strong>'+r.issues.map(v=>'<p>'+esc(v)+'</p>').join('')+'<p>Puedes usar <b>Ayúdame a redactarlo</b> para convertir la idea en una formulación adecuada para este nivel. Confirma una redacción limpia, sin [POR REVISAR].</p></div>'
 }
 
 function listHtml(){
