@@ -327,7 +327,7 @@ function indicatorStepHtml(x,step){
  return `<div class="indicator-step"><span class="indicator-step-tag">Paso 4 de 4</span><h4>Definir cómo y cuándo lo vamos a comprobar</h4><label class="didactic-main-label">Medio o fuente de verificación<textarea data-ind-field="${x.id}:medioVerificacion">${esc(x.medioVerificacion)}</textarea></label><div class="completion-grid"><label>Periodicidad<textarea data-ind-field="${x.id}:periodicidad">${esc(x.periodicidad)}</textarea></label><label>Plazo<textarea data-ind-field="${x.id}:plazo">${esc(x.plazo)}</textarea></label><label>Responsable<textarea data-ind-field="${x.id}:responsable">${esc(x.responsable)}</textarea></label></div></div>`
 }
 function renderS12(){
- const host=$('#fields');if(!host)return;const s=ensureS12(),xs=s.items||[];cursors.S12=Math.min(cursors.S12,Math.max(0,xs.length-1));const x=xs[cursors.S12];const g=x?indicatorHelp(x):null,q=x?indicatorQuality(x):null;
+ const host=$('#fields');if(!host)return;const s=ensureS12();reconcileIndicatorsFromSchedule(s);const xs=s.items||[];cursors.S12=Math.min(cursors.S12,Math.max(0,xs.length-1));const x=xs[cursors.S12];const g=x?indicatorHelp(x):null,q=x?indicatorQuality(x):null;
  const same=x?xs.filter(i=>i.linkedType===x.linkedType&&i.linkedId===x.linkedId):[];
  host.innerHTML=`<section id="completionS12" class="completion-wrap didactic-flow">
  <div class="didactic-intro"><strong>¿Cómo comprobaremos que esto ocurrió?</strong><p>El sistema propone una batería de indicadores a partir de actividades, resultados y objetivos confirmados. Tú decides cuáles usar y completas únicamente los datos que realmente conoces.</p></div>
