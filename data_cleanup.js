@@ -7,7 +7,7 @@ function parse(k){try{return JSON.parse(localStorage.getItem(k)||'{}')}catch{ret
 function clone(v){try{return JSON.parse(JSON.stringify(v||{}))}catch{return {}}}
 function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
 function stripTransient(x){if(!x||typeof x!=='object')return x;const y={...x};delete y.showHelp;delete y.showActivityHelp;delete y.stale;return y}
-const draft=parse(DRAFT_KEY);
+const projectDraft=(typeof draft!=='undefined'&&draft&&typeof draft==='object')?draft:parse(DRAFT_KEY);
 function stateFrom(key,fallback){
  const local=parse(key);
  if(Array.isArray(local.items))return local;
@@ -24,25 +24,25 @@ function cleanState(key,fallback,keep){
  s.items=kept;s.archivedItems=archiveOf(s,removed);s.staleItems=[];s.sourceSignature='';s.engineVersion=MIGRATION;save(key,s);return s
 }
 function cleanObjectives(){
- const key='formulador-cultural-objectives-v1',s=stateFrom(key,draft?.S09?.objectives_state);if(!Array.isArray(s.items))return null;
+ const key='formulador-cultural-objectives-v1',s=stateFrom(key,projectDraft?.S09?.objectives_state);if(!Array.isArray(s.items))return null;
  const kept=[],removed=[];
  s.items.forEach(x=>(x?.confirmed?kept:removed).push(stripTransient(x)));
  s.items=kept;s.archivedItems=archiveOf(s,removed);s.sourceSignature='';s.engineVersion=MIGRATION;save(key,s);return s
 }
 const cleaned={
  S09:cleanObjectives(),
- results:cleanState('formulador-cultural-results-v1',draft?.S11?.results_state,x=>x?.confirmed||x?.source==='usuario'||x?.source==='usuario_editado'),
- S11:cleanState('formulador-cultural-activities-v1',draft?.S11?.completion_state,x=>x?.confirmed||x?.source==='usuario'||x?.source==='usuario_editado'||x?.plainText),
- S12:cleanState('formulador-cultural-indicators-v1',draft?.S12?.completion_state,x=>x?.confirmed||x?.provenance==='usuario'),
- S10:cleanState('formulador-cultural-alternatives-v1',draft?.S10?.completion_state,x=>x?.selected||x?.confirmed||x?.note||x?.source==='usuario')
+ results:cleanState('formulador-cultural-results-v1',projectDraft?.S11?.results_state,x=>x?.confirmed||x?.source==='usuario'||x?.source==='usuario_editado'),
+ S11:cleanState('formulador-cultural-activities-v1',projectDraft?.S11?.completion_state,x=>x?.confirmed||x?.source==='usuario'||x?.source==='usuario_editado'||x?.plainText),
+ S12:cleanState('formulador-cultural-indicators-v1',projectDraft?.S12?.completion_state,x=>x?.confirmed||x?.provenance==='usuario'),
+ S10:cleanState('formulador-cultural-alternatives-v1',projectDraft?.S10?.completion_state,x=>x?.selected||x?.confirmed||x?.note||x?.source==='usuario')
 };
-if(draft&&typeof draft==='object'){
- draft.S09=draft.S09||{};if(cleaned.S09)draft.S09.objectives_state=cleaned.S09;
- draft.S11=draft.S11||{};if(cleaned.results)draft.S11.results_state=cleaned.results;if(cleaned.S11)draft.S11.completion_state=cleaned.S11;
- draft.S12=draft.S12||{};if(cleaned.S12)draft.S12.completion_state=cleaned.S12;
- draft.S10=draft.S10||{};if(cleaned.S10)draft.S10.completion_state=cleaned.S10;
- draft.data_cleanup={version:MIGRATION,updatedAt:new Date().toISOString(),policy:'preserve_confirmed_and_user_data_archive_generated_pending',archiveLimit:250};
- save(DRAFT_KEY,draft)
+if(projectDraft&&typeof projectDraft==='object'){
+ projectDraft.S09=projectDraft.S09||{};if(cleaned.S09)projectDraft.S09.objectives_state=cleaned.S09;
+ projectDraft.S11=projectDraft.S11||{};if(cleaned.results)projectDraft.S11.results_state=cleaned.results;if(cleaned.S11)projectDraft.S11.completion_state=cleaned.S11;
+ projectDraft.S12=projectDraft.S12||{};if(cleaned.S12)projectDraft.S12.completion_state=cleaned.S12;
+ projectDraft.S10=projectDraft.S10||{};if(cleaned.S10)projectDraft.S10.completion_state=cleaned.S10;
+ projectDraft.data_cleanup={version:MIGRATION,updatedAt:new Date().toISOString(),policy:'preserve_confirmed_and_user_data_archive_generated_pending',archiveLimit:250};
+ save(DRAFT_KEY,projectDraft)
 }
 localStorage.setItem(FLAG,MIGRATION);
 })();
