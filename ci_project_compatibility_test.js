@@ -93,6 +93,14 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  const results=w.fcGetResults().filter(x=>x.confirmed);
  assert(results.length>=1,'No quedó un resultado confirmado');
  const activities=w.fcGetActivities();
+ if(!activities.length){
+   console.error('DEBUG_S11',JSON.stringify({
+     alternatives:w.fcGetAlternatives?.(),
+     results:w.fcGetResults?.(),
+     objectives:JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1')||'{}')?.S09?.objectives_state,
+     s11:JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1')||'{}')?.S11
+   },null,2));
+ }
  assert(activities.length>=1,'No se generaron actividades desde el resultado confirmado');
  assert(activities.every(x=>x.resultId),'Existe actividad propuesta sin resultId');
  assert(activities.every(x=>results.some(r=>r.id===x.resultId)),'Una actividad no deriva de un resultado confirmado');
