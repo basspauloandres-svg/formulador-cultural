@@ -183,6 +183,18 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
  await w.fcNavigate('S16');await wait(80);
  assert(w.document.querySelector('.review-dashboard'),'S16 no renderizó el panel final');
+ const concretePending=w.document.querySelector('[data-focus-indicator]');
+ assert(concretePending,'S16 no muestra un indicador pendiente específico');
+ const targetIndicator=concretePending.dataset.focusIndicator;
+ const pendingCard=concretePending.closest('.review-pending-card');
+ assert(pendingCard&&/Falta:/.test(pendingCard.textContent),'S16 no explica qué dato concreto falta en el indicador');
+ concretePending.click();await wait(80);
+ assert(w.document.querySelector('#counter')?.textContent.startsWith('S12'),'El acceso directo de S16 no abrió S12');
+ const currentIndicator=w.fcGetIndicators().find(x=>x.id===targetIndicator||x.indicatorId===targetIndicator);
+ assert(currentIndicator,'El indicador objetivo del acceso directo dejó de existir');
+ const panel=w.document.querySelector('[data-indicator-completion-panel="'+currentIndicator.id+'"]');
+ assert(panel&&!panel.classList.contains('hidden'),'S16 no abrió la ayuda de completitud del indicador específico');
+ await w.fcNavigate('S16');await wait(80);
  assert(typeof w.fcTreeSvg==='function'&&/^<svg/.test(w.fcTreeSvg('problem')),'No se pudo generar SVG del árbol de problemas');
  assert(typeof w.fcProjectReportHTML==='function'&&/Proyecto de prueba/.test(w.fcProjectReportHTML()),'No se pudo construir el documento final HTML');
  assert(typeof w.fcExportCompleteWorkbook==='function','No está disponible la exportación técnica Excel');
