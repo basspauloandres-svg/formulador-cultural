@@ -27,7 +27,7 @@ if(!completion.includes('data-act-link-result')||!completion.includes('linkActiv
 if(!completion.includes('¿Cómo comprobaremos que esto ocurrió?'))fail('S12 no presenta la lógica asistida de comprobación');
 if(!completion.includes('data-ind-help')||!completion.includes('data-use-indicator'))fail('S12 no permite pedir y adoptar ayuda contextual para redactar el indicador');
 if(!completion.includes('indicatorProjectContext'))fail('S12 no reúne el contexto real del proyecto para formular indicadores');
-if(!completion.includes("Faltan '+q.issues.length+' dato(s) por verificar"))fail('S12 no resume los pendientes antes del detalle técnico');
+if(!completion.includes("Puedes continuar con '+q.issues.length+' dato(s) por verificar"))fail('S12 no deja claro que los pendientes técnicos no bloquean el avance');
 if(!completion.includes('Batería sugerida para este elemento'))fail('S12 no presenta múltiples dimensiones de indicador');
 if(!completion.includes('Ver y completar ficha técnica'))fail('S12 no mantiene el detalle técnico en una capa secundaria');
 if(!completion.includes('Fórmula o criterio')||!completion.includes('Línea base')||!completion.includes('Meta'))fail('S12 perdió elementos de la ficha técnica');
@@ -58,3 +58,6 @@ if(!guided.includes("item=s.items.find"))fail('El encabezado no muestra la subse
 if(guided.includes("class=\"guided-stage '+(cur?'current ':'')+ss+'\""))fail('El recorrido usa estados CSS genéricos que pueden colisionar con .progress');
 if(!guided.includes("'stage-'+ss"))fail('El recorrido no usa clases de estado específicas para cada etapa');
 if(!process.exitCode)console.log('Didactic density audit OK');
+if(!completion.includes('Usar este indicador y continuar'))fail('S12 no ofrece una acción principal clara para confirmar y avanzar');
+if(!completion.includes('Continuar a S13 →'))fail('El último indicador no explica que el recorrido continúa a S13');
+if(!completion.includes('Estos datos no bloquean el avance'))fail('S12 no diferencia pendientes técnicos de requisitos para avanzar');

@@ -126,7 +126,15 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(indicators.some(x=>x.indicatorFamily),'S12 no conserva la familia/dimensión del indicador');
  assert(indicators.every(x=>x.indicatorId||x.id),'S12 generó indicadores sin identificador estable');
 
- await w.fcNavigate('S13');await wait(60);
+ for(let i=0;i<indicators.length;i++){
+   let current=w.fcGetIndicators()[i],ta=w.document.querySelector('[data-ind-field="'+current.id+':indicator"]');
+   if(ta&&/^\s*\[POR REVISAR\]/i.test(ta.value)){ta.value='Indicador verificable de prueba '+(i+1);ta.dispatchEvent(new w.Event('change',{bubbles:true}));await wait(25)}
+   const use=w.document.querySelector('[data-ind-confirm]');assert(use,'S12 no muestra el control principal para usar el indicador '+(i+1));use.click();await wait(45);
+ }
+ assert(w.localStorage.getItem('fc_active')==='S13'||w.document.querySelector('#counter')?.textContent.startsWith('S13'),'S12 no avanzó a S13 al confirmar el último indicador');
+ assert(w.fcGetIndicators().every(x=>x.confirmed),'S12 no confirmó todos los indicadores durante el recorrido asistido');
+
+ await wait(60);
  assert(w.fcGetSchedule().length===confirmedActs.length,'S13 no creó un ítem de cronograma por actividad confirmada');
 
  await w.fcNavigate('S14');await wait(60);
