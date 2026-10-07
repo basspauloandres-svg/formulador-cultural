@@ -215,7 +215,12 @@ function indicatorBattery(source,type,context={}){
   if(/taller|sesion|sesión|formaci[oó]n|capacitaci[oó]n/i.test(t))add({indicatorFamily:'calidad',indicator:'Porcentaje de '+noun+' desarrollados con los criterios de registro y seguimiento definidos.',formula:'('+noun.charAt(0).toUpperCase()+noun.slice(1)+' que cumplen criterios / '+noun+' revisados) × 100',unidad:'%',verificationSuggestions:['Lista de chequeo','Actas o informes de seguimiento']});
  }
  if(type==='Resultado'){
-  add({indicatorFamily:/mejora|aprendizaje|desempeño|dominio|capacidad|formativ/i.test(t)?'resultado_cambio':'resultado',indicator:baseIndicator(t,'Resultado'),verificationSuggestions:/mejora|aprendizaje|desempeño|dominio|capacidad|formativ/i.test(t)?['Instrumento de valoración inicial y final','Rúbrica de seguimiento']:['Informe de resultados','Registro del producto o resultado']});
+  const access=/ampliaci[oó]n verificable del acceso a|mejora verificable del acceso a|mayor acceso a/i.test(t);
+  const change=/mejora|aprendizaje|desempeño|dominio|capacidad|formativ/i.test(t);
+  if(access){
+   const m=t.match(/acceso a\s+(.+?)(?:\s+para\s+(.+))?$/i),resource=clean(m?.[1]||'los procesos definidos'),target=clean(m?.[2]||'la población vinculada').replace(/^algunas?\s+/i,'');
+   add({indicatorFamily:'resultado_acceso',indicator:baseIndicator(t,'Resultado'),formula:'Número de '+target+' con acceso registrado a '+resource+' en seguimiento − número de '+target+' con acceso registrado a '+resource+' en la línea base',unidad:target,verificationSuggestions:['Registros de inscripción o participación','Listas de asistencia','Informe de seguimiento del acceso']});
+  }else add({indicatorFamily:change?'resultado_cambio':'resultado',indicator:baseIndicator(t,'Resultado'),verificationSuggestions:change?['Instrumento de valoración inicial y final','Rúbrica de seguimiento']:['Informe de resultados','Registro del producto o resultado']});
  }
  if(type==='Objetivo')add({indicatorFamily:'objetivo_cambio',indicator:baseIndicator(t,'Objetivo'),verificationSuggestions:['Fuente de seguimiento del objetivo']});
  return items.length?items:[{...common,indicatorFamily:'pendiente',indicator:'[POR REVISAR]',formula:'[POR VERIFICAR]',unidad:'[POR VERIFICAR]',lineaBase:'[POR VERIFICAR]',meta:'[POR VERIFICAR]',medioVerificacion:'[POR VERIFICAR]',periodicidad:'[POR VERIFICAR]',responsable:'[POR VERIFICAR]',plazo:'[POR VERIFICAR]',verificationSuggestions:[]}]
