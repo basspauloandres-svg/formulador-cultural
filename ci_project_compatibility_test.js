@@ -137,6 +137,9 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  }
  assert(w.localStorage.getItem('fc_active')==='S13'||w.document.querySelector('#counter')?.textContent.startsWith('S13'),'S12 no avanzó a S13 al confirmar el último indicador');
  assert(w.fcGetIndicators().every(x=>x.confirmed),'S12 no confirmó todos los indicadores durante el recorrido asistido');
+ assert(w.fcGetIndicators().every(x=>x.definitionStatus==='DEFINIDO'),'S12 no registró el estado DEFINIDO de los indicadores confirmados');
+ assert(w.fcGetIndicators().some(x=>x.technicalStatus==='PENDIENTE'),'S12 confundió definición confirmada con ficha técnica completa');
+ assert(w.fcGetIndicators().filter(x=>x.technicalStatus==='PENDIENTE').every(x=>x.verificationStatus==='POR_VERIFICAR'),'S12 no conserva POR_VERIFICAR en fichas técnicas incompletas');
 
  await wait(60);
  assert(w.fcGetSchedule().length===confirmedActs.length,'S13 no creó un ítem de cronograma por actividad confirmada');
