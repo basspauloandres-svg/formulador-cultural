@@ -25,6 +25,9 @@ if(!completion.includes('showActivityHelp:true'))fail('Al añadir otra actividad
 if(!completion.includes('Falta conectar esta actividad'))fail('S11 no explica cómo resolver una actividad huérfana');
 if(!completion.includes('data-act-link-result')||!completion.includes('linkActivityToResult'))fail('S11 no permite vincular una actividad huérfana con un resultado confirmado');
 if(!completion.includes('¿Cómo comprobaremos que esto ocurrió?'))fail('S12 no presenta la lógica asistida de comprobación');
+if(!completion.includes('data-ind-help')||!completion.includes('data-use-indicator'))fail('S12 no permite pedir y adoptar ayuda contextual para redactar el indicador');
+if(!completion.includes('indicatorProjectContext'))fail('S12 no reúne el contexto real del proyecto para formular indicadores');
+if(!completion.includes("Faltan '+q.issues.length+' dato(s) por verificar"))fail('S12 no resume los pendientes antes del detalle técnico');
 if(!completion.includes('Batería sugerida para este elemento'))fail('S12 no presenta múltiples dimensiones de indicador');
 if(!completion.includes('Ver y completar ficha técnica'))fail('S12 no mantiene el detalle técnico en una capa secundaria');
 if(!completion.includes('Fórmula o criterio')||!completion.includes('Línea base')||!completion.includes('Meta'))fail('S12 perdió elementos de la ficha técnica');
