@@ -154,3 +154,49 @@ button:not(:disabled):active{transform:translateY(1px)}
   .counter{margin-bottom:9px}
   .mobile-actions{gap:10px;padding-top:10px}
 }
+
+
+/* Compact brand header 2026-10-06 */
+.hero.app-brand{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  grid-template-areas:"brand meta" "progress progress";
+  align-items:center;
+  gap:6px 24px;
+  min-height:104px;
+  padding:20px 24px 15px;
+  border-radius:0 0 24px 24px;
+}
+.app-brand-lockup{grid-area:brand;display:flex;align-items:center;gap:12px;min-width:max-content}
+.app-brand-symbol{
+  width:42px;height:42px;
+  display:grid;place-items:center;
+  color:#66dc98;
+}
+.app-brand-symbol svg{width:39px;height:39px}
+.hero.app-brand h1{font-size:clamp(1.55rem,3vw,2rem);margin:0;white-space:nowrap}
+.hero.app-brand h1 span{color:#64d993}
+.app-brand-meta{grid-area:meta;justify-self:end;text-align:right}
+.hero.app-brand .app-brand-meta p{margin:0;color:#d9e6e0;font-size:.88rem}
+.hero.app-brand .app-brand-note{opacity:.82}
+.hero.app-brand .progress{grid-area:progress;margin-top:6px;height:4px}
+@media(max-width:720px){
+ .hero.app-brand{
+   grid-template-columns:1fr;
+   grid-template-areas:"brand" "meta" "progress";
+   align-items:start;
+   gap:4px;
+   min-height:0;
+   margin:0 -8px 12px;
+   padding:17px 16px 12px;
+   border-radius:0 0 20px 20px;
+ }
+ .app-brand-lockup{gap:10px}
+ .app-brand-symbol{width:34px;height:34px}
+ .app-brand-symbol svg{width:32px;height:32px}
+ .hero.app-brand h1{font-size:1.48rem}
+ .app-brand-meta{justify-self:start;text-align:left;padding-left:44px}
+ .hero.app-brand .app-brand-meta p{font-size:.78rem}
+ .hero.app-brand .app-brand-note{display:none}
+ .hero.app-brand .progress{margin-top:7px}
+}
