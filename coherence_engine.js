@@ -13,6 +13,26 @@ function budgetState(){try{return window.fcGetBudgetState?.()||{}}catch{return {
 function risks(){try{return window.fcGetRisks?.()||[]}catch{return []}}
 function riskState(){try{return window.fcGetRiskState?.()||{}}catch{return {}}}
 function evidence(){const d=draft?.S04||{};return [d.evidencia_disponible,d.fuentes].filter(x=>String(x||'').trim()).length}
+function pendingValue(v){return !String(v||'').trim()||/\[POR (VERIFICAR|REVISAR|DEFINIR)\]/i.test(String(v||''))}
+function currentValidationSnapshot(){
+ const res=results().filter(x=>x.confirmed),acts=activities().filter(x=>x.confirmed),inds=indicators(),sch=schedule(),bud=budget(),rsk=risks();
+ const indicatorFields=['formula','unidad','lineaBase','meta','medioVerificacion','periodicidad','responsable','plazo'];
+ const indicatorPending=inds.map(x=>({
+  id:x.id||x.indicatorId,
+  definitionPending:!x.confirmed||x.definitionStatus==='PENDIENTE'||pendingValue(x.indicator),
+  technicalPending:x.confirmed&&indicatorFields.some(k=>pendingValue(x[k])),
+  missingFields:x.confirmed?indicatorFields.filter(k=>pendingValue(x[k])):[],
+  item:x
+ }));
+ const orphanResults=res.filter(r=>!acts.some(a=>a.resultId===r.id));
+ const orphanActivities=acts.filter(a=>!a.resultId||!res.some(r=>r.id===a.resultId));
+ const schedulePending=acts.filter(a=>!sch.some(s=>s.activityId===a.id&&s.confirmed));
+ const budgetStateNow=budgetState(),activityStatus=budgetStateNow.activityStatus||{};
+ const budgetPending=acts.filter(a=>!activityStatus[a.id]||activityStatus[a.id]==='pending');
+ const highRiskPending=rsk.filter(x=>x.riskLevel==='Alto'&&(!x.confirmed||pendingValue(x.preventiveResponse)||pendingValue(x.contingencyResponse)||pendingValue(x.owner)));
+ return {indicatorPending,orphanResults,orphanActivities,schedulePending,budgetPending,highRiskPending}
+}
+
 function checks(){const out=[];const tn=arr(tree().nodes),on=arr(objectives().items),alts=alternatives(),res=results(),acts=activities(),inds=indicators();const central=tn.find(x=>x.zone==='central');const directCauses=tn.filter(x=>x.zone==='direct_cause'),indirectCauses=tn.filter(x=>x.zone==='indirect_cause');const objCentral=on.find(x=>x.zone==='central'&&x.confirmed);const objSpecific=on.filter(x=>x.confirmed&&x.zone==='direct_cause');const selAlt=alts.find(x=>x.selected&&x.confirmed),sch=schedule(),bud=budget(),bs=budgetState(),rsk=risks(),rs=riskState();
 const add=(dimension,label,ok,msg,status)=>out.push({dimension,label,status:status||((ok)?'COHERENTE':'REQUIERE AJUSTE'),message:msg});
 add('Evidencia','Problema conectado con el análisis previo',!!central&&!!String(central.origin||'').trim(),central?'El problema central tiene una conexión con información registrada antes.':'Todavía falta definir el problema central.');
@@ -51,6 +71,6 @@ function render(){
  panel.innerHTML=`<details><summary><span><strong>Revisión del proyecto</strong><small>${n?`${n} aspecto(s) necesitan atención`:'Todo lo revisado está conectado'}</small></span><b>Ver ›</b></summary><div class="coh-help">${r.score>=80?'La estructura está bien conectada. Revisa únicamente los datos pendientes.':r.score>=50?'El proyecto avanza, pero hay relaciones que todavía conviene revisar.':'Hay conexiones importantes que todavía faltan.'}</div><div class="coh-list">${needs.slice(0,6).map(x=>`<article><b>${esc(humanStatus(x.status))}</b> · ${esc(x.label)}<p>${esc(x.message)}</p></article>`).join('')||'<p>No hay alertas en esta etapa.</p>'}</div><p class="coh-explain">El porcentaje técnico y el diagnóstico completo se muestran en la revisión final S16.</p></details>`;
  fields.appendChild(panel)
 }
-window.fcGetCoherenceReport=report;window.fcGetTraceabilityRows=traceRows;
+window.fcGetCoherenceReport=report;window.fcGetTraceabilityRows=traceRows;window.fcGetCurrentValidationSnapshot=currentValidationSnapshot;
 const style=document.createElement('style');style.textContent='.coherence-compact{margin-top:16px;border:1px solid var(--line);border-radius:12px;background:#fff}.coherence-compact details{padding:0}.coherence-compact summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px}.coherence-compact summary::-webkit-details-marker{display:none}.coherence-compact summary span{display:grid;gap:2px}.coherence-compact summary small{color:var(--muted);font-weight:400}.coherence-compact summary>b{font-weight:600;color:#52606d}.coherence-compact .coh-help,.coherence-compact .coh-list,.coherence-compact .coh-explain{margin:0 12px 12px}.coherence-compact .coh-help{background:#f7f9fb;border-radius:9px;padding:9px}.coherence-compact .coh-list article{border-top:1px solid var(--line);padding:8px 0}.coherence-compact .coh-list article p,.coherence-compact .coh-explain{margin:4px 0;color:var(--muted);font-size:.84rem}';document.head.appendChild(style);new MutationObserver(render).observe(document.body,{subtree:true,childList:true});render();
 })();
