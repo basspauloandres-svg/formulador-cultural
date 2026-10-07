@@ -187,6 +187,8 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
  await w.fcNavigate('S16');await wait(80);
  assert(w.document.querySelector('.review-dashboard'),'S16 no renderizó el panel final');
+ assert(w.document.querySelector('#saveReviewProgress'),'S16 no muestra Guardar avance');
+ assert(/Cómo usar esta pantalla/.test(w.document.querySelector('.review-dashboard').textContent),'S16 no explica cómo trabajar los pendientes');
  const concretePending=w.document.querySelector('[data-focus-indicator]');
  assert(concretePending,'S16 no muestra un indicador pendiente específico');
  const targetIndicator=concretePending.dataset.focusIndicator;
