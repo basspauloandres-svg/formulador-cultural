@@ -4,7 +4,8 @@ const KEYS={S10:'formulador-cultural-alternatives-v1',S11:'formulador-cultural-a
 function read(code){try{return draft?.[code]?.completion_state||JSON.parse(localStorage.getItem(KEYS[code])||'{}')}catch{return {}}}
 function write(code,state){state.updatedAt=new Date().toISOString();localStorage.setItem(KEYS[code],JSON.stringify(state));if(typeof draft!=='undefined'){draft[code]=draft[code]||{};draft[code].completion_state=state;localStorage.setItem(storeKey,JSON.stringify(draft))}}
 function objectives(){try{return draft?.S09?.objectives_state||JSON.parse(localStorage.getItem('formulador-cultural-objectives-v1')||'{}')}catch{return {}}}
-function confirmedMeans(){return (objectives().items||[]).filter(x=>x.confirmed&&(x.zone==='direct_cause'||x.zone==='indirect_cause')).map(x=>({id:x.id,text:x.text,zone:x.zone}))}
+function confirmedMeans(){return (objectives().items||[]).filter(x=>x.confirmed&&x.zone==='direct_cause').map(x=>({id:x.id,text:x.text,zone:x.zone,sourceText:x.sourceText||'',confirmed:true}))}
+function registeredSpecificObjectives(){const xs=(objectives().items||[]).filter(x=>x.zone==='direct_cause'&&String(x.text||'').trim()).map(x=>({id:x.id,text:x.text,zone:x.zone,sourceText:x.sourceText||'',confirmed:!!x.confirmed}));if(xs.length)return xs;const raw=String(draft?.S09?.medios_directos||'').split(/\n+/).map(x=>x.trim()).filter(Boolean);return raw.map((text,i)=>({id:'legacy-specific-'+(i+1),text,zone:'direct_cause',sourceText:'',confirmed:false}))}
 function selectedAlternative(){return (read('S10').items||[]).find(x=>x.selected)||null}
 function confirmedActivities(){return (read('S11').items||[]).filter(x=>x.confirmed)}
 function confirmedResults(){try{return (draft?.S11?.results_state?.items||JSON.parse(localStorage.getItem('formulador-cultural-results-v1')||'{}').items||[]).filter(x=>x.confirmed)}catch{return []}}
@@ -27,10 +28,12 @@ function writingProposals(x){
 }
 function ensureS10(){
  let s=read('S10'),means=confirmedMeans(),sig=means.map(x=>`${x.id}:${x.text}`).join('|');
- if(!means.length&&Array.isArray(s.items)&&s.items.length)return s;
+ if(!means.length){
+   if(Array.isArray(s.items)&&s.items.length){s={...s,items:[],sourceSignature:'',archivedItems:[...(s.archivedItems||[]),...s.items.map(x=>({...x,archived:true,archiveReason:'sin_objetivo_especifico_confirmado',archivedAt:new Date().toISOString()}))].slice(-250),updatedAt:new Date().toISOString()};write('S10',s)}
+   return s
+ }
  if(!s.items||s.sourceSignature!==sig){
-   const old=new Map((s.items||[]).map(x=>[x.id,x]));
-   s={sourceSignature:sig,items:makeAlternatives().map(x=>old.get(x.id)||x),updatedAt:null};write('S10',s)
+   s={...s,sourceSignature:sig,items:makeAlternatives(),updatedAt:null};write('S10',s)
  }
  return s
 }
