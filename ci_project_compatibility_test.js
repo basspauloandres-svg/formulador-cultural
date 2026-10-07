@@ -106,6 +106,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  actBtn=w.document.querySelector('[data-act-confirm]');actBtn.click();await wait(60);
  const confirmedActs=w.fcGetActivities().filter(x=>x.confirmed);
  assert(confirmedActs.length>=1,'No quedó actividad confirmada');
+ assert(confirmedActs.every(x=>x.context&&typeof x.context==='object'),'Las actividades confirmadas no conservan contexto estructurado separado');
 
  const addAct=w.document.querySelector('#addAct');assert(addAct,'S11 no muestra el control para añadir otra actividad');addAct.click();await wait(50);
  const allActsAfterAdd=w.fcGetActivities();
