@@ -69,3 +69,108 @@ body.guided-mode .completion-wrap .completion-note+ .completion-card{margin-top:
 .indicator-tech-detail{border-top:1px solid #edf0f3;padding-top:9px}.indicator-tech-detail summary{cursor:pointer;font-weight:700;color:#52606d}.indicator-tech-detail .completion-grid{margin-top:10px}
 .verification-suggestions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.verification-suggestions small{width:100%;color:var(--muted)}
 @media(max-width:700px){.trace-context-grid{grid-template-columns:1fr}.activity-ai-actions{display:grid}.activity-ai-actions button{width:100%}.battery-overview>div,.verification-suggestions{display:grid}.battery-overview button,.verification-suggestions button{width:100%;text-align:left}}
+
+
+/* Unified visual language 2026-10-06 */
+.guided-journey{
+  border-color:#d9e5de;
+  border-radius:20px;
+  background:#fff;
+  box-shadow:0 8px 22px rgba(16,33,58,.05);
+  padding:18px;
+}
+.guided-journey-head strong{color:#10213a;font-size:1.12rem}
+.guided-journey-head p{color:#6a776f}
+.guided-review-btn{background:#176b49;border-color:#176b49;border-radius:12px}
+.guided-stage{border-color:#dce7e1;border-radius:15px;box-shadow:0 3px 10px rgba(16,33,58,.035)}
+.guided-stage.current{border-color:#2f9468;box-shadow:0 0 0 2px rgba(47,148,104,.12)}
+.guided-stage header{background:linear-gradient(180deg,#fbfdfc,#f6faf7)}
+.stage-number{background:#eaf6ef;color:#216447}
+.guided-stage.current .stage-number{background:#176b49;color:#fff}
+.stage-status.stage-complete{background:#e9f7ef;color:#17633d}
+.stage-status.stage-progress{background:#fff6dc;color:#7d5c00}
+.guided-subsection{color:#30433a}
+.guided-subsection.current{background:#edf8f2;color:#194f39}
+.guided-subsection.state-complete .status-dot{border-color:#2fa56f;background:#2fa56f}
+.didactic-intro{
+  border-color:#dce7e1;
+  background:linear-gradient(180deg,#fbfdfc,#f7faf8);
+  border-radius:16px;
+  padding:13px 14px;
+}
+.didactic-card{
+  border-color:#dbe6df;
+  border-radius:18px;
+  padding:16px;
+  box-shadow:0 5px 16px rgba(16,33,58,.045);
+}
+.didactic-context{
+  border-left-color:#55a47e;
+  background:#f3faf6;
+  border-radius:0 10px 10px 0;
+  color:#31473c;
+}
+.didactic-question{color:#10213a;letter-spacing:-.01em}
+.didactic-main-label textarea,.didactic-detail textarea,.didactic-detail select{
+  border-color:#cbd9d1;
+  border-radius:12px;
+}
+.didactic-main-label textarea:focus,.didactic-detail textarea:focus,.didactic-detail select:focus{
+  outline:0;border-color:#3d9b72;box-shadow:0 0 0 4px rgba(47,165,111,.11)
+}
+.didactic-choice-row button,.didactic-actions button,.didactic-nav button{
+  border-color:#c8d7cf;
+  border-radius:12px;
+  color:#234d3a;
+}
+.didactic-choice-row button.selected{
+  background:#edf8f2;
+  border-color:#2d8b62;
+  color:#145239;
+}
+.didactic-suggestion{
+  border-color:#d4e7dc;
+  background:#f4fbf7;
+  border-radius:13px;
+}
+.didactic-suggestion small{color:#2c6d4e;font-weight:800}
+.writing-help>button,.indicator-help>button{
+  border-color:#8ebca4;
+  color:#1d6747;
+  background:#f4fbf7;
+  border-radius:11px;
+  font-weight:700;
+}
+.writing-help-panel{
+  border-color:#d2e5d9;
+  background:#f7fcf9;
+  border-radius:15px;
+}
+.writing-source{border-left-color:#6ead8c;background:#fff}
+.writing-proposals article{border-color:#dce7e1;border-radius:13px}
+.writing-proposals button{
+  border-color:#92bea8;
+  color:#1a6546;
+  background:#f7fcf9;
+  border-radius:10px;
+}
+.indicator-level strong{
+  border-color:#cfe4d8;
+  background:#edf8f2;
+  color:#1d6848;
+}
+.indicator-quality.ok{background:#edf8f2;border-color:#c7e2d1}
+.indicator-quality.pending{background:#fff8df;border-color:#eadc9b}
+.trace-context{border-color:#d5e7dc;background:#f8fcfa;border-radius:15px}
+.trace-context summary{color:#1a6546}
+.activity-ai-actions button:first-child{background:#edf8f2;border-color:#72ad8d;color:#165f41}
+.activity-suggestion-pills button{background:#f1f9f4;border-color:#d5e6dc;color:#245b43}
+.proposal-box{border-color:#cae1d3;background:#f5fbf7;border-radius:15px}
+.battery-overview{border-color:#dce7e1;background:#fbfdfc;border-radius:14px}
+.battery-overview button.selected{background:#176b49;border-color:#176b49}
+.indicator-tech-detail summary{color:#2d664e}
+@media(max-width:700px){
+  .guided-journey{border-radius:17px;padding:14px}
+  .didactic-card{border-radius:16px;padding:14px}
+  .didactic-intro{border-radius:14px}
+}

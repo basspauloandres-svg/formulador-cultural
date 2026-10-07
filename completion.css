@@ -1,1 +1,30 @@
 .completion-wrap{display:grid;gap:14px}.completion-note,.completion-card,.completion-summary{border:1px solid var(--line);border-radius:12px;background:#fff;padding:12px}.completion-note p,.completion-card p{color:var(--muted);font-size:.9rem}.completion-toolbar{display:flex;flex-wrap:wrap;gap:8px}.completion-toolbar button,.completion-card button,.completion-card select,.completion-card input{border:1px solid #aeb8c2;background:#fff;border-radius:9px;padding:8px 10px;font:inherit}.completion-card textarea{width:100%;min-height:78px;border:1px solid #b8c2cc;border-radius:9px;padding:9px;font:inherit;resize:vertical}.completion-card label{display:grid;gap:5px;margin-top:8px;font-weight:700;font-size:.84rem}.completion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.completion-status{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:3px 8px;font-size:.76rem}.completion-status.ok{background:#eef8f1}.completion-status.pending{background:#fff8dd}.completion-table{width:100%;border-collapse:collapse;font-size:.86rem}.completion-table th,.completion-table td{border:1px solid var(--line);padding:8px;vertical-align:top}.completion-table th{background:#f5f7f9;text-align:left}.completion-scroll{overflow:auto}.completion-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}@media(max-width:720px){.completion-grid{grid-template-columns:1fr}.completion-toolbar,.completion-actions{display:grid}.completion-toolbar button,.completion-actions button{width:100%}}
+
+/* Unified cards 2026-10-06 */
+.completion-wrap{gap:16px}
+.completion-note,.completion-card,.completion-summary{
+  border-color:#dbe6df;
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 4px 14px rgba(16,33,58,.04);
+}
+.completion-note p,.completion-card p{color:#66756d}
+.completion-toolbar{gap:10px}
+.completion-toolbar button,.completion-card button,.completion-card select,.completion-card input{
+  border-color:#c9d8d0;
+  border-radius:11px;
+}
+.completion-card textarea{
+  border-color:#cbd9d1;
+  border-radius:12px;
+}
+.completion-card textarea:focus,.completion-card input:focus,.completion-card select:focus{
+  outline:0;border-color:#3d9b72;box-shadow:0 0 0 4px rgba(47,165,111,.11)
+}
+.completion-status{border-color:#d8e4dd}
+.completion-status.ok{background:#edf8f2;color:#1e6748}
+.completion-status.pending{background:#fff8df;color:#785d08}
+.completion-table{border-radius:13px;overflow:hidden}
+.completion-table th,.completion-table td{border-color:#dfe8e3}
+.completion-table th{background:#eef7f2;color:#1f4f3b}
+.completion-actions{gap:8px}

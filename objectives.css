@@ -8,3 +8,16 @@
 @media(max-width:700px){.objective-proposals button{width:100%}}
 
 .objective-role{margin-top:3px;font-size:.8rem;color:#41505d;font-weight:650}
+
+
+/* Unified visual language 2026-10-06 */
+.objectives-wizard{border-top-color:#2d805b}
+.objectives-mode{border-color:#b9d5c5;background:#edf8f2;color:#205e43}
+.objectives-note,.objective-card,.objective-level,.objective-node,.objectives-summary div{border-color:#dbe6df;border-radius:14px;box-shadow:0 3px 10px rgba(16,33,58,.03)}
+.objective-card textarea{border-color:#cbd9d1;border-radius:12px}
+.objective-card textarea:focus{outline:0;border-color:#3d9b72;box-shadow:0 0 0 4px rgba(47,165,111,.11)}
+.objective-actions button,.objectives-toolbar button,.objective-proposals button{border-color:#c9d8d0;border-radius:11px;color:#245a43}
+.objective-actions .primary,.objectives-toolbar .primary{background:#176b49;border-color:#176b49}
+.objective-status.confirmed{background:#edf8f2;color:#1e6748}
+.objective-level{background:#f8fcfa}.objective-node.central{border-color:#1f744f;background:#edf8f2}
+.objective-proposals article{border-color:#d5e6dc;background:#f5fbf7;border-radius:13px}
