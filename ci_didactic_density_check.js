@@ -19,6 +19,9 @@ if(!guided.includes('sectionHeaderCopy')||!guided.includes('section-screen-heade
 for(const code of ['S05','S06','S07','S08','S09','S10','S11','S12','S13','S14','S15','S16'])if(!guided.includes(code+':{title:'))fail('Falta configuración visual del encabezado para '+code);
 if(!guided.includes('stageDots'))fail('El encabezado no muestra el progreso por etapas');
 if(!completion.includes('Ayúdame con IA'))fail('S11 no ofrece asistencia contextual visible');
+if(!completion.includes('activityProjectContext'))fail('S11 no reúne el contexto real del proyecto para ayudar a redactar actividades');
+if(!completion.includes('Actividades ya aprobadas para este resultado'))fail('S11 no muestra las actividades previas al proponer una actividad adicional');
+if(!completion.includes('showActivityHelp:true'))fail('Al añadir otra actividad no se abre automáticamente la misma asistencia contextual');
 if(!completion.includes('Falta conectar esta actividad'))fail('S11 no explica cómo resolver una actividad huérfana');
 if(!completion.includes('data-act-link-result')||!completion.includes('linkActivityToResult'))fail('S11 no permite vincular una actividad huérfana con un resultado confirmado');
 if(!completion.includes('¿Cómo comprobaremos que esto ocurrió?'))fail('S12 no presenta la lógica asistida de comprobación');
