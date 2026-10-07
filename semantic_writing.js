@@ -79,6 +79,20 @@ function strategyProposals(items){
   'Articular acciones que respondan de manera conjunta a: '+src.join('; ')
  ]
 }
+function compactPresentationText(value,maxWords=30){
+ const t=clean(value);if(!t)return t;
+ const first=t.split(/(?<=[.!?])\s+/)[0],candidate=first.split(/\s+/).length<=maxWords?first:t;
+ const words=candidate.split(/\s+/).filter(Boolean);
+ return words.length>maxWords?words.slice(0,maxWords).join(' ')+'…':candidate
+}
+function resultWritingReview(value){
+ const t=clean(value),issues=[],words=t.split(/\s+/).filter(Boolean);
+ if(!t||isPlaceholder(t))issues.push('Falta un resultado verificable.');
+ if(words.length>32)issues.push('El resultado es demasiado extenso. Describe un cambio o producto verificable y deja el contexto en el objetivo y la trazabilidad.');
+ if((t.match(/[.!?]+/g)||[]).length>1)issues.push('El resultado debe expresarse en una sola formulación verificable.');
+ if(/\b(?:objetivo espec[ií]fico|causa directa|problema central)\s*:/i.test(t))issues.push('El resultado no debe repetir las etiquetas del contexto metodológico.');
+ return {ok:issues.length===0,issues,wordCount:words.length}
+}
 function resultProposal(objective){
  const t=clean(objective);const rules=[
   [/^Reducir las diferencias en\s+/i,'Reducción verificable de las diferencias en '],
@@ -281,5 +295,5 @@ function indicatorQuality(x){
 }
 
 function isPlaceholder(v){return /^\s*\[POR (REVISAR|VERIFICAR|DEFINIR)\]/i.test(String(v||''))}
-window.fcWriting={clean,objectiveProposals,objectiveWritingReview,looksLikeActivity,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activityWritingReview,activityObjectFromResult,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorQuality,isPlaceholder};
+window.fcWriting={clean,compactPresentationText,resultWritingReview,objectiveProposals,objectiveWritingReview,looksLikeActivity,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activityWritingReview,activityObjectFromResult,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorQuality,isPlaceholder};
 })();
