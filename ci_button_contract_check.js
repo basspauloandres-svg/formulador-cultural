@@ -13,6 +13,7 @@ const must=[
  ['objectives.js','objectiveNext','onclick'],
  ['completion.js','data-alt-confirm','dataset.altConfirm'],
  ['completion.js','data-act-confirm','dataset.actConfirm'],
+ ['completion.js','data-act-link-result','dataset.actLinkResult'],
  ['completion.js','data-ind-confirm','dataset.indConfirm'],
  ['planning.js','confirmSchedule','onclick'],
  ['planning.js','confirmBudgetActivity','onclick'],

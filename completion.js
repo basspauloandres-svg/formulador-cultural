@@ -83,6 +83,25 @@ function activitySufficiencyFor(x,s){
  const related=(s.items||[]).filter(i=>i.resultId&&i.resultId===x?.resultId&&i.confirmed);
  return window.fcWriting?.activitySufficiency?window.fcWriting.activitySufficiency(related,x?.resultText||''):{ok:true,issues:[]}
 }
+function activityLinkOptions(){
+ const alt=selectedAlternative(),allowed=new Set(alt?.sourceIds||[]);
+ return confirmedResults().filter(r=>!alt||allowed.has(r.objectiveId)).map(r=>{
+   const obj=(objectives().items||[]).find(o=>o.id===r.objectiveId)||{};
+   return {resultId:r.id,resultText:r.text,objectiveId:r.objectiveId||obj.id||'',objectiveText:r.objectiveText||obj.text||'',causeId:obj.id||r.objectiveId||''}
+ }).filter(x=>x.resultId&&x.objectiveId)
+}
+function linkActivityToResult(x,resultId){
+ const option=activityLinkOptions().find(r=>r.resultId===resultId);if(!x||!option)return false;
+ x.resultId=option.resultId;x.resultText=option.resultText;x.objectiveId=option.objectiveId;x.objectiveText=option.objectiveText;x.causeId=option.causeId;
+ x.status='manual_vinculada';x.provenance=x.provenance==='actividad_adicional'?'actividad_adicional_vinculada':'actividad_historica_vinculada';x.confirmed=false;x.updatedAt=new Date().toISOString();
+ return true
+}
+function activityLinkerHtml(x){
+ if(x?.resultId&&x?.objectiveId)return '';
+ const options=activityLinkOptions();
+ const body=options.length?options.map((r,i)=>'<button type="button" data-act-link-result="'+esc(x.id)+':'+esc(r.resultId)+'"><small>Resultado '+(i+1)+'</small><b>'+esc(r.resultText)+'</b><span>Objetivo específico: '+esc(r.objectiveText||'[POR VERIFICAR]')+'</span></button>').join(''):'<div class="activity-link-empty"><b>No hay resultados confirmados disponibles.</b><span>Vuelve al resultado esperado, confírmalo y regresa a esta actividad.</span></div>';
+ return '<div class="activity-warning activity-linker"><strong>Falta conectar esta actividad</strong><p>Para continuar, elige el resultado al que contribuye. El sistema completará automáticamente el objetivo específico relacionado.</p><div class="activity-link-options">'+body+'</div></div>'
+}
 function indicatorProposal(source,i,type='Actividad',template=null){
  const linkedId=source.id,linkedText=source.text||source.activityText||source.objectiveText||'';
  const t=template||(window.fcWriting?.indicatorBattery?window.fcWriting.indicatorBattery(linkedText,type,{source})[0]:null)||{};
@@ -176,7 +195,7 @@ function renderS11(){
  ${x?`<div class="didactic-progress">Actividad ${cursors.S11+1} de ${xs.length}</div>
  <article class="didactic-card activity-assistant-card">
   <details class="trace-context" open><summary>Viene de</summary><div class="trace-context-grid"><p><b>Problema central</b><span>${esc(ctx.problem)}</span></p><p><b>Causa directa</b><span>${esc(ctx.cause)}</span></p><p><b>Objetivo específico</b><span>${esc(ctx.objective)}</span></p><p><b>Resultado esperado</b><span>${esc(ctx.result)}</span></p></div></details>
-  ${(!x.resultId||!x.objectiveId)?`<div class="activity-warning"><strong>Actividad sin vínculo metodológico</strong><p>Esta actividad histórica o manual todavía debe asociarse a un objetivo específico y a un resultado antes de aprobarse.</p></div>`:''}
+  ${activityLinkerHtml(x)}
   <div class="didactic-question">¿Qué debe ocurrir para lograr este resultado?</div>
   <p class="assistant-lead">Responde con ideas sencillas. El sistema las convertirá en actividades bien formuladas.</p>
   <label class="didactic-main-label">Tu idea<textarea data-act-plain="${x.id}" placeholder="Ejemplo: Se necesitan 6 talleres de trombón.">${esc(x.plainText||'')}</textarea></label>
@@ -198,6 +217,7 @@ function bindS11(s){
  document.querySelectorAll('[data-act-help]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.actHelp);x.showActivityHelp=!x.showActivityHelp;write('S11',s);renderS11()});
  document.querySelectorAll('[data-act-suggestion]').forEach(b=>b.onclick=()=>{const [id,idx]=b.dataset.actSuggestion.split(':');const x=s.items.find(i=>i.id===id),h=activityHelp(x),v=(h.suggestions||[])[Number(idx)];if(!v)return;x.plainText=v;x.text=window.fcWriting?.activityFromPlainLanguage?window.fcWriting.activityFromPlainLanguage(v,x.resultText,x.objectiveText,participantContext()):v;x.source='propuesta_sistema';x.provenance='respuesta_guiada';x.confirmed=false;x.showActivityHelp=false;x.updatedAt=new Date().toISOString();write('S11',s);renderS11()});
  document.querySelectorAll('[data-act-convert]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.actConvert);if(!x?.plainText?.trim())return;x.text=window.fcWriting?.activityFromPlainLanguage?window.fcWriting.activityFromPlainLanguage(x.plainText,x.resultText,x.objectiveText,participantContext()):x.plainText.trim();x.source='propuesta_sistema';x.provenance='lenguaje_cotidiano';x.confirmed=false;x.updatedAt=new Date().toISOString();write('S11',s);renderS11()});
+ document.querySelectorAll('[data-act-link-result]').forEach(b=>b.onclick=()=>{const parts=b.dataset.actLinkResult.split(':');const x=s.items.find(i=>i.id===parts[0]);if(linkActivityToResult(x,parts[1])){write('S11',s);renderS11()}});
  document.querySelectorAll('[data-act-confirm]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.actConfirm);const linked=!!x.resultId&&!!x.objectiveId;x.confirmed=linked&&!!x.text.trim()&&!window.fcWriting?.isPlaceholder?.(x.text);if(!linked){alert('Antes de aprobar esta actividad, debe quedar vinculada a un objetivo específico y a un resultado.')}else if(!x.confirmed){alert('Antes de aprobar la actividad, reemplaza la marca [POR REVISAR] por una acción concreta.')}x.updatedAt=new Date().toISOString();write('S11',s);sync('S11');renderS11()});
  document.querySelectorAll('[data-act-delete]').forEach(b=>b.onclick=()=>{s.items=s.items.filter(i=>i.id!==b.dataset.actDelete);cursors.S11=Math.max(0,Math.min(cursors.S11,s.items.length-1));write('S11',s);renderS11()});
  $('#addAct')&&($('#addAct').onclick=()=>{const current=s.items[cursors.S11],id=`ACT${s.items.length+1}-${Date.now().toString().slice(-4)}`;s.items.push({id,activityId:id,objectiveId:current?.objectiveId||'',objectiveText:current?.objectiveText||'',causeId:current?.causeId||current?.objectiveId||'',resultId:current?.resultId||'',resultText:current?.resultText||'[POR VERIFICAR]',text:'',plainText:'',confirmed:false,status:'manual',source:'usuario',provenance:'actividad_adicional',note:'',updatedAt:null});cursors.S11=s.items.length-1;write('S11',s);renderS11()});

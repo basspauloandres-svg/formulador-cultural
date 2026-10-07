@@ -19,7 +19,8 @@ if(!guided.includes('sectionHeaderCopy')||!guided.includes('section-screen-heade
 for(const code of ['S05','S06','S07','S08','S09','S10','S11','S12','S13','S14','S15','S16'])if(!guided.includes(code+':{title:'))fail('Falta configuración visual del encabezado para '+code);
 if(!guided.includes('stageDots'))fail('El encabezado no muestra el progreso por etapas');
 if(!completion.includes('Ayúdame con IA'))fail('S11 no ofrece asistencia contextual visible');
-if(!completion.includes('Actividad sin vínculo metodológico'))fail('S11 no advierte actividades huérfanas');
+if(!completion.includes('Falta conectar esta actividad'))fail('S11 no explica cómo resolver una actividad huérfana');
+if(!completion.includes('data-act-link-result')||!completion.includes('linkActivityToResult'))fail('S11 no permite vincular una actividad huérfana con un resultado confirmado');
 if(!completion.includes('¿Cómo comprobaremos que esto ocurrió?'))fail('S12 no presenta la lógica asistida de comprobación');
 if(!completion.includes('Batería sugerida para este elemento'))fail('S12 no presenta múltiples dimensiones de indicador');
 if(!completion.includes('Ver y completar ficha técnica'))fail('S12 no mantiene el detalle técnico en una capa secundaria');

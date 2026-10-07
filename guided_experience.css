@@ -269,3 +269,15 @@ body.guided-mode #question{
   .section-progress-dots span+span{margin-left:15px}
   .section-progress-dots span+span:before{right:14px;top:6px;width:15px;height:3px}
 }
+
+/* S11 assisted relinking */
+.activity-linker{display:grid;gap:9px}
+.activity-linker>p{margin:0;color:#655f4a;font-size:.86rem}
+.activity-link-options{display:grid;gap:8px}
+.activity-link-options button{display:grid;gap:4px;text-align:left;border:1px solid #c9d8d0;background:#fff;border-radius:12px;padding:11px 12px;font:inherit;color:#173b2b}
+.activity-link-options button:hover{background:#f4fbf7;border-color:#7fb99a}
+.activity-link-options button small{color:#39745b;font-weight:800;text-transform:uppercase;letter-spacing:.02em}
+.activity-link-options button b{line-height:1.35}
+.activity-link-options button span{color:#66756d;font-size:.82rem;line-height:1.35}
+.activity-link-empty{display:grid;gap:3px;border:1px dashed #d7c979;background:#fffdf3;border-radius:11px;padding:10px}
+.activity-link-empty span{color:#6d6650;font-size:.84rem}
