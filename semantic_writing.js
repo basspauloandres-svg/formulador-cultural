@@ -126,16 +126,27 @@ function extractQuantity(text){
  if(m)return {value:normalizeQuantityWord(m[1]),raw:m[1],unit:m[2]};
  return null
 }
-function activityGuidance(result,objective){
- const r=clean(result),o=clean(objective),t=(o+' '+r).toLowerCase(),suggestions=[],questions=[];
- if(/formaci[oó]n|taller|capacitaci[oó]n|aprendizaje|acompañamiento/.test(t)){
-  suggestions.push('Convocar o seleccionar participantes','Preparar contenidos, materiales o condiciones','Realizar las acciones formativas previstas','Registrar asistencia o participación','Realizar seguimiento al proceso');
-  questions.push('¿Hay que preparar algo antes?','¿Qué acción produce directamente el resultado?','¿Con qué población se realizará?','¿Hace falta registrar o hacer seguimiento?')
+function activityGuidance(result,objective,context={}){
+ const r=clean(result),o=clean(objective),p=clean(context.population),territory=clean(context.territory),existing=(context.existingActivities||[]).map(clean).filter(Boolean),t=(o+' '+r).toLowerCase(),suggestions=[],questions=[];
+ const rq=r||'[POR VERIFICAR]',oq=o||'[POR VERIFICAR]';
+ const has=re=>existing.some(x=>re.test(x));
+ if(/formaci[oó]n|taller|capacitaci[oó]n|aprendizaje|acompañamiento|nivelaci[oó]n/.test(t)){
+  if(!has(/prepar|organizar|definir|program/i))suggestions.push('Preparar las condiciones necesarias para contribuir al resultado: '+rq);
+  if(!has(/realizar|implementar|desarrollar|ejecutar/i))suggestions.push('Realizar una acción formativa directamente orientada al resultado: '+rq);
+  if(!has(/registr|document|asistencia|seguimiento/i))suggestions.push('Registrar el desarrollo de las acciones vinculadas con el resultado: '+rq);
+  if(!has(/evalu|verificar|revisar|valorar/i))suggestions.push('Revisar el avance del resultado: '+rq);
  }else{
-  suggestions.push('Preparar las condiciones necesarias','Realizar la acción principal que produce el resultado','Registrar lo realizado','Revisar el resultado obtenido');
-  questions.push('¿Qué debe estar listo antes?','¿Qué acción produce directamente el resultado?','¿Qué debe registrarse o revisarse después?')
+  if(!has(/prepar|organizar|definir/i))suggestions.push('Preparar las condiciones necesarias para producir el resultado: '+rq);
+  if(!has(/realizar|implementar|desarrollar|ejecutar/i))suggestions.push('Realizar una acción directamente orientada a producir el resultado: '+rq);
+  if(!has(/registr|document|seguimiento/i))suggestions.push('Registrar lo realizado en relación con el resultado: '+rq);
+  if(!has(/evalu|verificar|revisar/i))suggestions.push('Revisar el avance del resultado: '+rq);
  }
- return {suggestions:[...new Set(suggestions)].slice(0,5),questions:[...new Set(questions)].slice(0,4)}
+ questions.push('Para producir “'+rq+'”, ¿qué acción concreta falta realizar?');
+ questions.push('¿Esta nueva actividad aporta directamente a “'+oq+'” y evita repetir las actividades ya aprobadas?');
+ if(existing.length)questions.push('Ya hay '+existing.length+' actividad(es) aprobada(s) para este resultado. ¿Qué acción necesaria todavía no está cubierta?');
+ if(p)questions.push('Con la población ya registrada —“'+p+'”—, ¿esta actividad necesita precisar quién participa?');
+ if(territory)questions.push('En el territorio registrado —“'+territory+'”—, ¿esta actividad requiere una condición específica que ya esté documentada en el proyecto?');
+ return {suggestions:uniq(suggestions).slice(0,5),questions:uniq(questions).slice(0,5),context:{result:rq,objective:oq,population:p,territory,existingActivities:existing}}
 }
 function activityFromPlainLanguage(input,result,objective,population){
  const t=clean(input);if(!t)return '[POR REVISAR]';
