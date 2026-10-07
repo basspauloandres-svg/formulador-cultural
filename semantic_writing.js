@@ -126,27 +126,47 @@ function extractQuantity(text){
  if(m)return {value:normalizeQuantityWord(m[1]),raw:m[1],unit:m[2]};
  return null
 }
+function activityObjectFromResult(value){
+ const raw=clean(value).replace(/[.]+$/,'');if(!raw)return 'el resultado esperado';
+ let t=raw.replace(/^(ampliaci[oó]n|mejora|incremento|fortalecimiento|reducci[oó]n) verificable (?:del|de la|de los|de las|de)\s+/i,'');
+ t=t.split(/\s+(?:mediante|a trav[eé]s de|con el fin de|con el prop[oó]sito de)\s+/i)[0];
+ if(/\s+para\s+/i.test(t))t=t.split(/\s+para\s+/i)[0];
+ t=t.replace(/\b(implementad[oa]s?|fortalecid[oa]s?|mejorad[oa]s?|alcanzad[oa]s?)$/i,'').trim();
+ const words=t.split(/\s+/).filter(Boolean);
+ return (words.length>14?words.slice(0,14).join(' '):t)||'el resultado esperado'
+}
+function activityWritingReview(value){
+ const t=clean(value),issues=[],words=t.split(/\s+/).filter(Boolean);
+ if(!t||isPlaceholder(t))issues.push('Falta una actividad concreta.');
+ if(words.length>28)issues.push('La actividad es demasiado extensa. Déjala en una acción, su objeto y, solo si hace falta, la población directamente relacionada.');
+ const sentences=(t.match(/[.!?]+/g)||[]).length;
+ if(sentences>1)issues.push('La actividad debe expresarse como una sola acción, no como un párrafo.');
+ if(/\b(?:problema central|objetivo espec[ií]fico|resultado esperado)\s*:/i.test(t))issues.push('El contexto metodológico debe quedar en la trazabilidad, no dentro del enunciado de la actividad.');
+ if(/\b(?:con el fin de|con el prop[oó]sito de)\b/i.test(t)&&words.length>20)issues.push('Evita repetir la justificación del proyecto dentro de la actividad.');
+ return {ok:issues.length===0,issues,wordCount:words.length}
+}
 function activityGuidance(result,objective,context={}){
- const r=clean(result),o=clean(objective),p=clean(context.population),territory=clean(context.territory),existing=(context.existingActivities||[]).map(clean).filter(Boolean),t=(o+' '+r).toLowerCase(),suggestions=[],questions=[];
+ const r=clean(result),o=clean(objective),p=clean(context.population),territory=clean(context.territory),existing=(context.existingActivities||[]).map(clean).filter(Boolean),t=(o+' '+r).toLowerCase(),suggestions=[],questions=[],object=activityObjectFromResult(r);
  const rq=r||'[POR VERIFICAR]',oq=o||'[POR VERIFICAR]';
  const has=re=>existing.some(x=>re.test(x));
  if(/formaci[oó]n|taller|capacitaci[oó]n|aprendizaje|acompañamiento|nivelaci[oó]n/.test(t)){
-  if(!has(/prepar|organizar|definir|program/i))suggestions.push('Preparar las condiciones necesarias para contribuir al resultado: '+rq);
-  if(!has(/realizar|implementar|desarrollar|ejecutar/i))suggestions.push('Realizar una acción formativa directamente orientada al resultado: '+rq);
-  if(!has(/registr|document|asistencia|seguimiento/i))suggestions.push('Registrar el desarrollo de las acciones vinculadas con el resultado: '+rq);
-  if(!has(/evalu|verificar|revisar|valorar/i))suggestions.push('Revisar el avance del resultado: '+rq);
+  if(!has(/prepar|organizar|definir|program/i))suggestions.push('Preparar las condiciones para '+object);
+  if(!has(/realizar|implementar|desarrollar|ejecutar/i))suggestions.push('Desarrollar las acciones formativas para '+object);
+  if(!has(/registr|document|asistencia|seguimiento/i))suggestions.push('Registrar el desarrollo de '+object);
+  if(!has(/evalu|verificar|revisar|valorar/i))suggestions.push('Verificar el avance de '+object);
  }else{
-  if(!has(/prepar|organizar|definir/i))suggestions.push('Preparar las condiciones necesarias para producir el resultado: '+rq);
-  if(!has(/realizar|implementar|desarrollar|ejecutar/i))suggestions.push('Realizar una acción directamente orientada a producir el resultado: '+rq);
-  if(!has(/registr|document|seguimiento/i))suggestions.push('Registrar lo realizado en relación con el resultado: '+rq);
-  if(!has(/evalu|verificar|revisar/i))suggestions.push('Revisar el avance del resultado: '+rq);
+  if(!has(/prepar|organizar|definir/i))suggestions.push('Preparar las condiciones para '+object);
+  if(!has(/realizar|implementar|desarrollar|ejecutar/i))suggestions.push('Ejecutar la acción principal para '+object);
+  if(!has(/registr|document|seguimiento/i))suggestions.push('Registrar el desarrollo de '+object);
+  if(!has(/evalu|verificar|revisar/i))suggestions.push('Verificar el avance de '+object);
  }
  questions.push('Para producir “'+rq+'”, ¿qué acción concreta falta realizar?');
  questions.push('¿Esta nueva actividad aporta directamente a “'+oq+'” y evita repetir las actividades ya aprobadas?');
  if(existing.length)questions.push('Ya hay '+existing.length+' actividad(es) aprobada(s) para este resultado. ¿Qué acción necesaria todavía no está cubierta?');
- if(p)questions.push('Con la población ya registrada —“'+p+'”—, ¿esta actividad necesita precisar quién participa?');
- if(territory)questions.push('En el territorio registrado —“'+territory+'”—, ¿esta actividad requiere una condición específica que ya esté documentada en el proyecto?');
- return {suggestions:[...new Set(suggestions.map(finish))].slice(0,5),questions:[...new Set(questions.map(finish))].slice(0,5),context:{result:rq,objective:oq,population:p,territory,existingActivities:existing}}
+ if(p)questions.push('Con la población ya registrada, ¿esta actividad necesita precisar quién participa?');
+ if(territory)questions.push('En el territorio registrado, ¿esta actividad requiere una condición específica ya documentada?');
+ const compact=[...new Set(suggestions.map(finish))].filter(x=>activityWritingReview(x).ok);
+ return {suggestions:compact.slice(0,5),questions:[...new Set(questions.map(finish))].slice(0,5),context:{result:rq,objective:oq,population:p,territory,existingActivities:existing}}
 }
 function activityFromPlainLanguage(input,result,objective,population){
  const t=clean(input);if(!t)return '[POR REVISAR]';
@@ -261,5 +281,5 @@ function indicatorQuality(x){
 }
 
 function isPlaceholder(v){return /^\s*\[POR (REVISAR|VERIFICAR|DEFINIR)\]/i.test(String(v||''))}
-window.fcWriting={clean,objectiveProposals,objectiveWritingReview,looksLikeActivity,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorQuality,isPlaceholder};
+window.fcWriting={clean,objectiveProposals,objectiveWritingReview,looksLikeActivity,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activityWritingReview,activityObjectFromResult,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorQuality,isPlaceholder};
 })();
