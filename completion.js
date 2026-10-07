@@ -144,8 +144,10 @@ function ensureS12(){
 }
 function sync(code){if(typeof session!=='undefined'&&session&&typeof syncSection==='function')syncSection(code).catch(()=>{})}
 function renderS10(){
- const host=$('#fields');if(!host)return;const gate=window.fcS09TransitionStatus?.();
- if(gate&&!gate.ok){host.innerHTML='<section id="completionS10" class="completion-wrap didactic-flow"><div class="completion-note"><strong>Antes de elegir una alternativa, revisa el árbol de problemas.</strong><p>'+gate.issues.map(x=>esc(x.message)).join(' ')+'</p><button type="button" id="backToS07">Revisar S07 · árbol de problemas</button><button type="button" id="backToS09">Revisar S09 · objetivos</button></div></section>';$('#backToS07')?.addEventListener('click',()=>window.fcNavigate?.('S07'));$('#backToS09')?.addEventListener('click',()=>window.fcNavigate?.('S09'));return}
+ const host=$('#fields');if(!host)return;const gate=window.fcS09TransitionStatus?.(),confirmedSpecific=confirmedMeans(),registeredSpecific=registeredSpecificObjectives();
+ if((gate&&!gate.ok)||!confirmedSpecific.length){
+   const objectiveList=registeredSpecific.length?'<div class="writing-source"><small>Objetivos específicos registrados:</small>'+registeredSpecific.map(o=>'<p>• '+esc(cleanSourceText(o.text))+(o.confirmed?'':' <b>[POR VERIFICAR]</b>')+'</p>').join('')+'</div>':'<p>No hay objetivos específicos registrados todavía.</p>';
+   host.innerHTML='<section id="completionS10" class="completion-wrap didactic-flow"><div class="completion-note"><strong>Antes de definir una alternativa, necesitamos un objetivo específico confirmado.</strong><p>La alternativa se construye a partir de los objetivos reales del proyecto. El sistema no generará una estrategia genérica mientras ese vínculo no esté confirmado.</p>'+objectiveList+'<button type="button" id="backToS09">Revisar y confirmar S09 · objetivos</button></div></section>';$('#backToS09')?.addEventListener('click',()=>window.fcNavigate?.('S09'));return}
  const s=ensureS10(),xs=s.items||[];cursors.S10=Math.min(cursors.S10,Math.max(0,xs.length-1));const x=xs[cursors.S10];
  host.innerHTML=`<section id="completionS10" class="completion-wrap didactic-flow">
  <div class="didactic-intro"><strong>Elegir el camino de trabajo</strong><p>Revisa una opción cada vez. La herramienta te muestra de dónde viene; tú decides si sirve para tu proyecto.</p></div>
@@ -157,7 +159,7 @@ function renderS10(){
      <button type="button" data-writing-help="${x.id}">Ayúdame a redactarla</button>
      <div class="writing-help-panel ${x.showWritingHelp?'':'hidden'}" data-writing-panel="${x.id}">
        <div class="writing-help-explain"><strong>¿Qué debes escribir aquí?</strong><p>Una alternativa describe el <b>camino general</b> que seguirá el proyecto para alcanzar los objetivos. Todavía no escribas actividades concretas.</p></div>
-       <div class="writing-source"><small>La herramienta está usando como base:</small>${sourceMeansForAlternative(x).map(m=>`<p>• ${esc(cleanSourceText(m.text))}</p>`).join('')||'<p>• Objetivos previamente registrados [POR VERIFICAR]</p>'}</div>
+       <div class="writing-source"><small>La herramienta está usando como base estos objetivos específicos confirmados:</small>${sourceMeansForAlternative(x).map(m=>`<p>• ${esc(cleanSourceText(m.text))}</p>`).join('')}</div>
        <div class="writing-proposals">${writingProposals(x).map((p,i)=>`<article><small>Propuesta ${i+1}</small><p>${esc(p)}</p><button type="button" data-use-writing="${x.id}:${i}">Usar esta propuesta</button></article>`).join('')}</div>
      </div>
    </div>
