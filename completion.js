@@ -153,7 +153,8 @@ function ensureS12(){
        if(prev){
          used.add(prev);const changed=String(prev.linkedText||'')!==String(text||''),placeholder=window.fcWriting?.isPlaceholder?.(prev.indicator);
          const refreshed=placeholder&&!window.fcWriting?.isPlaceholder?.(fresh.indicator);
-         items.push({...fresh,...prev,...(refreshed?{indicator:fresh.indicator,formula:fresh.formula,unidad:fresh.unidad,medioVerificacion:fresh.medioVerificacion,verificationSuggestions:fresh.verificationSuggestions}:{}),id:prev.id||fresh.id,indicatorId:prev.indicatorId||prev.id||fresh.id,linkedType:x.type,linkedId:x.source.id,linkedText:text,activityId:fresh.activityId,resultId:fresh.resultId,objectiveId:fresh.objectiveId,indicatorFamily:family,verificationSuggestions:tpl.verificationSuggestions||prev.verificationSuggestions||[],confirmed:(changed||refreshed)?false:!!prev.confirmed,verificationStatus:(changed||refreshed)?'REQUIERE_REVISIÓN':(prev.verificationStatus||fresh.verificationStatus),stale:false})
+         const derived={};for(const k of ['formula','unidad','lineaBase','meta'])if(window.fcWriting?.isPlaceholder?.(prev[k])&&!window.fcWriting?.isPlaceholder?.(fresh[k]))derived[k]=fresh[k];
+         items.push({...fresh,...prev,...derived,...(refreshed?{indicator:fresh.indicator,formula:fresh.formula,unidad:fresh.unidad,medioVerificacion:fresh.medioVerificacion,verificationSuggestions:fresh.verificationSuggestions}:{}),id:prev.id||fresh.id,indicatorId:prev.indicatorId||prev.id||fresh.id,linkedType:x.type,linkedId:x.source.id,linkedText:text,activityId:fresh.activityId,resultId:fresh.resultId,objectiveId:fresh.objectiveId,indicatorFamily:family,verificationSuggestions:tpl.verificationSuggestions||prev.verificationSuggestions||[],confirmed:(changed||refreshed)?false:!!prev.confirmed,verificationStatus:(changed||refreshed)?'REQUIERE_REVISIÓN':(prev.verificationStatus||fresh.verificationStatus),stale:false})
        }else items.push(fresh)
      })
    }
@@ -285,8 +286,11 @@ function indicatorQuality(x){return window.fcWriting?.indicatorQuality?window.fc
 function indicatorMissingFields(x){
  const miss=v=>!String(v||'').trim()||/^\s*\[POR (VERIFICAR|REVISAR|DEFINIR)\]/i.test(String(v||''));
  const defs=[
+  ['formula','Fórmula o criterio','¿Cómo se obtiene este dato a partir del indicador?'],
+  ['unidad','Unidad de medida','¿En qué unidad debe expresarse el resultado del indicador?'],
   ['lineaBase','Línea base','¿Cuál es el valor actual antes de ejecutar el proyecto?'],
   ['meta','Meta','¿Qué valor quieres alcanzar con este indicador?'],
+  ['medioVerificacion','Medio de verificación','¿Qué registro permitirá comprobar este indicador?'],
   ['periodicidad','Periodicidad','¿Cada cuánto revisarás este indicador?'],
   ['responsable','Responsable','¿Quién consolidará o verificará este dato?'],
   ['plazo','Plazo','¿En qué fecha o momento debe comprobarse el cumplimiento?']
@@ -322,10 +326,11 @@ function reconcileIndicatorsFromSchedule(s=ensureS12()){
  return {count,changed}
 }
 function indicatorAssistHtml(x){
- const missing=indicatorMissingFields(x),sch=indicatorScheduleSuggestions(x),rec=x.scheduleReconciliation?.fields||{};
+ const missing=indicatorMissingFields(x),sch=indicatorScheduleSuggestions(x),rec=x.scheduleReconciliation?.fields||{},ctx=indicatorProjectContext(x);
+ const fieldAssist=window.fcWriting?.indicatorFieldAssist?window.fcWriting.indicatorFieldAssist(x.linkedText||x.activityText||'',x.linkedType||'Actividad',x.indicatorFamily,ctx,x):{};
  if(!missing.length)return '<div class="indicator-assist-done"><b>No hay datos pendientes en esta ficha.</b></div>';
  const existing=Object.entries(rec).filter(([k,v])=>missing.some(([mk])=>mk===k)&&v?.value);
- return '<div class="indicator-completion-assist"><strong>Completar datos pendientes, uno por uno</strong><p>Responde solo con información real. Si todavía no la tienes, puedes dejarla como <b>[POR VERIFICAR]</b>.</p>'+(existing.length?'<div class="indicator-schedule-reconciliation"><b>El cronograma ya aporta datos que puedes reutilizar</b>'+existing.map(([k,v])=>'<button type="button" data-accept-schedule="'+x.id+':'+k+'"><small>'+esc(v.source)+'</small><span>'+esc(v.value)+'</span></button>').join('')+'</div>':'')+missing.map(([k,label,q])=>{let opts=[];if(k==='periodicidad')opts=['Al inicio y al cierre','Mensual','Trimestral','Al cierre del proyecto'];if(k==='responsable')opts=sch.responsible;if(k==='plazo')opts=sch.plazo;return '<article class="indicator-assist-card"><small>'+label+'</small><b>'+esc(q)+'</b>'+(opts.length?'<div class="indicator-assist-options">'+opts.map(v=>'<button type="button" data-ind-assist="'+x.id+':'+k+':'+esc(v)+'">'+esc(v)+'</button>').join('')+'</div>':'')+'<textarea data-ind-field="'+x.id+':'+k+'">'+esc(x[k])+'</textarea><button type="button" class="secondary" data-ind-keep-pending="'+x.id+':'+k+'">Todavía no tengo este dato</button></article>'}).join('')+'</div>'
+ return '<div class="indicator-completion-assist"><strong>Completar datos pendientes, uno por uno</strong><p>La ayuda usa el indicador y los datos reales del proyecto. Puedes adoptar una propuesta, editarla o dejar <b>[POR VERIFICAR]</b> cuando falte respaldo.</p>'+(existing.length?'<div class="indicator-schedule-reconciliation"><b>El cronograma ya aporta datos que puedes reutilizar</b>'+existing.map(([k,v])=>'<button type="button" data-accept-schedule="'+x.id+':'+k+'"><small>'+esc(v.source)+'</small><span>'+esc(v.value)+'</span></button>').join('')+'</div>':'')+missing.map(([k,label,q])=>{let opts=[...(fieldAssist[k]||[])];if(k==='responsable')opts.push(...sch.responsible);if(k==='plazo')opts.push(...sch.plazo);opts=[...new Set(opts.filter(Boolean))];return '<article class="indicator-assist-card"><small>'+label+'</small><b>'+esc(q)+'</b>'+(opts.length?'<div class="indicator-assist-options">'+opts.map(v=>'<button type="button" data-ind-assist="'+x.id+':'+k+':'+esc(v)+'">'+esc(v)+'</button>').join('')+'</div>':'<p class="muted">No hay una propuesta segura con la información disponible. Escríbelo tú o déjalo [POR VERIFICAR].</p>')+'<textarea data-ind-field="'+x.id+':'+k+'">'+esc(x[k])+'</textarea><button type="button" class="secondary" data-ind-keep-pending="'+x.id+':'+k+'">Todavía no tengo este dato</button></article>'}).join('')+'</div>'
 }
 function indicatorStepHtml(x,step){
  const g=indicatorHelp(x);
