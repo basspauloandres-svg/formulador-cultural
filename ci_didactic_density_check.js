@@ -15,7 +15,6 @@ if(!completion.includes('data-use-writing'))fail('S10 no permite adoptar una pro
 if(!completion.includes('¿Qué debe ocurrir para lograr este resultado?'))fail('S11 no guía la descomposición operativa con una pregunta simple');
 if(!completion.includes('data-act-plain')||!completion.includes('data-act-convert'))fail('S11 no permite partir de lenguaje cotidiano y convertirlo en actividad técnica');
 if(!completion.includes('Viene de')||!completion.includes('Problema central')||!completion.includes('Causa directa'))fail('S11 no muestra trazabilidad metodológica resumida');
-const guided=fs.readFileSync('guided_experience.js','utf8');
 if(!guided.includes('sectionHeaderCopy')||!guided.includes('section-screen-header'))fail('El recorrido no utiliza el encabezado visual unificado');
 for(const code of ['S05','S06','S07','S08','S09','S10','S11','S12','S13','S14','S15','S16'])if(!guided.includes(code+':{title:'))fail('Falta configuración visual del encabezado para '+code);
 if(!guided.includes('stageDots'))fail('El encabezado no muestra el progreso por etapas');
