@@ -79,7 +79,7 @@ if(!planning.includes('No se aplican sin tu confirmación'))fail('S13 no explica
 
 const review=fs.readFileSync('review_dashboard.js','utf8');
 if(!review.includes('Pendientes concretos'))fail('S16 no presenta una lista concreta de pendientes');
-if(!review.includes('data-focus-indicator')||!review.includes('Abrir este indicador'))fail('S16 no lleva al indicador específico pendiente');
+if(!review.includes('data-focus-indicator')||!(review.includes('Abrir este indicador')||review.includes('Resolver este indicador')))fail('S16 no lleva al indicador específico pendiente');
 if(!review.includes('Falta: '))fail('S16 no enumera únicamente los campos realmente pendientes');
 if(!completion.includes('fcFocusIndicator')||!completion.includes('fcFocusResultActivities'))fail('El formulador no expone navegación al componente específico desde S16');
 if(!completion.includes('Corrección solicitada desde S16'))fail('S11 no informa cuando se abre un resultado específico desde la revisión final');
@@ -111,3 +111,10 @@ if(!completion.includes("['formula','Fórmula o criterio'"))fail('La ayuda de S1
 if(!completion.includes("['unidad','Unidad de medida'"))fail('La ayuda de S12 no incluye unidad de medida');
 if(!completion.includes("['medioVerificacion','Medio de verificación'"))fail('La ayuda de S12 no incluye medio de verificación');
 if(!completion.includes('indicatorFieldAssist'))fail('S12 no usa asistencia contextual por campo');
+
+const reviewGuide=fs.readFileSync('review_dashboard.js','utf8');
+if(!reviewGuide.includes('Cómo usar esta pantalla'))fail('S16 no explica cómo resolver los pendientes');
+if(!reviewGuide.includes('¿Cómo completo este indicador?'))fail('S16 no ofrece ayuda para cada indicador pendiente');
+if(!reviewGuide.includes('¿Qué debo hacer?'))fail('S16 no explica cómo resolver resultados sin actividades');
+if(!reviewGuide.includes('Guardar avance'))fail('S16 no permite guardar el avance de la revisión de forma explícita');
+if(!reviewGuide.includes('saveReviewProgress'))fail('S16 no tiene persistencia visible de la revisión');

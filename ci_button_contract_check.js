@@ -30,7 +30,8 @@ const must=[
  ['workflow.js','#prev','navigateTo'],
  ['review_dashboard.js','review-dashboard','render'],
  ['review_dashboard.js','data-focus-indicator','fcFocusIndicator'],
- ['review_dashboard.js','data-focus-result','fcFocusResultActivities']
+ ['review_dashboard.js','data-focus-result','fcFocusResultActivities'],
+ ['review_dashboard.js','saveReviewProgress','saveReviewProgress']
 ];
 for(const [f,a,b] of must){if(!src[f].includes(a))fail(f+' no contiene control '+a);if(!src[f].includes(b))fail(f+' no contiene acción esperada '+b)}
 if(src['planning.js'].includes("host.querySelectorAll('[data-risk]').forEach(el=>el.onchange"))fail('S15 vuelve a usar onchange con re-render durante edición de riesgos');
