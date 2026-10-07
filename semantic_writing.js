@@ -146,7 +146,7 @@ function activityGuidance(result,objective,context={}){
  if(existing.length)questions.push('Ya hay '+existing.length+' actividad(es) aprobada(s) para este resultado. ¿Qué acción necesaria todavía no está cubierta?');
  if(p)questions.push('Con la población ya registrada —“'+p+'”—, ¿esta actividad necesita precisar quién participa?');
  if(territory)questions.push('En el territorio registrado —“'+territory+'”—, ¿esta actividad requiere una condición específica que ya esté documentada en el proyecto?');
- return {suggestions:uniq(suggestions).slice(0,5),questions:uniq(questions).slice(0,5),context:{result:rq,objective:oq,population:p,territory,existingActivities:existing}}
+ return {suggestions:[...new Set(suggestions.map(finish))].slice(0,5),questions:[...new Set(questions.map(finish))].slice(0,5),context:{result:rq,objective:oq,population:p,territory,existingActivities:existing}}
 }
 function activityFromPlainLanguage(input,result,objective,population){
  const t=clean(input);if(!t)return '[POR REVISAR]';
