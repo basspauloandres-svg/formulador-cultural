@@ -1,4 +1,5 @@
 (()=>{
+// S07 simple flow advances to S08 after the user confirms the tree summary.
 const TREE_KEY='formulador-cultural-problem-tree-v1';
 const CV_KEY='formulador-cultural-causal-validation-v1';
 const $=s=>document.querySelector(s);
