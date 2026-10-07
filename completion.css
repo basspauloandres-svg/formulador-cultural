@@ -60,3 +60,11 @@
 .indicator-status-summary span{border-radius:999px;padding:6px 10px;font-size:.78rem;font-weight:800;border:1px solid #d8e4dd}
 .indicator-status-summary .ok{background:#edf8f2;color:#1e6748;border-color:#b9d9c8}
 .indicator-status-summary .pending{background:#fff8df;color:#785d08;border-color:#eadc9b}
+
+/* S12 ↔ S13 reconciliation */
+.indicator-schedule-reconciliation{display:grid;gap:7px;padding:11px;border:1px solid #b9d9c8;background:#f5fbf7;border-radius:11px}
+.indicator-schedule-reconciliation>b{color:#245e44}
+.indicator-schedule-reconciliation button{display:grid;grid-template-columns:minmax(120px,.7fr) 1fr;gap:8px;text-align:left;border:1px solid #c9ded2;background:#fff;color:#173d2c;border-radius:9px;padding:9px 10px;font:inherit}
+.indicator-schedule-reconciliation button small{color:#66756d;font-weight:750}
+.indicator-schedule-reconciliation button span{font-weight:800}
+@media(max-width:640px){.indicator-schedule-reconciliation button{grid-template-columns:1fr}}
