@@ -190,6 +190,10 @@ function baseIndicator(source,type){
  if(type==='Resultado'){
   if(/Reducción verificable de las diferencias en los niveles de dominio instrumental/i.test(t))return 'Variación de la brecha entre niveles de dominio instrumental respecto de la línea base.';
   if(/equilibrio en la frecuencia de acompañamiento especializado/i.test(t))return 'Variación entre frecuencias de acompañamiento especializado por familia instrumental respecto de la línea base.';
+  if(/ampliaci[oó]n verificable del acceso a/i.test(t)||/mejora verificable del acceso a/i.test(t)||/mayor acceso a/i.test(t)){
+   const m=t.match(/acceso a\s+(.+?)(?:\s+para\s+(.+))?$/i),resource=clean(m?.[1]||'los procesos definidos'),target=clean(m?.[2]||'la población vinculada').replace(/^algunas?\s+/i,'');
+   return 'Variación en el número de '+target+' con acceso registrado a '+resource+' respecto de la línea base.'
+  }
   if(/mejora|aprendizaje|desempeño|dominio|capacidad|formativ/i.test(t))return 'Porcentaje de participantes que muestran mejora entre la valoración inicial y la valoración final.';
   return '[POR REVISAR] Definir un indicador de resultado para: '+t+'.'
  }
