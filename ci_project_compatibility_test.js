@@ -34,7 +34,7 @@ const chain=()=>{const o={select:()=>o,order:()=>o,limit:()=>Promise.resolve({da
 w.supabase={createClient:()=>({auth:{getSession:()=>Promise.resolve({data:{session:null}}),onAuthStateChange:()=>{},signInWithPassword:()=>Promise.resolve({error:null}),signUp:()=>Promise.resolve({data:{},error:null}),signInWithOtp:()=>Promise.resolve({error:null}),updateUser:()=>Promise.resolve({error:null}),signOut:()=>Promise.resolve()},from:()=>chain()})};
 w.XLSX={utils:{book_new:()=>({}),json_to_sheet:()=>({}),aoa_to_sheet:()=>({}),book_append_sheet:()=>{}},writeFile:()=>{}};
 
-const scripts=['preboot.js','app.js','sections_extension.js','guidance.js','evidence.js','s05_preflight.js','vester.js','causal_validation.js','decision_guidance.js','simple_causal_ui.js','tree_validation_bridge.js','tree.js','synthesis.js','visualization.js','s07_front.js','simple_tree_ui.js','semantic_writing.js','objectives.js','workflow.js','completion.js','planning.js','results_layer.js','coherence_engine.js','export_completion.js','deliverables.js','visual_exports_ui.js','review_dashboard.js','completion_bridge.js','guided_experience.js'];
+const scripts=['preboot.js','app.js','sections_extension.js','guidance.js','evidence.js','s05_preflight.js','vester.js','causal_validation.js','decision_guidance.js','simple_causal_ui.js','tree_validation_bridge.js','tree.js','synthesis.js','visualization.js','s07_front.js','simple_tree_ui.js','semantic_writing.js','data_cleanup.js','objectives.js','workflow.js','completion.js','planning.js','results_layer.js','coherence_engine.js','export_completion.js','deliverables.js','visual_exports_ui.js','review_dashboard.js','completion_bridge.js','guided_experience.js'];
 for(const file of scripts){const s=w.document.createElement('script');s.textContent=fs.readFileSync(file,'utf8');w.document.body.appendChild(s)}
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
@@ -42,8 +42,22 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  await wait(120);
  if(errors.length)throw errors[0];
 
- await w.fcNavigate('S10');await wait(80);
- assert(w.fcGetAlternatives().length===2,'S10 borró alternativas históricas antes de confirmar S09');
+ let cleaned=JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1'));
+ assert((cleaned.S10.completion_state?.archivedItems||[]).length===2,'La depuración no archivó las alternativas históricas no confirmadas');
+ assert((cleaned.S10.completion_state?.items||[]).length===0,'Las propuestas históricas pendientes siguen interfiriendo con el flujo activo');
+
+ await w.fcNavigate('S08');await wait(100);
+ const finalProblem=w.document.querySelector('#finalProblem');assert(finalProblem,'S08 no muestra la formulación final editable');
+ finalProblem.value='Problema central confirmado para prueba integral.';
+ finalProblem.dispatchEvent(new w.Event('input',{bubbles:true}));await wait(25);
+ let storedS08=JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1'));
+ assert(storedS08.S08?.synthesis_state?.final==='Problema central confirmado para prueba integral.','S08 no guarda el borrador mientras se escribe');
+ const confirmS08=w.document.querySelector('#confirmFinal');assert(confirmS08,'S08 no muestra Guardar y continuar a S09');
+ confirmS08.click();await wait(120);
+ storedS08=JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1'));
+ assert(storedS08.S08?.enunciado==='Problema central confirmado para prueba integral.','S08 no guardó el enunciado confirmado');
+ assert(storedS08.S08?.synthesis_state?.confirmed===true,'S08 no quedó confirmada');
+ assert(w.localStorage.getItem('fc_active')==='S09'||w.document.querySelector('#counter')?.textContent.startsWith('S09'),'S08 no avanzó a S09');
 
  await w.fcNavigate('S09');await wait(100);
  let stored=JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1'));
@@ -67,6 +81,8 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  const alts=w.fcGetAlternatives();
  assert(alts.length>=1,'S10 no produjo alternativas tras confirmar objetivos');
  const first=alts[0];
+ let altText=w.document.querySelector('[data-alt-text="'+first.id+'"]');
+ if(altText&&/^\s*\[POR REVISAR\]/i.test(altText.value)){altText.value='Estrategia verificable de prueba para alcanzar el objetivo específico.';altText.dispatchEvent(new w.Event('change',{bubbles:true}));await wait(25)}
  let confirm=w.document.querySelector('[data-alt-confirm="'+first.id+'"]');assert(confirm,'No existe confirmación de alternativa');confirm.click();await wait(25);
  let select=w.document.querySelector('[data-alt-select="'+first.id+'"]');assert(select,'No existe selección de alternativa');select.click();await wait(40);
 

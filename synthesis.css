@@ -12,3 +12,7 @@
 .synthesis-final textarea,.synthesis-long textarea{border-color:#cbd9d1;border-radius:12px}
 .synthesis-note,.synthesis-alternatives{border-color:#cfe4d8;background:#f4fbf7;border-radius:15px}
 .proposal-tag{border-color:#cfe4d8;background:#edf8f2;color:#246147}
+
+/* S08 save and continue */
+.synthesis-final #confirmFinal{width:100%;margin-top:10px;min-height:48px;background:linear-gradient(180deg,#23845b,#176b49);color:#fff;border-color:#176b49;border-radius:12px;font-weight:800}
+.s08-autosave-note{display:block;margin-top:7px;color:#66756d;font-size:.82rem;text-align:center}
