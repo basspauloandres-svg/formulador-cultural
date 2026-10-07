@@ -45,9 +45,10 @@ const contextualActivityHelp=w.activityGuidance(
  {population:'Integrantes de la banda',territory:'Municipio de prueba',existingActivities:['Convocar a los participantes']}
 );
 if(!contextualActivityHelp.suggestions.length)fail('S11 no genera ayuda para una actividad adicional');
-if(contextualActivityHelp.suggestions.some(x=>!x.includes('Proceso de formación instrumental implementado')))fail('La ayuda de actividad adicional no usa el resultado real');
+if(contextualActivityHelp.suggestions.some(x=>x.split(/\s+/).length>28))fail('La ayuda de actividad adicional genera enunciados demasiado extensos');
+if(contextualActivityHelp.context.result!=='Proceso de formación instrumental implementado')fail('La ayuda perdió el resultado real al compactar la redacción');
 if(!contextualActivityHelp.questions.some(x=>x.includes('Mejorar el acceso a procesos de formación instrumental')))fail('Las preguntas de actividad adicional no usan el objetivo específico real');
-if(!contextualActivityHelp.questions.some(x=>x.includes('Integrantes de la banda')))fail('La ayuda de actividad adicional no usa la población real cuando existe');
+if(contextualActivityHelp.context.population!=='Integrantes de la banda')fail('La ayuda de actividad adicional no conserva la población real en el contexto');
 if(contextualActivityHelp.suggestions.some(x=>/\b(\d+|seis|diez|veinte)\b/i.test(x)))fail('La ayuda de actividad adicional inventa cantidades');
 
 const accessResult='Ampliación verificable del acceso a talleres especializados para algunas familias instrumentales.';
@@ -64,3 +65,9 @@ if(!contextualIndicator.context.population.includes('Integrantes de la banda'))f
 const longPopulationActivity=w.activityFromPlainLanguage('Se necesitan 6 talleres de trombón','Proceso formativo implementado','Mejorar la formación','Integrantes de la banda con trayectorias distintas, niveles de dominio diversos y criterios de selección específicos');
 if(longPopulationActivity.includes('trayectorias distintas')||longPopulationActivity.length>100)fail('La actividad sigue incrustando la caracterización poblacional en el enunciado');
 if(!/6 talleres de trombón/i.test(longPopulationActivity))fail('La actividad perdió el dato operativo suministrado por el usuario');
+
+const longActivity='Realizar una actividad extensa que repite el problema central, el objetivo específico, el resultado esperado y toda la caracterización territorial y poblacional del proyecto dentro del mismo enunciado operativo para explicar nuevamente la justificación completa.';
+const longReview=w.activityWritingReview(longActivity);
+if(longReview.ok)fail('La revisión semántica acepta una actividad convertida en párrafo contextual');
+const shortReview=w.activityWritingReview('Realizar seis talleres de trombón.');
+if(!shortReview.ok)fail('La revisión semántica rechaza una actividad breve y operativa');

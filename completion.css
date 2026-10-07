@@ -74,3 +74,8 @@
 .s16-focus-banner strong{color:#245e44}
 .s16-focus-banner p,.s16-focus-banner span{margin:0;color:#526760}
 .s16-focus-banner button{justify-self:start;border:1px solid #2d8a61;background:#fff;color:#176b49;border-radius:9px;padding:9px 12px;font:inherit;font-weight:800}
+
+/* Semantic activity length guard */
+.activity-writing-review{border:1px solid #e7c77a;background:#fff8df;border-radius:10px;padding:10px 12px;margin-top:8px;color:#6b560d}
+.activity-writing-review strong{display:block;margin-bottom:4px}
+.activity-writing-review p{margin:4px 0}

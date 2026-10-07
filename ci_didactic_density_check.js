@@ -96,3 +96,7 @@ if(!exportSrc.includes('rowsFrom(window.fcGetObjectives)'))fail('El Excel técni
 if(!completion.includes('activityStoredContext'))fail('S11 no conserva contexto separado del texto de actividad');
 if(!completion.includes('context=activityStoredContext'))fail('Las actividades asistidas no guardan su contexto estructurado');
 if(semantic.includes("+' dirigido a '+low(pop)"))fail('La redacción de actividad vuelve a incrustar toda la población en el texto');
+
+if(!semantic.includes('activityWritingReview'))fail('No existe control semántico de extensión para actividades');
+if(!completion.includes('Acorta la redacción antes de aprobar'))fail('S11 no explica cuando una actividad se convirtió en un párrafo');
+if(!completion.includes('review.ok'))fail('S11 no bloquea la aprobación de actividades semánticamente extensas');
