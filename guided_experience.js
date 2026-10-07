@@ -8,6 +8,40 @@ const stages=[
 {n:5,title:'Revisar y entregar',items:[['S16','Resultados, gráficas y documentos']]}
 ];
 let renderKey='',guideKey='',scheduled=false;
+const sectionHeaderCopy={
+ S05:{title:'Situaciones problemáticas',subtitle:'Identifica situaciones concretas y observables antes de analizar cómo se relacionan.',icon:'list'},
+ S06:{title:'Matriz Vester',subtitle:'Compara las situaciones y reconoce cuáles influyen más sobre las demás.',icon:'grid'},
+ S07:{title:'Árbol de problemas',subtitle:'Organiza las relaciones entre causas, problema principal y efectos.',icon:'tree'},
+ S08:{title:'Problema central',subtitle:'Revisa y formula con claridad el problema principal del proyecto.',icon:'target'},
+ S09:{title:'Árbol de objetivos',subtitle:'Transforma los problemas confirmados en cambios que el proyecto busca lograr.',icon:'target'},
+ S10:{title:'Alternativas',subtitle:'Compara caminos posibles y selecciona una opción de intervención coherente.',icon:'route'},
+ S11:{title:'Actividades',subtitle:'Convierte los resultados esperados en acciones concretas y verificables.',icon:'clipboard'},
+ S12:{title:'Indicadores y metas',subtitle:'Define cómo comprobarás el cumplimiento y los cambios esperados.',icon:'chart'},
+ S13:{title:'Cronograma',subtitle:'Organiza las actividades en el tiempo y revisa su secuencia.',icon:'calendar'},
+ S14:{title:'Recursos y presupuesto',subtitle:'Relaciona cada actividad con los recursos y costos que necesita.',icon:'wallet'},
+ S15:{title:'Riesgos',subtitle:'Identifica situaciones futuras que podrían afectar el proyecto y cómo responder.',icon:'alert'},
+ S16:{title:'Vista final · Matriz técnica',subtitle:'Revisa la trazabilidad del proyecto y prepara sus documentos finales.',icon:'document'}
+};
+function sectionIcon(name){
+ const paths={
+  list:'<path d="M8 7h10M8 12h10M8 17h10"/><circle cx="5" cy="7" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="5" cy="17" r="1"/>',
+  grid:'<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/>',
+  tree:'<path d="M12 4v5M6 20v-4h12v4M6 16v-4h12v4"/><circle cx="12" cy="4" r="2"/><circle cx="6" cy="20" r="2"/><circle cx="18" cy="20" r="2"/>',
+  target:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 12 19 5"/>',
+  route:'<circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6h4a3 3 0 0 1 3 3v6h1"/>',
+  clipboard:'<rect x="5" y="5" width="14" height="16" rx="2"/><path d="M9 5V3h6v2M9 10h6M9 14h6M9 18h4"/>',
+  chart:'<path d="M5 19V9M12 19V5M19 19v-7"/>',
+  calendar:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16"/>',
+  wallet:'<path d="M4 7h14a2 2 0 0 1 2 2v9H4z"/><path d="M4 7V5h12"/><path d="M15 12h5v4h-5z"/>',
+  alert:'<path d="M12 4 21 20H3z"/><path d="M12 9v5M12 17h.01"/>',
+  document:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h6"/>'
+ };
+ return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+(paths[name]||paths.document)+'</svg>'
+}
+function stageDots(stage){
+ return '<div class="section-progress-dots" aria-label="Paso '+stage.n+' de '+stages.length+'">'+stages.map(s=>'<span class="'+(s.n<=stage.n?'done':'')+'"></span>').join('')+'</div>'
+}
+
 function code(){try{return typeof active!=='undefined'?active:(($('#counter')?.textContent||'').match(/^S\d{2}/)?.[0]||'S01')}catch{return 'S01'}}
 function data(c){try{return typeof draft!=='undefined'?(draft[c]||{}):{}}catch{return {}}}
 function has(v){if(v===null||v===undefined)return false;if(typeof v==='string')return !!v.trim();if(Array.isArray(v))return v.length>0;if(typeof v==='object')return Object.keys(v).length>0;return true}
@@ -50,7 +84,19 @@ function renderJourney(){
  wrap.querySelector('.guided-review-btn').onclick=()=>go('S16')
 }
 function renderGuide(){
- const c=code(),fields=$('#fields');if(!fields)return;const s=stageFor(c),item=s.items.find(x=>x[0]===c),k=c+':'+s.n;if(k===guideKey&&fields.querySelector('.guided-section-note'))return;fields.querySelector('.guided-section-note')?.remove();const note=document.createElement('div');note.className='guided-section-note';note.innerHTML='<span>Paso '+s.n+' · '+s.title+'</span><strong>'+c+' · '+(item?.[1]||'Sección actual')+'</strong>';fields.prepend(note);guideKey=k
+ const c=code(),fields=$('#fields');if(!fields)return;const s=stageFor(c),item=s.items.find(x=>x[0]===c),k=c+':'+s.n;
+ if(k===guideKey&&fields.querySelector('.section-screen-header'))return;
+ fields.querySelector('.guided-section-note')?.remove();
+ fields.querySelector('.section-screen-header')?.remove();
+ const copy=sectionHeaderCopy[c]||{title:item?.[1]||'Sección actual',subtitle:(typeof sections!=='undefined'&&sections[c]?.meaning)||'',icon:'document'};
+ const head=document.createElement('section');head.className='section-screen-header';
+ head.innerHTML='<div class="section-screen-icon">'+sectionIcon(copy.icon)+'</div><div class="section-screen-copy"><div class="section-screen-title-row"><div><h2>'+c+' · '+copy.title+'</h2><p>'+copy.subtitle+'</p></div>'+stageDots(s)+'</div><small>Paso '+s.n+' de '+stages.length+' · '+s.title+'</small></div>';
+ fields.prepend(head);
+ const title=$('#title'),meaning=$('#meaning'),counter=$('#counter');
+ if(title)title.classList.add('visually-replaced');
+ if(meaning)meaning.classList.add('visually-replaced');
+ if(counter)counter.classList.add('visually-replaced');
+ guideKey=k
 }
 function simplifyVester(){const root=$('#vesterWizard');if(!root)return;const top=root.querySelector('.vester-top h3');if(top)top.textContent='Comparar situaciones';const p=root.querySelector('.vester-top p');if(p)p.textContent='Te mostramos dos situaciones cada vez. Responde si una puede provocar cambios en la otra.'}
 function mount(){scheduled=false;renderJourney();renderGuide();simplifyVester()}
