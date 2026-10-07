@@ -83,6 +83,19 @@ function activitySufficiencyFor(x,s){
  const related=(s.items||[]).filter(i=>i.resultId&&i.resultId===x?.resultId&&i.confirmed);
  return window.fcWriting?.activitySufficiency?window.fcWriting.activitySufficiency(related,x?.resultText||''):{ok:true,issues:[]}
 }
+function activityLinkOptions(){
+ const alt=selectedAlternative(),allowed=new Set(alt?.sourceIds||[]);
+ return confirmedResults().filter(r=>!alt||allowed.has(r.objectiveId)).map(r=>{
+   const obj=(objectives().items||[]).find(o=>o.id===r.objectiveId)||{};
+   return {resultId:r.id,resultText:r.text,objectiveId:r.objectiveId||obj.id||'',objectiveText:r.objectiveText||obj.text||'',causeId:obj.id||r.objectiveId||''}
+ }).filter(x=>x.resultId&&x.objectiveId)
+}
+function linkActivityToResult(x,resultId){
+ const option=activityLinkOptions().find(r=>r.resultId===resultId);if(!x||!option)return false;
+ x.resultId=option.resultId;x.resultText=option.resultText;x.objectiveId=option.objectiveId;x.objectiveText=option.objectiveText;x.causeId=option.causeId;
+ x.status='manual_vinculada';x.provenance=x.provenance==='actividad_adicional'?'actividad_adicional_vinculada':'actividad_historica_vinculada';x.confirmed=false;x.updatedAt=new Date().toISOString();
+ return true
+}
 function indicatorProposal(source,i,type='Actividad',template=null){
  const linkedId=source.id,linkedText=source.text||source.activityText||source.objectiveText||'';
  const t=template||(window.fcWriting?.indicatorBattery?window.fcWriting.indicatorBattery(linkedText,type,{source})[0]:null)||{};
