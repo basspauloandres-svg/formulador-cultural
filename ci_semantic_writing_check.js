@@ -71,3 +71,8 @@ const longReview=w.activityWritingReview(longActivity);
 if(longReview.ok)fail('La revisión semántica acepta una actividad convertida en párrafo contextual');
 const shortReview=w.activityWritingReview('Realizar seis talleres de trombón.');
 if(!shortReview.ok)fail('La revisión semántica rechaza una actividad breve y operativa');
+
+const longResult='Resultado esperado: mejora amplia y verificable del proceso con una descripción extensa que vuelve a repetir el objetivo específico, el problema central, la población, el territorio, la justificación y múltiples condiciones del proyecto dentro del mismo enunciado.';
+if(w.resultWritingReview(longResult).ok)fail('La revisión semántica acepta un resultado convertido en párrafo contextual');
+if(!w.resultWritingReview('Ampliación verificable del acceso a talleres especializados.').ok)fail('La revisión semántica rechaza un resultado breve y verificable');
+if(w.compactPresentationText(longResult,12).split(/\s+/).length>12)fail('La compactación de presentación supera el límite solicitado');

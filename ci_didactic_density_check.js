@@ -100,3 +100,9 @@ if(semantic.includes("+' dirigido a '+low(pop)"))fail('La redacción de activida
 if(!semantic.includes('activityWritingReview'))fail('No existe control semántico de extensión para actividades');
 if(!completion.includes('Acorta la redacción antes de aprobar'))fail('S11 no explica cuando una actividad se convirtió en un párrafo');
 if(!completion.includes('review.ok'))fail('S11 no bloquea la aprobación de actividades semánticamente extensas');
+
+if(!semantic.includes('resultWritingReview')||!results.includes('Acorta el resultado antes de aprobar'))fail('Los resultados no aplican el límite semántico transversal');
+if(!planning.includes('compactLabel')||!planning.includes('riskWritingIssues'))fail('Cronograma y riesgos no aplican la compactación transversal');
+const deliverableSrc=fs.readFileSync('deliverables.js','utf8'),exportSrc2=fs.readFileSync('export_completion.js','utf8');
+if(!deliverableSrc.includes('compact(x.activityText,28)'))fail('Los documentos finales no compactan etiquetas operativas repetitivas');
+if(!exportSrc2.includes('Texto_original'))fail('El respaldo técnico no preserva el texto original cuando muestra una versión compacta');
