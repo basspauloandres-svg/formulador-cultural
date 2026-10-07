@@ -13,19 +13,19 @@ function snapshot(){
  const riskCounts={Alto:risks.filter(x=>x.riskLevel==='Alto').length,Medio:risks.filter(x=>x.riskLevel==='Medio').length,Bajo:risks.filter(x=>x.riskLevel==='Bajo').length};
  const highOpen=risks.filter(x=>x.riskLevel==='Alto'&&!x.confirmed).length;
  const fieldLabels={formula:'Fórmula o criterio',unidad:'Unidad',lineaBase:'Línea base',meta:'Meta',medioVerificacion:'Medio de verificación',periodicidad:'Periodicidad',responsable:'Responsable',plazo:'Plazo'};
- const missingValue=v=>!String(v||'').trim()||/\[POR (VERIFICAR|REVISAR|DEFINIR)\]/i.test(String(v||''));
- const indicatorPending=inds.map(x=>{
-  const missing=[];
-  if(!x.confirmed||x.definitionStatus==='PENDIENTE'||missingValue(x.indicator))missing.push('Definición del indicador');
-  if(x.confirmed)for(const k of Object.keys(fieldLabels))if(missingValue(x[k]))missing.push(fieldLabels[k]);
-  const scheduleSuggestions=Object.entries(x.scheduleReconciliation?.fields||{}).filter(([k,v])=>missing.includes(fieldLabels[k])&&v?.value).map(([k,v])=>({field:fieldLabels[k],value:v.value,source:v.source}));
-  return {id:x.id||x.indicatorId,label:(x.indicator&&!missingValue(x.indicator)?x.indicator:(x.linkedType||'Indicador')+' · '+(x.linkedText||x.activityText||'')),linkedType:x.linkedType||'',linkedText:x.linkedText||x.activityText||'',missing,scheduleSuggestions}
- }).filter(x=>x.missing.length);
+ const current=window.fcGetCurrentValidationSnapshot?.()||{indicatorPending:[],orphanResults:[]};
+ const indicatorPending=(current.indicatorPending||[]).filter(x=>x.definitionPending||x.technicalPending).map(x=>{
+  const item=x.item||{},missing=[];
+  if(x.definitionPending)missing.push('Definición del indicador');
+  for(const k of x.missingFields||[])missing.push(fieldLabels[k]||k);
+  const scheduleSuggestions=Object.entries(item.scheduleReconciliation?.fields||{}).filter(([k,v])=>missing.includes(fieldLabels[k])&&v?.value).map(([k,v])=>({field:fieldLabels[k],value:v.value,source:v.source}));
+  return {id:item.id||item.indicatorId,label:(!x.definitionPending&&item.indicator?item.indicator:(item.linkedType||'Indicador')+' · '+(item.linkedText||item.activityText||'')),linkedType:item.linkedType||'',linkedText:item.linkedText||item.activityText||'',missing,scheduleSuggestions}
+ });
  const undefinedIndicators=indicatorPending.filter(x=>x.missing.includes('Definición del indicador')).length;
  const incompleteIndicators=indicatorPending.filter(x=>!x.missing.includes('Definición del indicador')).length;
- const orphanResultItems=res.filter(r=>!acts.some(a=>a.resultId===r.id)).map(r=>({id:r.id,text:r.text,objectiveText:r.objectiveText||''}));
+ const orphanResultItems=(current.orphanResults||[]).map(r=>({id:r.id,text:r.text,objectiveText:r.objectiveText||''}));
  const orphanResults=orphanResultItems.length;
- const ready=complete===codes.length&&coh.score>=80&&highOpen===0;
+ const ready=complete===codes.length&&coh.score>=80&&highOpen===0&&indicatorPending.length===0&&orphanResults===0;
  const evidence={verified:ev.filter(x=>x.verification_status==='verificada').length,pending:ev.filter(x=>x.verification_status==='por_verificar').length,discarded:ev.filter(x=>x.verification_status==='descartada').length,total:ev.length};return {states,complete,progress,missing,completion:pct(complete,codes.length),res,acts,inds,sch,bud,risks,bs,coh,obj,riskCounts,evidence,highOpen,undefinedIndicators,incompleteIndicators,indicatorPending,orphanResults,orphanResultItems,ready,coverage:[
   ['Objetivos con resultados',pct(obj.filter(x=>resObj.has(x.id)).length,obj.length)],
   ['Resultados con actividades',pct(res.filter(x=>actRes.has(x.id)).length,res.length)],
