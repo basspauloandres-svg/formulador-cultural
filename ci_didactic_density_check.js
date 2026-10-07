@@ -79,7 +79,7 @@ if(!planning.includes('No se aplican sin tu confirmación'))fail('S13 no explica
 
 const review=fs.readFileSync('review_dashboard.js','utf8');
 if(!review.includes('Pendientes concretos'))fail('S16 no presenta una lista concreta de pendientes');
-if(!review.includes('data-focus-indicator')||!review.includes('Abrir este indicador'))fail('S16 no lleva al indicador específico pendiente');
+if(!review.includes('data-focus-indicator')||!(review.includes('Abrir este indicador')||review.includes('Resolver este indicador')))fail('S16 no lleva al indicador específico pendiente');
 if(!review.includes('Falta: '))fail('S16 no enumera únicamente los campos realmente pendientes');
 if(!completion.includes('fcFocusIndicator')||!completion.includes('fcFocusResultActivities'))fail('El formulador no expone navegación al componente específico desde S16');
 if(!completion.includes('Corrección solicitada desde S16'))fail('S11 no informa cuando se abre un resultado específico desde la revisión final');
