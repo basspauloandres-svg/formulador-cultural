@@ -292,12 +292,32 @@ function indicatorScheduleSuggestions(x){
  else if(x.objectiveId){const ids=new Set(confirmedActivities().filter(a=>a.objectiveId===x.objectiveId).map(a=>a.id));rows=sch.filter(r=>ids.has(r.activityId)&&r.confirmed)}
  const responsible=[...new Set(rows.map(r=>String(r.responsible||r.responsable||'').trim()).filter(Boolean))];
  const dates=rows.map(r=>String(r.endDate||r.end||'').trim()).filter(Boolean).sort();
- return {responsible,plazo:dates.length?[dates[dates.length-1]]:[]}
+ const frequencies=[...new Set(rows.map(r=>String(r.frequency||'').trim()).filter(Boolean))];
+ return {responsible:responsible.length===1?responsible:[],plazo:dates.length?[dates[dates.length-1]]:[],frequency:frequencies.length===1?frequencies:[],rows}
+}
+function scheduleReconciliationForIndicator(x){
+ const sch=indicatorScheduleSuggestions(x),out={source:'S13',linkedIndicatorId:x.id,updatedAt:new Date().toISOString(),fields:{}};
+ if(sch.responsible.length)out.fields.responsable={value:sch.responsible[0],source:'Cronograma confirmado'};
+ if(sch.plazo.length)out.fields.plazo={value:sch.plazo[0],source:'Fecha final confirmada en cronograma'};
+ if(x.linkedType==='Actividad'&&sch.frequency.length&&sch.frequency[0]==='Una vez')out.fields.periodicidad={value:'Al cierre de la actividad',source:'Actividad programada una vez en el cronograma'};
+ return out
+}
+function reconcileIndicatorsFromSchedule(s=ensureS12()){
+ let changed=false,count=0;
+ for(const x of s.items||[]){
+  const rec=scheduleReconciliationForIndicator(x),fields=rec.fields;
+  if(!Object.keys(fields).length)continue;
+  const prevJson=JSON.stringify(x.scheduleReconciliation?.fields||{}),nextJson=JSON.stringify(fields);
+  if(prevJson!==nextJson){x.scheduleReconciliation=rec;changed=true;count++}
+ }
+ if(changed)write('S12',s);
+ return {count,changed}
 }
 function indicatorAssistHtml(x){
- const missing=indicatorMissingFields(x),sch=indicatorScheduleSuggestions(x);
+ const missing=indicatorMissingFields(x),sch=indicatorScheduleSuggestions(x),rec=x.scheduleReconciliation?.fields||{};
  if(!missing.length)return '<div class="indicator-assist-done"><b>No hay datos pendientes en esta ficha.</b></div>';
- return '<div class="indicator-completion-assist"><strong>Completar datos pendientes, uno por uno</strong><p>Responde solo con información real. Si todavía no la tienes, puedes dejarla como <b>[POR VERIFICAR]</b>.</p>'+missing.map(([k,label,q])=>{let opts=[];if(k==='periodicidad')opts=['Al inicio y al cierre','Mensual','Trimestral','Al cierre del proyecto'];if(k==='responsable')opts=sch.responsible;if(k==='plazo')opts=sch.plazo;return '<article class="indicator-assist-card"><small>'+label+'</small><b>'+esc(q)+'</b>'+(opts.length?'<div class="indicator-assist-options">'+opts.map(v=>'<button type="button" data-ind-assist="'+x.id+':'+k+':'+esc(v)+'">'+esc(v)+'</button>').join('')+'</div>':'')+'<textarea data-ind-field="'+x.id+':'+k+'">'+esc(x[k])+'</textarea><button type="button" class="secondary" data-ind-keep-pending="'+x.id+':'+k+'">Todavía no tengo este dato</button></article>'}).join('')+'</div>'
+ const existing=Object.entries(rec).filter(([k,v])=>missing.some(([mk])=>mk===k)&&v?.value);
+ return '<div class="indicator-completion-assist"><strong>Completar datos pendientes, uno por uno</strong><p>Responde solo con información real. Si todavía no la tienes, puedes dejarla como <b>[POR VERIFICAR]</b>.</p>'+(existing.length?'<div class="indicator-schedule-reconciliation"><b>El cronograma ya aporta datos que puedes reutilizar</b>'+existing.map(([k,v])=>'<button type="button" data-accept-schedule="'+x.id+':'+k+'"><small>'+esc(v.source)+'</small><span>'+esc(v.value)+'</span></button>').join('')+'</div>':'')+missing.map(([k,label,q])=>{let opts=[];if(k==='periodicidad')opts=['Al inicio y al cierre','Mensual','Trimestral','Al cierre del proyecto'];if(k==='responsable')opts=sch.responsible;if(k==='plazo')opts=sch.plazo;return '<article class="indicator-assist-card"><small>'+label+'</small><b>'+esc(q)+'</b>'+(opts.length?'<div class="indicator-assist-options">'+opts.map(v=>'<button type="button" data-ind-assist="'+x.id+':'+k+':'+esc(v)+'">'+esc(v)+'</button>').join('')+'</div>':'')+'<textarea data-ind-field="'+x.id+':'+k+'">'+esc(x[k])+'</textarea><button type="button" class="secondary" data-ind-keep-pending="'+x.id+':'+k+'">Todavía no tengo este dato</button></article>'}).join('')+'</div>'
 }
 function indicatorStepHtml(x,step){
  const g=indicatorHelp(x);
@@ -329,6 +349,7 @@ function renderS12(){
  <div class="completion-toolbar"><button id="exportFull">Ver respaldo técnico en Excel</button></div></section>`;bindS12(s)
 }
 function bindS12(s){
+ document.querySelectorAll('[data-accept-schedule]').forEach(b=>b.onclick=()=>{const [id,k]=b.dataset.acceptSchedule.split(':');const x=s.items.find(i=>i.id===id);const rec=x?.scheduleReconciliation?.fields?.[k];if(!x||!rec?.value)return;x[k]=rec.value;x.technicalStatus=indicatorQuality(x).ok?'COMPLETA':'PENDIENTE';x.verificationStatus=x.technicalStatus==='COMPLETA'&&x.confirmed?'VERIFICADO':'POR_VERIFICAR';x.provenanceDetails={...(x.provenanceDetails||{}),[k]:{source:'S13',acceptedAt:new Date().toISOString(),value:rec.value}};write('S12',s);renderS12()});
  document.querySelectorAll('[data-open-indicator-completion]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.openIndicatorCompletion);if(!x)return;x.showCompletionHelp=!x.showCompletionHelp;write('S12',s);renderS12()});
  document.querySelectorAll('[data-ind-assist]').forEach(b=>b.onclick=()=>{const [id,k,...rest]=b.dataset.indAssist.split(':');const x=s.items.find(i=>i.id===id);if(!x)return;x[k]=rest.join(':');x.technicalStatus=indicatorQuality(x).ok?'COMPLETA':'PENDIENTE';x.verificationStatus=x.technicalStatus==='COMPLETA'&&x.confirmed?'VERIFICADO':'POR_VERIFICAR';write('S12',s);renderS12()});
  document.querySelectorAll('[data-ind-keep-pending]').forEach(b=>b.onclick=()=>{const [id,k]=b.dataset.indKeepPending.split(':');const x=s.items.find(i=>i.id===id);if(!x)return;x[k]='[POR VERIFICAR]';x.technicalStatus='PENDIENTE';x.verificationStatus='POR_VERIFICAR';write('S12',s);renderS12()});
@@ -342,6 +363,6 @@ function bindS12(s){
  $('#exportFull')&&($('#exportFull').onclick=()=>window.fcExportCompleteWorkbook?.())
 }
 function mount(){const c=$('#counter')?.textContent||'';if(c.startsWith('S10')&&!$('#completionS10'))renderS10();else if(c.startsWith('S11')&&!$('#completionS11'))renderS11();else if(c.startsWith('S12')&&!$('#completionS12'))renderS12()}
-window.fcRefreshCompletionSection=code=>{if(code==='S10'&&($('#counter')?.textContent||'').startsWith('S10'))renderS10();if(code==='S11'&&($('#counter')?.textContent||'').startsWith('S11'))renderS11();if(code==='S12'&&($('#counter')?.textContent||'').startsWith('S12'))renderS12()};window.fcGetAlternatives=()=>ensureS10().items||[];window.fcGetActivities=()=>ensureS11().items||[];window.fcGetIndicators=()=>ensureS12().items||[];
+window.fcRefreshCompletionSection=code=>{if(code==='S10'&&($('#counter')?.textContent||'').startsWith('S10'))renderS10();if(code==='S11'&&($('#counter')?.textContent||'').startsWith('S11'))renderS11();if(code==='S12'&&($('#counter')?.textContent||'').startsWith('S12'))renderS12()};window.fcGetAlternatives=()=>ensureS10().items||[];window.fcGetActivities=()=>ensureS11().items||[];window.fcGetIndicators=()=>ensureS12().items||[];window.fcReconcileIndicatorsFromSchedule=()=>reconcileIndicatorsFromSchedule(ensureS12());
 new MutationObserver(mount).observe(document.body,{subtree:true,childList:true});mount();
 })();
