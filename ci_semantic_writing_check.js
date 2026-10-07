@@ -81,3 +81,11 @@ const fieldAssist=w.indicatorFieldAssist('Realizar seis talleres de trombón','A
 if(!fieldAssist.formula?.some(x=>/asistencias registradas/i.test(x)))fail('La asistencia de ficha no propone fórmula para indicador de participación');
 if(!fieldAssist.unidad?.some(x=>/personas/i.test(x)))fail('La asistencia de ficha no propone unidad para indicador de participación');
 if(!fieldAssist.medioVerificacion?.some(x=>/asistencia/i.test(x)))fail('La asistencia de ficha no propone medio de verificación pertinente');
+
+const noviceGuide=w.indicatorFieldGuide('Realizar seis talleres de trombón','Actividad','cumplimiento',{}, {indicator:'Porcentaje de talleres realizados'});
+if(!/operación|regla/i.test(noviceGuide.formula.meaning))fail('La ayuda no explica qué significa fórmula');
+if(!/multiplica por 100|%/i.test(noviceGuide.unidad.write+noviceGuide.unidad.example))fail('La ayuda no orienta sobre la unidad porcentual');
+if(!/valor inicial/i.test(noviceGuide.lineaBase.meaning))fail('La ayuda no explica línea base');
+if(!/compromete a alcanzar/i.test(noviceGuide.meta.meaning))fail('La ayuda no explica meta');
+if(!/fuente/i.test(noviceGuide.medioVerificacion.meaning))fail('La ayuda no explica medio de verificación');
+if(!/frecuencia|cada cuánto|momento/i.test(noviceGuide.periodicidad.meaning))fail('La ayuda no explica periodicidad');

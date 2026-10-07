@@ -269,6 +269,28 @@ function indicatorBattery(source,type,context={}){
  return items.length?items:[{...common,indicatorFamily:'pendiente',indicator:'[POR REVISAR]',formula:'[POR VERIFICAR]',unidad:'[POR VERIFICAR]',lineaBase:'[POR VERIFICAR]',meta:'[POR VERIFICAR]',medioVerificacion:'[POR VERIFICAR]',periodicidad:'[POR VERIFICAR]',responsable:'[POR VERIFICAR]',plazo:'[POR VERIFICAR]',verificationSuggestions:[]}]
 }
 function indicatorProposal(source,type){return indicatorBattery(source,type)[0]?.indicator||'[POR REVISAR]'}
+function indicatorFieldGuide(source,type,family,context={},current={}){
+ const t=clean(source),assist=indicatorFieldAssist(t,type,family,context,current),indicator=clean(current.indicator),unit=(assist.unidad||[])[0]||clean(current.unidad);
+ const qty=extractQuantity(t);
+ const formulaExample=(assist.formula||[])[0]||'Describe cómo se obtiene el valor del indicador.';
+ const unitExample=unit||'%, personas, talleres, puntos u otra unidad coherente con el indicador.';
+ let baselineExample='Registra el valor real antes de iniciar el proyecto.';
+ let targetExample='Registra el valor que se espera alcanzar al finalizar o en el momento definido.';
+ if(type==='Actividad'&&family==='cumplimiento'&&qty){
+   baselineExample='Si el indicador mide únicamente ejecución del proyecto, puede proponerse 0 al inicio porque todavía no se ha realizado ninguna de las '+qty+' acciones programadas.';
+   targetExample=qty+' acciones realizadas o 100 % de cumplimiento, según la unidad elegida.';
+ }
+ return {
+  formula:{meaning:'Explica la operación o regla que convierte los datos en el valor del indicador.',write:'Escribe la operación con palabras o números. Debe quedar claro qué se divide, resta, suma o compara.',example:formulaExample},
+  unidad:{meaning:'Es la forma en que se expresa el resultado del indicador.',write:'Debe coincidir con la fórmula. Si la fórmula multiplica por 100, normalmente la unidad será %. Si cuenta personas, será personas; si cuenta talleres, talleres.',example:unitExample},
+  lineaBase:{meaning:'Es el valor inicial del indicador antes de ejecutar el proyecto.',write:'Usa un dato real del punto de partida. Si aún no existe, deja [POR VERIFICAR].',example:baselineExample},
+  meta:{meaning:'Es el valor que el proyecto se compromete a alcanzar para ese mismo indicador.',write:'Debe estar expresada en la misma unidad del indicador y ser verificable.',example:targetExample},
+  medioVerificacion:{meaning:'Es la fuente donde quedará registrado el dato usado para comprobar el indicador.',write:'Escribe un documento, registro o instrumento que realmente existirá en el proyecto.',example:(assist.medioVerificacion||[])[0]||'Lista de asistencia, acta, rúbrica, informe, base de datos o registro equivalente.'},
+  periodicidad:{meaning:'Indica cada cuánto se medirá o revisará el indicador.',write:'Escribe una frecuencia o momento de medición, no una cantidad de personas ni una meta.',example:(assist.periodicidad||[])[0]||'Después de cada actividad, mensual, al inicio y al cierre, o al cierre del proyecto.'},
+  responsable:{meaning:'Es la persona o rol encargado de recoger, consolidar o verificar el dato.',write:'Escribe el cargo, rol o persona realmente responsable de este seguimiento.',example:'Coordinación del proyecto, docente responsable, profesional de seguimiento u otro rol real.'},
+  plazo:{meaning:'Es el momento límite en que debe estar comprobado el indicador.',write:'Escribe una fecha o hito temporal concreto.',example:'Al finalizar los seis talleres, al cierre del proyecto o una fecha específica.'}
+ }
+}
 function indicatorFieldAssist(source,type,family,context={},current={}){
  const t=clean(source),battery=indicatorBattery(t,type,context),candidate=battery.find(x=>x.indicatorFamily===family)||battery[0]||{},out={};
  const add=(k,values)=>{const xs=[...new Set((values||[]).map(clean).filter(v=>v&&!isPlaceholder(v)))];if(xs.length)out[k]=xs};
@@ -311,5 +333,5 @@ function indicatorQuality(x){
 }
 
 function isPlaceholder(v){return /^\s*\[POR (REVISAR|VERIFICAR|DEFINIR)\]/i.test(String(v||''))}
-window.fcWriting={clean,compactPresentationText,resultWritingReview,objectiveProposals,objectiveWritingReview,looksLikeActivity,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activityWritingReview,activityObjectFromResult,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorFieldAssist,indicatorQuality,isPlaceholder};
+window.fcWriting={clean,compactPresentationText,resultWritingReview,objectiveProposals,objectiveWritingReview,looksLikeActivity,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activityWritingReview,activityObjectFromResult,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorFieldAssist,indicatorFieldGuide,indicatorQuality,isPlaceholder};
 })();

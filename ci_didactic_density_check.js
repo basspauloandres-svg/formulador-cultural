@@ -118,3 +118,6 @@ if(!reviewGuide.includes('¿Cómo completo este indicador?'))fail('S16 no ofrece
 if(!reviewGuide.includes('¿Qué debo hacer?'))fail('S16 no explica cómo resolver resultados sin actividades');
 if(!reviewGuide.includes('Guardar avance'))fail('S16 no permite guardar el avance de la revisión de forma explícita');
 if(!reviewGuide.includes('saveReviewProgress'))fail('S16 no tiene persistencia visible de la revisión');
+
+if(!completion.includes('¿Qué significa?')||!completion.includes('¿Qué debes escribir?')||!completion.includes('Ejemplo para orientarte'))fail('S12 no explica cada campo técnico en lenguaje de principiante');
+if(!semantic.includes('indicatorFieldGuide'))fail('No existe guía contextual por campo del indicador');

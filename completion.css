@@ -79,3 +79,9 @@
 .activity-writing-review{border:1px solid #e7c77a;background:#fff8df;border-radius:10px;padding:10px 12px;margin-top:8px;color:#6b560d}
 .activity-writing-review strong{display:block;margin-bottom:4px}
 .activity-writing-review p{margin:4px 0}
+
+/* Beginner guidance for indicator technical fields */
+.indicator-field-guide{display:grid;gap:5px;margin:8px 0;padding:10px 12px;border:1px solid #d7e7de;background:#f7fbf8;border-radius:10px}
+.indicator-field-guide p{margin:0;line-height:1.4;color:#465a50}
+.indicator-field-guide strong{color:#1f573f}
+.indicator-assist-options>small{display:block;margin-bottom:6px;color:#66756d;font-weight:750}
