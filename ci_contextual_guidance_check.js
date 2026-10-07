@@ -16,7 +16,8 @@ if(bridge.includes('Las orientaciones siguientes son pistas para organizar el á
 if(!bridge.includes('Datos que llegan desde S06')||!bridge.includes('Estas son las situaciones que confirmaste'))fail('El puente S06→S07 no muestra el contexto real');
 if(!bridge.includes('vars.map'))fail('El puente S06→S07 no lista las variables reales confirmadas');
 if(!bridge.includes('decisionText(p)'))fail('El puente S06→S07 no conserva las relaciones reales revisadas');
-if(!cleanup.includes('preserve_confirmed_and_user_data_remove_generated_pending'))fail('La depuración no documenta política de conservación');
+if(!cleanup.includes('preserve_confirmed_and_user_data_archive_generated_pending'))fail('La depuración no documenta política de conservación');
 if(!cleanup.includes("x?.confirmed||x?.source==='usuario'"))fail('La depuración no protege actividades confirmadas o creadas por usuario');
-if(!cleanup.includes("s.staleItems=[]"))fail('La depuración no elimina propuestas obsoletas acumuladas');
+if(!cleanup.includes("archiveReason:'propuesta_anterior_no_confirmada'"))fail('La depuración no archiva las propuestas anteriores');
+if(!cleanup.includes("s.staleItems=[]"))fail('La depuración no retira elementos obsoletos del flujo activo');
 if(!process.exitCode)console.log('Contextual guidance and cleanup audit OK');
