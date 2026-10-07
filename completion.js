@@ -79,8 +79,15 @@ function activityContext(x){
 function participantContext(){
  return draft?.S03?.poblacion_participante||draft?.S03?.población_participante||draft?.S03?.poblacion_atendida||draft?.S03?.población_atendida||''
 }
-function activityHelp(x){
- return window.fcWriting?.activityGuidance?window.fcWriting.activityGuidance(x?.resultText||'',x?.objectiveText||''):{suggestions:[],questions:[]}
+function activityProjectContext(x,s){
+ const base=activityContext(x),population=participantContext();
+ const territory=draft?.S02?.territorio_o_lugar_de_intervencion||draft?.S01?.municipio||'';
+ const existing=(s?.items||[]).filter(i=>i.id!==x?.id&&i.resultId&&i.resultId===x?.resultId&&i.confirmed).map(i=>i.text).filter(Boolean);
+ return {...base,population,territory,existingActivities:existing,plainText:x?.plainText||''}
+}
+function activityHelp(x,s){
+ const context=activityProjectContext(x,s);
+ return window.fcWriting?.activityGuidance?window.fcWriting.activityGuidance(x?.resultText||'',x?.objectiveText||'',context):{suggestions:[],questions:[],context}
 }
 function activitySufficiencyFor(x,s){
  const related=(s.items||[]).filter(i=>i.resultId&&i.resultId===x?.resultId&&i.confirmed);
@@ -194,7 +201,7 @@ function bindS10(s){
  $('#goS11')?.addEventListener('click',()=>window.fcNavigate?.('S11'))
 }
 function renderS11(){
- const host=$('#fields');if(!host)return;const s=ensureS11(),xs=s.items||[];cursors.S11=Math.min(cursors.S11,Math.max(0,xs.length-1));const x=xs[cursors.S11],ctx=x?activityContext(x):null,help=x?activityHelp(x):null,suff=x?activitySufficiencyFor(x,s):null;
+ const host=$('#fields');if(!host)return;const s=ensureS11(),xs=s.items||[];cursors.S11=Math.min(cursors.S11,Math.max(0,xs.length-1));const x=xs[cursors.S11],ctx=x?activityContext(x):null,help=x?activityHelp(x,s):null,suff=x?activitySufficiencyFor(x,s):null;
  host.innerHTML=`<section id="completionS11" class="completion-wrap didactic-flow">
  <div class="didactic-intro"><strong>Construir las actividades desde el objetivo</strong><p>Trabajaremos un resultado por vez. Puedes escribir con tus propias palabras y el sistema te ayudará a convertir la idea en una actividad técnicamente formulada.</p></div>
  ${x?`<div class="didactic-progress">Actividad ${cursors.S11+1} de ${xs.length}</div>
@@ -205,7 +212,20 @@ function renderS11(){
   <p class="assistant-lead">Responde con ideas sencillas. El sistema las convertirá en actividades bien formuladas.</p>
   <label class="didactic-main-label">Tu idea<textarea data-act-plain="${x.id}" placeholder="Ejemplo: Se necesitan 6 talleres de trombón.">${esc(x.plainText||'')}</textarea></label>
   <div class="activity-ai-actions"><button type="button" data-act-help="${x.id}">Ayúdame con IA</button><button type="button" data-act-convert="${x.id}" ${x.plainText?'':'disabled'}>Convertir en actividad técnica</button></div>
-  <div class="writing-help-panel ${x.showActivityHelp?'':'hidden'}" data-act-help-panel="${x.id}"><strong>Ideas para pensar esta actividad</strong><p>Selecciona una idea solo si corresponde a tu proyecto.</p><div class="activity-suggestion-pills">${(help.suggestions||[]).map((v,i)=>`<button type="button" data-act-suggestion="${x.id}:${i}">${esc(v)}</button>`).join('')}</div><details><summary>Preguntas orientadoras</summary>${(help.questions||[]).map(v=>`<p>• ${esc(v)}</p>`).join('')}</details></div>
+  <div class="writing-help-panel ${x.showActivityHelp?'':'hidden'}" data-act-help-panel="${x.id}">
+    <strong>Ayuda basada en este proyecto</strong>
+    <div class="writing-source">
+      <small>Resultado que debe producirse</small><p>• ${esc(ctx.result)}</p>
+      <small>Objetivo específico relacionado</small><p>• ${esc(ctx.objective)}</p>
+      ${ctx.problem&&ctx.problem!=='[POR VERIFICAR]'?'<small>Problema central</small><p>• '+esc(ctx.problem)+'</p>':''}
+      ${help.context?.population?'<small>Población registrada</small><p>• '+esc(help.context.population)+'</p>':''}
+      ${help.context?.territory?'<small>Territorio registrado</small><p>• '+esc(help.context.territory)+'</p>':''}
+      ${help.context?.existingActivities?.length?'<small>Actividades ya aprobadas para este resultado</small>'+help.context.existingActivities.map(v=>'<p>• '+esc(v)+'</p>').join(''):''}
+    </div>
+    <p>Elige una propuesta solo si corresponde a la realidad del proyecto. El sistema no agrega cantidades, responsables, fechas ni recursos que no hayas proporcionado.</p>
+    <div class="activity-suggestion-pills">${(help.suggestions||[]).map((v,i)=>`<button type="button" data-act-suggestion="${x.id}:${i}">${esc(v)}</button>`).join('')}</div>
+    <details><summary>Preguntas orientadoras para este resultado</summary>${(help.questions||[]).map(v=>`<p>• ${esc(v)}</p>`).join('')}</details>
+  </div>
   <div class="proposal-box"><small>Propuesta de redacción</small><label class="didactic-main-label">Actividad propuesta<textarea data-act-text="${x.id}">${esc(x.text)}</textarea></label><p>La propuesta puede editarse. Los datos que no existan todavía no deben agregarse como hechos.</p></div>
   <div class="didactic-question compact">¿Esta acción contribuye de manera necesaria y plausible a producir el resultado?</div>
   <div class="didactic-actions"><button data-act-confirm="${x.id}" class="${x.confirmed?'primary':''}">${x.confirmed?'Actividad aprobada ✓':'Aprobar esta actividad'}</button><button data-act-delete="${x.id}">Eliminar propuesta</button></div>
@@ -220,12 +240,12 @@ function bindS11(s){
  document.querySelectorAll('[data-act-text]').forEach(el=>el.onchange=()=>{const x=s.items.find(i=>i.id===el.dataset.actText);x.text=el.value.trim();x.confirmed=false;x.source='usuario_editado';x.updatedAt=new Date().toISOString();write('S11',s)});
  document.querySelectorAll('[data-act-note]').forEach(el=>el.onchange=()=>{const x=s.items.find(i=>i.id===el.dataset.actNote);x.note=el.value.trim();write('S11',s)});
  document.querySelectorAll('[data-act-help]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.actHelp);x.showActivityHelp=!x.showActivityHelp;write('S11',s);renderS11()});
- document.querySelectorAll('[data-act-suggestion]').forEach(b=>b.onclick=()=>{const [id,idx]=b.dataset.actSuggestion.split(':');const x=s.items.find(i=>i.id===id),h=activityHelp(x),v=(h.suggestions||[])[Number(idx)];if(!v)return;x.plainText=v;x.text=window.fcWriting?.activityFromPlainLanguage?window.fcWriting.activityFromPlainLanguage(v,x.resultText,x.objectiveText,participantContext()):v;x.source='propuesta_sistema';x.provenance='respuesta_guiada';x.confirmed=false;x.showActivityHelp=false;x.updatedAt=new Date().toISOString();write('S11',s);renderS11()});
+ document.querySelectorAll('[data-act-suggestion]').forEach(b=>b.onclick=()=>{const [id,idx]=b.dataset.actSuggestion.split(':');const x=s.items.find(i=>i.id===id),h=activityHelp(x,s),v=(h.suggestions||[])[Number(idx)];if(!v)return;x.plainText=v;x.text=window.fcWriting?.activityFromPlainLanguage?window.fcWriting.activityFromPlainLanguage(v,x.resultText,x.objectiveText,participantContext()):v;x.source='propuesta_sistema';x.provenance='respuesta_guiada';x.confirmed=false;x.showActivityHelp=false;x.updatedAt=new Date().toISOString();write('S11',s);renderS11()});
  document.querySelectorAll('[data-act-convert]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.actConvert);if(!x?.plainText?.trim())return;x.text=window.fcWriting?.activityFromPlainLanguage?window.fcWriting.activityFromPlainLanguage(x.plainText,x.resultText,x.objectiveText,participantContext()):x.plainText.trim();x.source='propuesta_sistema';x.provenance='lenguaje_cotidiano';x.confirmed=false;x.updatedAt=new Date().toISOString();write('S11',s);renderS11()});
  document.querySelectorAll('[data-act-link-result]').forEach(b=>b.onclick=()=>{const parts=b.dataset.actLinkResult.split(':');const x=s.items.find(i=>i.id===parts[0]);if(linkActivityToResult(x,parts[1])){write('S11',s);renderS11()}});
  document.querySelectorAll('[data-act-confirm]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.actConfirm);const linked=!!x.resultId&&!!x.objectiveId;x.confirmed=linked&&!!x.text.trim()&&!window.fcWriting?.isPlaceholder?.(x.text);if(!linked){alert('Antes de aprobar esta actividad, debe quedar vinculada a un objetivo específico y a un resultado.')}else if(!x.confirmed){alert('Antes de aprobar la actividad, reemplaza la marca [POR REVISAR] por una acción concreta.')}x.updatedAt=new Date().toISOString();write('S11',s);sync('S11');renderS11()});
  document.querySelectorAll('[data-act-delete]').forEach(b=>b.onclick=()=>{s.items=s.items.filter(i=>i.id!==b.dataset.actDelete);cursors.S11=Math.max(0,Math.min(cursors.S11,s.items.length-1));write('S11',s);renderS11()});
- $('#addAct')&&($('#addAct').onclick=()=>{const current=s.items[cursors.S11],id=`ACT${s.items.length+1}-${Date.now().toString().slice(-4)}`;s.items.push({id,activityId:id,objectiveId:current?.objectiveId||'',objectiveText:current?.objectiveText||'',causeId:current?.causeId||current?.objectiveId||'',resultId:current?.resultId||'',resultText:current?.resultText||'[POR VERIFICAR]',text:'',plainText:'',confirmed:false,status:'manual',source:'usuario',provenance:'actividad_adicional',note:'',updatedAt:null});cursors.S11=s.items.length-1;write('S11',s);renderS11()});
+ $('#addAct')&&($('#addAct').onclick=()=>{const current=s.items[cursors.S11],id=`ACT${s.items.length+1}-${Date.now().toString().slice(-4)}`;s.items.push({id,activityId:id,objectiveId:current?.objectiveId||'',objectiveText:current?.objectiveText||'',causeId:current?.causeId||current?.objectiveId||'',resultId:current?.resultId||'',resultText:current?.resultText||'[POR VERIFICAR]',text:'',plainText:'',confirmed:false,status:'manual',source:'usuario',provenance:'actividad_adicional',note:'',showActivityHelp:true,updatedAt:null});cursors.S11=s.items.length-1;write('S11',s);renderS11()});
  $('#actPrev')&&($('#actPrev').onclick=()=>{cursors.S11=Math.max(0,cursors.S11-1);renderS11()});$('#actNext')&&($('#actNext').onclick=()=>{cursors.S11=Math.min(s.items.length-1,cursors.S11+1);renderS11()});
  $('#goS12')?.addEventListener('click',()=>window.fcNavigate?.('S12'))
 }

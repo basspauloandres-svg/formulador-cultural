@@ -107,6 +107,16 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  const confirmedActs=w.fcGetActivities().filter(x=>x.confirmed);
  assert(confirmedActs.length>=1,'No quedó actividad confirmada');
 
+ const addAct=w.document.querySelector('#addAct');assert(addAct,'S11 no muestra el control para añadir otra actividad');addAct.click();await wait(50);
+ const allActsAfterAdd=w.fcGetActivities();
+ const added=allActsAfterAdd[allActsAfterAdd.length-1];
+ assert(added&&added.provenance==='actividad_adicional','S11 no creó una actividad adicional trazable');
+ assert(added.resultId===confirmedActs[0].resultId,'La actividad adicional perdió el resultId del contexto actual');
+ assert(added.objectiveId===confirmedActs[0].objectiveId,'La actividad adicional perdió el objectiveId del contexto actual');
+ const helpPanel=w.document.querySelector('[data-act-help-panel="'+added.id+'"]');
+ assert(helpPanel&&!helpPanel.classList.contains('hidden'),'La actividad adicional no abrió automáticamente la asistencia contextual');
+ assert(/Resultado que debe producirse/.test(helpPanel.textContent)&&helpPanel.textContent.includes(added.resultText),'La ayuda de la actividad adicional no muestra el resultado real');
+
  await w.fcNavigate('S12');await wait(80);
  const indicators=w.fcGetIndicators();
  assert(indicators.some(x=>x.linkedType==='Actividad'),'S12 no propuso indicador de actividad');
