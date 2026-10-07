@@ -23,6 +23,7 @@ function exportSvg(kind){download(filename()+'-'+(kind==='problem'?'arbol-proble
 function openSvg(kind){const w=window.open();if(w){w.document.write('<title>Diagrama</title><style>body{margin:0;background:#f4f6f8;display:grid;place-items:center;min-height:100vh}svg{max-width:98vw;height:auto;background:#fff}</style>'+svgFor(kind));w.document.close()}}
 async function loadScript(src,test){if(test())return;await new Promise((ok,fail)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=fail;document.head.appendChild(s)})}
 function p(v){const t=clean(v);return t||'[POR VERIFICAR]'}
+function compact(v,max=30){const t=clean(v);return window.fcWriting?.compactPresentationText?window.fcWriting.compactPresentationText(t,max):t}
 function moneyRaw(v){const n=Number(v);return Number.isFinite(n)?new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(n):'[POR VERIFICAR]'}
 function table(headers,body){return '<table><thead><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+body.map(r=>'<tr>'+r.map(c=>'<td>'+esc(c)+'</td>').join('')+'</tr>').join('')+'</tbody></table>'}
 function reportHtml(){
@@ -36,12 +37,12 @@ function reportHtml(){
  <h2>4. Evidencia y antecedentes</h2><p>${esc(p(draft?.S04?.evidencia_disponible))}</p><p><b>Fuentes:</b> ${esc(p(draft?.S04?.fuentes))}</p>${draft?.S04?.datos_por_verificar?'<div class="note"><b>Datos por verificar:</b> '+esc(draft.S04.datos_por_verificar)+'</div>':''}
  <h2>5. Planteamiento del problema</h2><p>${esc(p(draft?.S08?.enunciado))}</p><div class="diagram">${svgFor('problem')}</div>
  <h2>6. Objetivos</h2><p><b>Objetivo general:</b> ${esc(p(central?.text))}</p><h3>Objetivos específicos</h3>${spec.length?'<ul>'+spec.map(x=>'<li>'+esc(x.text)+'</li>').join('')+'</ul>':'<p>[POR VERIFICAR] No hay objetivos específicos confirmados derivados de causas directas.</p>'}${meansIndirect.length?'<h3>Medios del árbol de objetivos</h3><ul>'+meansIndirect.map(x=>'<li>'+esc(x.text)+'</li>').join('')+'</ul>':''}${ends.length?'<h3>Fines esperados</h3><ul>'+ends.map(x=>'<li>'+esc(x.text)+'</li>').join('')+'</ul>':''}<div class="diagram">${svgFor('objective')}</div>
- <h2>7. Estrategia de intervención</h2><p>${esc(p(alt?.text))}</p><h2>8. Resultados esperados</h2>${res.length?'<ul>'+res.map(x=>'<li>'+esc(x.text)+'</li>').join('')+'</ul>':'<p>[POR VERIFICAR]</p>'}
- <h2>9. Actividades</h2>${acts.length?table(['ID','Resultado/objetivo','Actividad'],acts.map(x=>[x.id,x.resultText||x.objectiveText||'',x.text])):'<p>[POR VERIFICAR]</p>'}
- <h2>10. Cronograma</h2>${sch.length?table(['Actividad','Inicio','Fin','Responsable','Frecuencia'],sch.map(x=>[x.activityText,x.startDate||'[POR VERIFICAR]',x.endDate||'[POR VERIFICAR]',x.responsible||'[POR VERIFICAR]',x.frequency||''])):'<p>[POR VERIFICAR]</p>'}
- <h2>11. Indicadores y metas</h2>${inds.length?table(['Nivel','Elemento','Indicador','Fórmula/criterio','Línea base','Meta','Unidad','Periodicidad','Medio de verificación','Responsable','Plazo'],inds.map(x=>[x.linkedType||'Actividad',x.linkedText||x.activityText||'',x.indicator,x.formula||'[POR VERIFICAR]',x.lineaBase,x.meta,x.unidad,x.periodicidad,x.medioVerificacion,x.responsable,x.plazo])):'<p>[POR VERIFICAR]</p>'}
- <h2>12. Recursos y presupuesto</h2>${bud.length?table(['Actividad','Recurso','Unidad','Cantidad','Veces','Costo unitario','Total','Tipo'],bud.map(x=>[x.activityText,x.description,x.unit,String(x.quantity),String(x.frequency),moneyRaw(x.unitCost),moneyRaw(x.totalCost),x.costType])):'<p>[POR VERIFICAR]</p>'}<p><b>Total valorizado:</b> ${moneyRaw(bs.total)}</p>
- <h2>13. Riesgos y respuestas</h2>${risks.length?table(['Origen','Riesgo','Probabilidad','Impacto','Nivel','Prevención','Contingencia','Responsable'],risks.map(x=>[x.linkedObjectType,x.event,x.probability,x.impact,x.riskLevel,x.preventiveResponse,x.contingencyResponse,x.owner])):'<p>[POR VERIFICAR]</p>'}
+ <h2>7. Estrategia de intervención</h2><p>${esc(p(alt?.text))}</p><h2>8. Resultados esperados</h2>${res.length?'<ul>'+res.map(x=>'<li>'+esc(compact(x.text,32))+'</li>').join('')+'</ul>':'<p>[POR VERIFICAR]</p>'}
+ <h2>9. Actividades</h2>${acts.length?table(['ID','Resultado/objetivo','Actividad'],acts.map(x=>[x.id,compact(x.resultText||x.objectiveText||'',32),compact(x.text,28)])):'<p>[POR VERIFICAR]</p>'}
+ <h2>10. Cronograma</h2>${sch.length?table(['Actividad','Inicio','Fin','Responsable','Frecuencia'],sch.map(x=>[compact(x.activityText,28),x.startDate||'[POR VERIFICAR]',x.endDate||'[POR VERIFICAR]',x.responsible||'[POR VERIFICAR]',x.frequency||''])):'<p>[POR VERIFICAR]</p>'}
+ <h2>11. Indicadores y metas</h2>${inds.length?table(['Nivel','Elemento','Indicador','Fórmula/criterio','Línea base','Meta','Unidad','Periodicidad','Medio de verificación','Responsable','Plazo'],inds.map(x=>[x.linkedType||'Actividad',compact(x.linkedText||x.activityText||'',30),x.indicator,x.formula||'[POR VERIFICAR]',x.lineaBase,x.meta,x.unidad,x.periodicidad,x.medioVerificacion,x.responsable,x.plazo])):'<p>[POR VERIFICAR]</p>'}
+ <h2>12. Recursos y presupuesto</h2>${bud.length?table(['Actividad','Recurso','Unidad','Cantidad','Veces','Costo unitario','Total','Tipo'],bud.map(x=>[compact(x.activityText,28),x.description,x.unit,String(x.quantity),String(x.frequency),moneyRaw(x.unitCost),moneyRaw(x.totalCost),x.costType])):'<p>[POR VERIFICAR]</p>'}<p><b>Total valorizado:</b> ${moneyRaw(bs.total)}</p>
+ <h2>13. Riesgos y respuestas</h2>${risks.length?table(['Origen','Riesgo','Probabilidad','Impacto','Nivel','Prevención','Contingencia','Responsable'],risks.map(x=>[x.linkedObjectType,compact(x.event,30),x.probability,x.impact,x.riskLevel,compact(x.preventiveResponse,36),compact(x.contingencyResponse,36),x.owner])):'<p>[POR VERIFICAR]</p>'}
  <h2>14. Coherencia y trazabilidad</h2><p><b>Índice orientativo de coherencia:</b> ${coherence.score}%</p>${coherence.checks?.length?'<ul>'+coherence.checks.map(x=>'<li><b>'+esc(x.label)+':</b> '+esc(x.message)+'</li>').join('')+'</ul>':''}
  <h2>15. Fuentes y anexos</h2><p>${esc(p(draft?.S04?.fuentes))}</p><small>Documento generado a partir de información registrada en el Formulador Cultural. Los vacíos conservan la marca [POR VERIFICAR].</small></body></html>`
 }
@@ -62,12 +63,12 @@ function reportParagraphs(){
  if(docObj.some(x=>x.zone==='indirect_cause'))add('Medios del árbol de objetivos',docObj.filter(x=>x.zone==='indirect_cause').map(x=>p(x.text)));
  if(docObj.some(x=>x.zone==='direct_effect'||x.zone==='indirect_effect'))add('Fines esperados',docObj.filter(x=>x.zone==='direct_effect'||x.zone==='indirect_effect').map(x=>p(x.text)));
  add('7. Estrategia',p(rows(window.fcGetAlternatives).find(x=>x.selected&&x.confirmed)?.text));
- add('8. Resultados',rows(window.fcGetResults).filter(x=>x.confirmed).map(x=>p(x.text)));
- add('9. Actividades',rows(window.fcGetActivities).filter(x=>x.confirmed).map(x=>x.id+' · '+p(x.text)));
- add('10. Cronograma',rows(window.fcGetSchedule).map(x=>p(x.activityText)+' | '+p(x.startDate)+' - '+p(x.endDate)+' | '+p(x.responsible)));
+ add('8. Resultados',rows(window.fcGetResults).filter(x=>x.confirmed).map(x=>p(compact(x.text,32))));
+ add('9. Actividades',rows(window.fcGetActivities).filter(x=>x.confirmed).map(x=>x.id+' · '+p(compact(x.text,28))));
+ add('10. Cronograma',rows(window.fcGetSchedule).map(x=>p(compact(x.activityText,28))+' | '+p(x.startDate)+' - '+p(x.endDate)+' | '+p(x.responsible)));
  add('11. Indicadores y metas',rows(window.fcGetIndicators).filter(x=>x.confirmed).map(x=>p(x.linkedType)+' · '+p(x.indicator)+' | Fórmula/criterio: '+p(x.formula)+' | Línea base: '+p(x.lineaBase)+' | Meta: '+p(x.meta)+' | Unidad: '+p(x.unidad)+' | Periodicidad: '+p(x.periodicidad)+' | Fuente: '+p(x.medioVerificacion)+' | Responsable: '+p(x.responsable)+' | Plazo: '+p(x.plazo)));
  add('12. Presupuesto',rows(window.fcGetBudget).map(x=>p(x.activityText)+' | '+p(x.description)+' | '+moneyRaw(x.totalCost)));
- add('13. Riesgos',rows(window.fcGetRisks).map(x=>p(x.event)+' | '+p(x.riskLevel)+' | '+p(x.preventiveResponse)));
+ add('13. Riesgos',rows(window.fcGetRisks).map(x=>p(compact(x.event,30))+' | '+p(x.riskLevel)+' | '+p(compact(x.preventiveResponse,36))));
  add('14. Fuentes',p(draft?.S04?.fuentes));
  return out.join('')
 }
