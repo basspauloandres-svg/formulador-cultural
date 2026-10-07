@@ -126,7 +126,7 @@ function indicatorSources(){
  return out
 }
 function ensureS12(){
- let s=read('S12');const src=indicatorSources(),sig=src.map(x=>`${x.type}:${x.source.id}:${x.source.text}`).join('|');
+ let s=read('S12');const src=indicatorSources(),sig='s12-context-v2|'+src.map(x=>`${x.type}:${x.source.id}:${x.source.text}`).join('|');
  if(!s.items||s.sourceSignature!==sig){
    const old=s.items||[],used=new Set(),items=[];let seq=0;
    for(const x of src){
@@ -293,6 +293,8 @@ function renderS12(){
  <div class="completion-toolbar"><button id="exportFull">Ver respaldo técnico en Excel</button></div></section>`;bindS12(s)
 }
 function bindS12(s){
+ document.querySelectorAll('[data-ind-help]').forEach(b=>b.onclick=()=>{const x=s.items.find(i=>i.id===b.dataset.indHelp);if(!x)return;x.showHelp=!x.showHelp;write('S12',s);renderS12()});
+ document.querySelectorAll('[data-use-indicator]').forEach(b=>b.onclick=()=>{const [id,idx]=b.dataset.useIndicator.split(':');const x=s.items.find(i=>i.id===id);if(!x)return;const g=indicatorHelp(x),v=(g.suggestions||[])[Number(idx)];if(v){x.indicator=v;x.confirmed=false;x.verificationStatus='POR_VERIFICAR';x.showHelp=false;write('S12',s);renderS12()}});
  document.querySelectorAll('[data-ind-field]').forEach(el=>el.onchange=()=>{const [id,k]=el.dataset.indField.split(':');const x=s.items.find(i=>i.id===id);x[k]=el.value.trim()||'[POR VERIFICAR]';x.confirmed=false;x.verificationStatus='POR_VERIFICAR';write('S12',s);renderS12()});
  document.querySelectorAll('[data-ind-jump]').forEach(b=>b.onclick=()=>{const idx=s.items.findIndex(i=>i.id===b.dataset.indJump);if(idx>=0){cursors.S12=idx;renderS12()}});
  document.querySelectorAll('[data-use-verification]').forEach(b=>b.onclick=()=>{const [id,idx]=b.dataset.useVerification.split(':');const x=s.items.find(i=>i.id===id),v=(x.verificationSuggestions||[])[Number(idx)];if(v){x.medioVerificacion=v;x.confirmed=false;x.verificationStatus='POR_VERIFICAR';write('S12',s);renderS12()}});
