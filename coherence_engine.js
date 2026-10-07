@@ -13,6 +13,26 @@ function budgetState(){try{return window.fcGetBudgetState?.()||{}}catch{return {
 function risks(){try{return window.fcGetRisks?.()||[]}catch{return []}}
 function riskState(){try{return window.fcGetRiskState?.()||{}}catch{return {}}}
 function evidence(){const d=draft?.S04||{};return [d.evidencia_disponible,d.fuentes].filter(x=>String(x||'').trim()).length}
+function pendingValue(v){return !String(v||'').trim()||/\[POR (VERIFICAR|REVISAR|DEFINIR)\]/i.test(String(v||''))}
+function currentValidationSnapshot(){
+ const res=results().filter(x=>x.confirmed),acts=activities().filter(x=>x.confirmed),inds=indicators(),sch=schedule(),bud=budget(),rsk=risks();
+ const indicatorFields=['formula','unidad','lineaBase','meta','medioVerificacion','periodicidad','responsable','plazo'];
+ const indicatorPending=inds.map(x=>({
+  id:x.id||x.indicatorId,
+  definitionPending:!x.confirmed||x.definitionStatus==='PENDIENTE'||pendingValue(x.indicator),
+  technicalPending:x.confirmed&&indicatorFields.some(k=>pendingValue(x[k])),
+  missingFields:x.confirmed?indicatorFields.filter(k=>pendingValue(x[k])):[],
+  item:x
+ }));
+ const orphanResults=res.filter(r=>!acts.some(a=>a.resultId===r.id));
+ const orphanActivities=acts.filter(a=>!a.resultId||!res.some(r=>r.id===a.resultId));
+ const schedulePending=acts.filter(a=>!sch.some(s=>s.activityId===a.id&&s.confirmed));
+ const budgetStateNow=budgetState(),activityStatus=budgetStateNow.activityStatus||{};
+ const budgetPending=acts.filter(a=>!activityStatus[a.id]||activityStatus[a.id]==='pending');
+ const highRiskPending=rsk.filter(x=>x.riskLevel==='Alto'&&(!x.confirmed||pendingValue(x.preventiveResponse)||pendingValue(x.contingencyResponse)||pendingValue(x.owner)));
+ return {indicatorPending,orphanResults,orphanActivities,schedulePending,budgetPending,highRiskPending}
+}
+
 function checks(){const out=[];const tn=arr(tree().nodes),on=arr(objectives().items),alts=alternatives(),res=results(),acts=activities(),inds=indicators();const central=tn.find(x=>x.zone==='central');const directCauses=tn.filter(x=>x.zone==='direct_cause'),indirectCauses=tn.filter(x=>x.zone==='indirect_cause');const objCentral=on.find(x=>x.zone==='central'&&x.confirmed);const objSpecific=on.filter(x=>x.confirmed&&x.zone==='direct_cause');const selAlt=alts.find(x=>x.selected&&x.confirmed),sch=schedule(),bud=budget(),bs=budgetState(),rsk=risks(),rs=riskState();
 const add=(dimension,label,ok,msg,status)=>out.push({dimension,label,status:status||((ok)?'COHERENTE':'REQUIERE AJUSTE'),message:msg});
 add('Evidencia','Problema conectado con el análisis previo',!!central&&!!String(central.origin||'').trim(),central?'El problema central tiene una conexión con información registrada antes.':'Todavía falta definir el problema central.');
@@ -25,9 +45,9 @@ const confirmedInd=inds.filter(x=>x.confirmed),indByAct=new Set(confirmedInd.fil
 const missingInd=acts.filter(x=>x.confirmed&&!indByAct.has(x.id));add('Cómo comprobar avances','Actividades → indicadores',acts.some(x=>x.confirmed)&&missingInd.length===0,missingInd.length?`${missingInd.length} actividad(es) confirmada(s) todavía no tienen indicador.`:'Las actividades confirmadas tienen una forma de seguimiento.');
 const missingResultInd=res.filter(x=>x.confirmed&&!indByResult.has(x.id));add('Cómo comprobar avances','Resultados → indicadores',res.some(x=>x.confirmed)&&missingResultInd.length===0,missingResultInd.length?`${missingResultInd.length} resultado(s) todavía no tienen indicador de resultado.`:'Los resultados confirmados tienen indicador.');
 add('Cómo comprobar avances','Objetivo general → indicador',!!objCentral&&indByObjective.has(objCentral.id),objCentral?(indByObjective.has(objCentral.id)?'El objetivo general tiene un indicador asociado.':'Falta un indicador para el objetivo general.'):'Primero confirma el objetivo general.');
-const undefinedInd=inds.filter(x=>!x.confirmed),incompleteInd=confirmedInd.filter(x=>x.technicalStatus==='PENDIENTE'||['formula','meta','lineaBase','unidad','periodicidad','medioVerificacion','responsable','plazo'].some(k=>!String(x[k]||'').trim()||/\[POR VERIFICAR\]/i.test(String(x[k]||''))));
+const current=currentValidationSnapshot(),undefinedInd=current.indicatorPending.filter(x=>x.definitionPending),incompleteInd=current.indicatorPending.filter(x=>x.technicalPending&&!x.definitionPending);
 add('Cómo comprobar avances','Indicadores definidos',inds.length>0&&undefinedInd.length===0,undefinedInd.length?`${undefinedInd.length} indicador(es) todavía requieren una definición confirmada.`:'Todos los indicadores necesarios tienen una definición confirmada.');
-add('Cómo comprobar avances','Fichas técnicas de indicadores',confirmedInd.length>0&&incompleteInd.length===0,incompleteInd.length?`${incompleteInd.length} indicador(es) están definidos, pero su ficha técnica todavía tiene línea base, unidad, periodicidad, meta, fuente, responsable o plazo por completar.`:'Las fichas técnicas de los indicadores definidos están completas.',incompleteInd.length?'COHERENTE CON DATOS PENDIENTES':'COHERENTE');
+add('Cómo comprobar avances','Fichas técnicas de indicadores',confirmedInd.length>0&&incompleteInd.length===0,incompleteInd.length?`${incompleteInd.length} indicador(es) están definidos, pero su ficha técnica todavía tiene datos por completar.`:'Las fichas técnicas de los indicadores definidos están completas.',incompleteInd.length?'COHERENTE CON DATOS PENDIENTES':'COHERENTE');
 add('Lógica del proyecto','Alternativa elegida',!!selAlt,selAlt?'Ya existe una alternativa confirmada para orientar las actividades.':'Todavía falta confirmar cuál alternativa seguirá el proyecto.');
 const confirmedActs=acts.filter(x=>x.confirmed),schMap=new Map(sch.map(x=>[x.activityId,x])),missingSchedule=confirmedActs.filter(a=>!schMap.get(a.id)?.confirmed);
 add('Tiempo','Actividades → cronograma',confirmedActs.length>0&&missingSchedule.length===0,missingSchedule.length?`${missingSchedule.length} actividad(es) todavía no tienen fecha, duración y responsable confirmados.`:'Todas las actividades confirmadas están ubicadas en el tiempo.');
@@ -51,6 +71,6 @@ function render(){
  panel.innerHTML=`<details><summary><span><strong>Revisión del proyecto</strong><small>${n?`${n} aspecto(s) necesitan atención`:'Todo lo revisado está conectado'}</small></span><b>Ver ›</b></summary><div class="coh-help">${r.score>=80?'La estructura está bien conectada. Revisa únicamente los datos pendientes.':r.score>=50?'El proyecto avanza, pero hay relaciones que todavía conviene revisar.':'Hay conexiones importantes que todavía faltan.'}</div><div class="coh-list">${needs.slice(0,6).map(x=>`<article><b>${esc(humanStatus(x.status))}</b> · ${esc(x.label)}<p>${esc(x.message)}</p></article>`).join('')||'<p>No hay alertas en esta etapa.</p>'}</div><p class="coh-explain">El porcentaje técnico y el diagnóstico completo se muestran en la revisión final S16.</p></details>`;
  fields.appendChild(panel)
 }
-window.fcGetCoherenceReport=report;window.fcGetTraceabilityRows=traceRows;
+window.fcGetCoherenceReport=report;window.fcGetTraceabilityRows=traceRows;window.fcGetCurrentValidationSnapshot=currentValidationSnapshot;
 const style=document.createElement('style');style.textContent='.coherence-compact{margin-top:16px;border:1px solid var(--line);border-radius:12px;background:#fff}.coherence-compact details{padding:0}.coherence-compact summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px}.coherence-compact summary::-webkit-details-marker{display:none}.coherence-compact summary span{display:grid;gap:2px}.coherence-compact summary small{color:var(--muted);font-weight:400}.coherence-compact summary>b{font-weight:600;color:#52606d}.coherence-compact .coh-help,.coherence-compact .coh-list,.coherence-compact .coh-explain{margin:0 12px 12px}.coherence-compact .coh-help{background:#f7f9fb;border-radius:9px;padding:9px}.coherence-compact .coh-list article{border-top:1px solid var(--line);padding:8px 0}.coherence-compact .coh-list article p,.coherence-compact .coh-explain{margin:4px 0;color:var(--muted);font-size:.84rem}';document.head.appendChild(style);new MutationObserver(render).observe(document.body,{subtree:true,childList:true});render();
 })();
