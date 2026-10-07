@@ -269,6 +269,22 @@ function indicatorBattery(source,type,context={}){
  return items.length?items:[{...common,indicatorFamily:'pendiente',indicator:'[POR REVISAR]',formula:'[POR VERIFICAR]',unidad:'[POR VERIFICAR]',lineaBase:'[POR VERIFICAR]',meta:'[POR VERIFICAR]',medioVerificacion:'[POR VERIFICAR]',periodicidad:'[POR VERIFICAR]',responsable:'[POR VERIFICAR]',plazo:'[POR VERIFICAR]',verificationSuggestions:[]}]
 }
 function indicatorProposal(source,type){return indicatorBattery(source,type)[0]?.indicator||'[POR REVISAR]'}
+function indicatorFieldAssist(source,type,family,context={},current={}){
+ const t=clean(source),battery=indicatorBattery(t,type,context),candidate=battery.find(x=>x.indicatorFamily===family)||battery[0]||{},out={};
+ const add=(k,values)=>{const xs=[...new Set((values||[]).map(clean).filter(v=>v&&!isPlaceholder(v)))];if(xs.length)out[k]=xs};
+ add('formula',[candidate.formula]);
+ add('unidad',[candidate.unidad]);
+ add('lineaBase',[candidate.lineaBase]);
+ add('meta',[candidate.meta]);
+ add('medioVerificacion',candidate.verificationSuggestions||[]);
+ if(type==='Actividad'){
+   if(/taller|sesion|sesión|jornada|encuentro|capacitaci[oó]n|formaci[oó]n/i.test(t))add('periodicidad',['Al cierre de cada actividad realizada']);
+   else add('periodicidad',['Al cierre de la actividad']);
+ }else if(type==='Resultado')add('periodicidad',['Al inicio y al cierre del proceso']);
+ else if(type==='Objetivo')add('periodicidad',['Al inicio y al cierre del proyecto']);
+ return out
+}
+
 function indicatorGuidance(source,type,family,context={}){
  const t=clean(source),battery=indicatorBattery(t,type,context),candidate=battery.find(x=>x.indicatorFamily===family)||battery[0],objective=clean(context.objectiveText),result=clean(context.resultText),population=clean(context.population),territory=clean(context.territory);
  if(type==='Objetivo')return {level:'Indicador de cambio',purpose:'Debe comprobar el avance del objetivo real “'+t+'”. Evita sustituirlo por el conteo de actividades.',question:'¿Qué cambio observable demostraría que “'+t+'” está avanzando?',formulaHint:'Compara el cambio de “'+t+'” frente a su línea base o criterio inicial.',unitHint:'Usa una unidad directamente relacionada con el cambio del objetivo.',suggestions:battery.map(x=>x.indicator),formulaExamples:battery.map(x=>x.formula).filter(x=>!/^\[POR/.test(x)),context:{objectiveText:t,population,territory}};
@@ -295,5 +311,5 @@ function indicatorQuality(x){
 }
 
 function isPlaceholder(v){return /^\s*\[POR (REVISAR|VERIFICAR|DEFINIR)\]/i.test(String(v||''))}
-window.fcWriting={clean,compactPresentationText,resultWritingReview,objectiveProposals,objectiveWritingReview,looksLikeActivity,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activityWritingReview,activityObjectFromResult,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorQuality,isPlaceholder};
+window.fcWriting={clean,compactPresentationText,resultWritingReview,objectiveProposals,objectiveWritingReview,looksLikeActivity,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activityWritingReview,activityObjectFromResult,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorFieldAssist,indicatorQuality,isPlaceholder};
 })();

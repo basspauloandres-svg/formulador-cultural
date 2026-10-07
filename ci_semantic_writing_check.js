@@ -76,3 +76,8 @@ const longResult='Resultado esperado: mejora amplia y verificable del proceso co
 if(w.resultWritingReview(longResult).ok)fail('La revisión semántica acepta un resultado convertido en párrafo contextual');
 if(!w.resultWritingReview('Ampliación verificable del acceso a talleres especializados.').ok)fail('La revisión semántica rechaza un resultado breve y verificable');
 if(w.compactPresentationText(longResult,12).split(/\s+/).length>12)fail('La compactación de presentación supera el límite solicitado');
+
+const fieldAssist=w.indicatorFieldAssist('Realizar seis talleres de trombón','Actividad','participacion',{},{});
+if(!fieldAssist.formula?.some(x=>/asistencias registradas/i.test(x)))fail('La asistencia de ficha no propone fórmula para indicador de participación');
+if(!fieldAssist.unidad?.some(x=>/personas/i.test(x)))fail('La asistencia de ficha no propone unidad para indicador de participación');
+if(!fieldAssist.medioVerificacion?.some(x=>/asistencia/i.test(x)))fail('La asistencia de ficha no propone medio de verificación pertinente');
