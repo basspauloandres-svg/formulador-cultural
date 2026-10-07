@@ -96,6 +96,12 @@ function linkActivityToResult(x,resultId){
  x.status='manual_vinculada';x.provenance=x.provenance==='actividad_adicional'?'actividad_adicional_vinculada':'actividad_historica_vinculada';x.confirmed=false;x.updatedAt=new Date().toISOString();
  return true
 }
+function activityLinkerHtml(x){
+ if(x?.resultId&&x?.objectiveId)return '';
+ const options=activityLinkOptions();
+ const body=options.length?options.map((r,i)=>'<button type="button" data-act-link-result="'+esc(x.id)+':'+esc(r.resultId)+'"><small>Resultado '+(i+1)+'</small><b>'+esc(r.resultText)+'</b><span>Objetivo específico: '+esc(r.objectiveText||'[POR VERIFICAR]')+'</span></button>').join(''):'<div class="activity-link-empty"><b>No hay resultados confirmados disponibles.</b><span>Vuelve al resultado esperado, confírmalo y regresa a esta actividad.</span></div>';
+ return '<div class="activity-warning activity-linker"><strong>Falta conectar esta actividad</strong><p>Para continuar, elige el resultado al que contribuye. El sistema completará automáticamente el objetivo específico relacionado.</p><div class="activity-link-options">'+body+'</div></div>'
+}
 function indicatorProposal(source,i,type='Actividad',template=null){
  const linkedId=source.id,linkedText=source.text||source.activityText||source.objectiveText||'';
  const t=template||(window.fcWriting?.indicatorBattery?window.fcWriting.indicatorBattery(linkedText,type,{source})[0]:null)||{};
