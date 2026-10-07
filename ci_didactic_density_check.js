@@ -111,3 +111,10 @@ if(!completion.includes("['formula','Fórmula o criterio'"))fail('La ayuda de S1
 if(!completion.includes("['unidad','Unidad de medida'"))fail('La ayuda de S12 no incluye unidad de medida');
 if(!completion.includes("['medioVerificacion','Medio de verificación'"))fail('La ayuda de S12 no incluye medio de verificación');
 if(!completion.includes('indicatorFieldAssist'))fail('S12 no usa asistencia contextual por campo');
+
+const reviewGuide=fs.readFileSync('review_dashboard.js','utf8');
+if(!reviewGuide.includes('Cómo usar esta pantalla'))fail('S16 no explica cómo resolver los pendientes');
+if(!reviewGuide.includes('¿Cómo completo este indicador?'))fail('S16 no ofrece ayuda para cada indicador pendiente');
+if(!reviewGuide.includes('¿Qué debo hacer?'))fail('S16 no explica cómo resolver resultados sin actividades');
+if(!reviewGuide.includes('Guardar avance'))fail('S16 no permite guardar el avance de la revisión de forma explícita');
+if(!reviewGuide.includes('saveReviewProgress'))fail('S16 no tiene persistencia visible de la revisión');
