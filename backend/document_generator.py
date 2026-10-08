@@ -37,7 +37,7 @@ from reportlab.platypus import (
     KeepTogether,
 )
 
-DOC_FOOTER = "Formulador Cultural · Desarrollo por Paulo Olarte"
+DOC_FOOTER = "FORMATO ESTÁNDAR DE PROYECTO CULTURAL · Formulador Cultural · Desarrollo por Paulo Olarte"
 POR_VERIFICAR = "[POR VERIFICAR]"
 
 
@@ -70,15 +70,34 @@ def rows(value: Any) -> list[dict[str, Any]]:
     return value if isinstance(value, list) else []
 
 
-def _sentence_chunks(value: Any, max_sentences: int = 4) -> list[str]:
-    """Split long prose into readable paragraphs without altering wording."""
+def _sentence_chunks(value: Any, max_sentences: int = 4, max_words: int = 95) -> list[str]:
+    """Split prose into balanced paragraphs while preserving the original wording."""
     text = clean(value)
     if text == POR_VERIFICAR:
         return [text]
-    parts = [x.strip() for x in re.split(r"(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÜÑ0-9¿¡\[])", text) if x.strip()]
-    if len(parts) <= max_sentences:
+    sentences = [x.strip() for x in re.split(r"(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÜÑ0-9¿¡\[])", text) if x.strip()]
+    if not sentences:
         return [text]
-    return [" ".join(parts[i:i + max_sentences]) for i in range(0, len(parts), max_sentences)]
+    units: list[str] = []
+    for sentence in sentences:
+        if len(sentence.split()) > max_words:
+            clauses = [x.strip() for x in re.split(r"(?<=[;:])\s+", sentence) if x.strip()]
+            units.extend(clauses or [sentence])
+        else:
+            units.append(sentence)
+    chunks: list[str] = []
+    current: list[str] = []
+    words = 0
+    for unit in units:
+        uw = len(unit.split())
+        if current and (len(current) >= max_sentences or words + uw > max_words):
+            chunks.append(" ".join(current))
+            current, words = [], 0
+        current.append(unit)
+        words += uw
+    if current:
+        chunks.append(" ".join(current))
+    return chunks or [text]
 
 
 def _source_entries(value: Any) -> list[str]:
@@ -230,17 +249,11 @@ def _add_docx_toc(doc: Document) -> None:
 
 
 def _docx_cover(doc: Document, p: dict[str, Any]) -> None:
-    for _ in range(4):
+    for _ in range(7):
         doc.add_paragraph()
-    eyebrow = doc.add_paragraph()
-    eyebrow.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    rr = eyebrow.add_run("FORMATO ESTÁNDAR DE PROYECTO CULTURAL")
-    rr.bold = True
-    rr.font.size = Pt(10)
-    rr.font.color.rgb = RGBColor.from_string(THEME.accent_hex)
-
     title = doc.add_paragraph()
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title.paragraph_format.space_after = Pt(24)
     r = title.add_run(p["title"])
     r.bold = True
     r.font.name = THEME.font
@@ -249,21 +262,14 @@ def _docx_cover(doc: Document, p: dict[str, Any]) -> None:
 
     for label, value in (
         ("Entidad / organización", p["entity"]),
-        ("Territorio", p["territory"]),
         ("Responsable", p["responsible"]),
     ):
         para = doc.add_paragraph()
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        para.paragraph_format.space_after = Pt(10)
         run = para.add_run(f"{label}: {value}")
         run.font.size = Pt(10)
 
-    doc.add_paragraph()
-    stamp = doc.add_paragraph()
-    stamp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    rs = stamp.add_run(DOC_FOOTER)
-    rs.italic = True
-    rs.font.size = Pt(8)
-    rs.font.color.rgb = RGBColor.from_string(THEME.muted_hex)
     doc.add_page_break()
 
 
@@ -511,8 +517,7 @@ def _tree_figure(nodes: list[dict[str, Any]], title: str, target: Path) -> Path 
         ax.text(x, y + h / 2 + .018, item["label"], ha="center", va="bottom",
                 fontsize=7.2, color="#66717C", zorder=3)
 
-    ax.text(.5, .94, title, ha="center", va="top", fontsize=13, fontweight="bold", color="#173D2C")
-    fig.subplots_adjust(left=.025, right=.975, top=.96, bottom=.06)
+    fig.subplots_adjust(left=.025, right=.975, top=.93, bottom=.08)
     return _save_figure(fig, target)
 
 
@@ -603,14 +608,15 @@ def _docx_add_figure(
         doc.add_page_break()
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.keep_with_next = True
+    p.paragraph_format.space_before = Pt(8)
+    p.paragraph_format.space_after = Pt(10)
+    p.paragraph_format.keep_together = True
     p.add_run().add_picture(str(path), width=Inches(width_inches))
-    cap = doc.add_paragraph(caption)
-    cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    cap.paragraph_format.keep_with_next = False
-    cap.runs[0].italic = True
-    cap.runs[0].font.size = Pt(8)
-    cap.runs[0].font.color.rgb = RGBColor.from_string(THEME.muted_hex)
+    p.add_run().add_break()
+    cap = p.add_run(caption)
+    cap.italic = True
+    cap.font.size = Pt(8)
+    cap.font.color.rgb = RGBColor.from_string(THEME.muted_hex)
     if standalone:
         doc.add_page_break()
 
@@ -649,10 +655,6 @@ def generate_docx(payload: dict[str, Any]) -> bytes:
     _add_docx_page_number(doc.sections[0])
     _docx_cover(doc, p)
 
-    doc.add_heading("Tabla de contenido", level=1)
-    _add_docx_toc(doc)
-    doc.add_page_break()
-
     with TemporaryDirectory() as td:
         td = Path(td)
         figures = {
@@ -664,8 +666,8 @@ def generate_docx(payload: dict[str, Any]) -> bytes:
         }
 
         sections: list[tuple[str, callable]] = [
-            ("1. Resumen ejecutivo", lambda: _docx_body_paragraph(doc, p["summary"])),
-            ("2. Contexto territorial, cultural y social", lambda: _docx_body_paragraph(doc, p["context"])),
+            ("1. Contexto territorial, cultural y social", lambda: _docx_body_paragraph(doc, p["context"])),
+            ("2. Resumen ejecutivo", lambda: _docx_body_paragraph(doc, p["summary"])),
             ("3. Población", lambda: _docx_body_paragraph(doc, p["population"])),
             ("4. Evidencia y antecedentes", lambda: (_docx_body_paragraph(doc, p["evidence"]), _docx_body_paragraph(doc, p["sources"], "Fuentes: "))),
             ("5. Priorización de situaciones · Matriz Vester", lambda: _docx_add_figure(doc, figures["vester"], "Figura 1. Plano de influencia y dependencia de la matriz Vester.")),
@@ -854,14 +856,12 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
             "budget": _budget_figure(p["budget"], td / "budget.png"),
         }
 
-        story += [Spacer(1, 42 * mm), Paragraph("FORMATO ESTÁNDAR DE PROYECTO CULTURAL", styles["FC_Small"]),
+        story += [Spacer(1, 58 * mm),
                   Paragraph(p["title"], styles["FC_Title"]),
-                  Spacer(1, 6 * mm),
+                  Spacer(1, 12 * mm),
                   Paragraph(f"<b>Entidad / organización:</b> {p['entity']}", styles["FC_Body"]),
-                  Paragraph(f"<b>Territorio:</b> {p['territory']}", styles["FC_Body"]),
                   Paragraph(f"<b>Responsable:</b> {p['responsible']}", styles["FC_Body"]),
-                  Spacer(1, 20 * mm),
-                  Paragraph(DOC_FOOTER, styles["FC_Small"]), PageBreak()]
+                  PageBreak()]
 
         def add_h1(text): story.append(Paragraph(text, styles["FC_H1"]))
         def add_body(text):
@@ -870,31 +870,34 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
                 story.append(Paragraph(xml_escape(clean(chunk)), styles["FC_Body"]))
                 if (index + 1) % 3 == 0 and index < len(chunks) - 1:
                     story.append(PageBreak())
-        def add_img(path: Path | None, width_mm=160):
+        def add_img(path: Path | None, caption: str | None = None, width_mm=160):
             if path and path.exists():
                 img = Image(str(path), width=width_mm * mm)
                 ratio = img.imageHeight / max(1, img.imageWidth)
                 img.drawHeight = width_mm * mm * ratio
-                story.append(img)
-                story.append(Spacer(1, 3 * mm))
+                block = [img]
+                if caption:
+                    block += [Spacer(1, 2 * mm), Paragraph(xml_escape(caption), styles["FC_Small"])]
+                story.append(KeepTogether(block))
+                story.append(Spacer(1, 4 * mm))
 
-        add_h1("1. Resumen ejecutivo"); add_body(p["summary"])
-        add_h1("2. Contexto territorial, cultural y social"); add_body(p["context"])
+        add_h1("1. Contexto territorial, cultural y social"); add_body(p["context"])
+        add_h1("2. Resumen ejecutivo"); add_body(p["summary"])
         add_h1("3. Población"); add_body(p["population"])
         add_h1("4. Evidencia y antecedentes"); add_body(p["evidence"]); add_body("Fuentes: " + p["sources"])
         story.append(PageBreak())
-        add_h1("5. Priorización de situaciones · Matriz Vester"); add_img(figs["vester"])
+        add_h1("5. Priorización de situaciones · Matriz Vester"); add_img(figs["vester"], "Figura 1. Plano de influencia y dependencia de la matriz Vester.")
         if rows(p["vester"].get("rows")):
             story.append(_pdf_table(["Situación", "Influencia", "Dependencia", "Clasificación"],
                                     [[r.get("text"), r.get("influence"), r.get("dependence"), r.get("quadrant")] for r in p["vester"]["rows"]],
                                     [85*mm, 25*mm, 25*mm, 28*mm]))
         story.append(PageBreak())
-        add_h1("6. Planteamiento del problema"); add_body(p["problem"]); add_img(figs["problem"])
+        add_h1("6. Planteamiento del problema"); add_body(p["problem"]); add_img(figs["problem"], "Figura 2. Árbol de problemas.")
         story.append(PageBreak())
         add_h1("7. Objetivos"); add_body("Objetivo general: " + p["objective_general"])
         if p["objectives"]:
             story.append(_pdf_table(["Objetivos específicos"], [[o.get("text", o)] for o in p["objectives"]], [165*mm]))
-        add_img(figs["objective"])
+        add_img(figs["objective"], "Figura 3. Árbol de objetivos.")
         add_h1("8. Estrategia de intervención"); add_body(p["strategy"])
         add_h1("9. Resultados esperados")
         if p["results"]:
@@ -909,10 +912,10 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
         story.append(Paragraph("11.2 Fichas técnicas de indicadores", styles["FC_H2"]))
         _pdf_indicator_cards(story, p["indicators"], styles)
         story.append(PageBreak())
-        add_h1("12. Cronograma"); add_img(figs["gantt"])
+        add_h1("12. Cronograma"); add_img(figs["gantt"], "Figura 4. Cronograma gráfico tipo Gantt.")
         story.append(_pdf_table(["Actividad","Inicio","Fin","Responsable","Frecuencia"], [[s.get("activityText"),s.get("startDate"),s.get("endDate"),s.get("responsible"),s.get("frequency")] for s in p["schedule"]], [75*mm,22*mm,22*mm,27*mm,20*mm]))
         story.append(PageBreak())
-        add_h1("13. Recursos y presupuesto"); add_img(figs["budget"])
+        add_h1("13. Recursos y presupuesto"); add_img(figs["budget"], "Figura 5. Distribución del presupuesto por actividad.")
         story.append(Paragraph("13.1 Soportes de recursos", styles["FC_H2"]))
         _pdf_resource_entries(story, p["budget"], styles)
         add_h1("14. Riesgos y respuestas")
