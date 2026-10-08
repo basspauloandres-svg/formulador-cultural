@@ -223,8 +223,8 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  const activityIndicatorAfterSchedule=w.fcGetIndicators().find(x=>x.linkedType==='Actividad'&&x.activityId===confirmedActs[0].id);
  assert(activityIndicatorAfterSchedule?.scheduleReconciliation?.fields?.responsable?.value==='Responsable de prueba','S13 no propuso el responsable confirmado para el indicador');
  assert(activityIndicatorAfterSchedule?.scheduleReconciliation?.fields?.plazo?.value,'S13 no propuso el plazo confirmado para el indicador');
- assert(/^\[POR VERIFICAR\]/.test(activityIndicatorAfterSchedule.responsable),'La reconciliación sobrescribió silenciosamente el responsable del indicador');
- assert(/^\[POR VERIFICAR\]/.test(activityIndicatorAfterSchedule.plazo),'La reconciliación sobrescribió silenciosamente el plazo del indicador');
+ assert(activityIndicatorAfterSchedule.responsable==='Coordinación PF02','La reconciliación sobrescribió el responsable personalizado del indicador');
+ assert(activityIndicatorAfterSchedule.plazo==='27/12/2026','La reconciliación sobrescribió el plazo personalizado del indicador');
 
  await w.fcNavigate('S14');await wait(60);
  assert(w.fcGetBudgetState().activityStatus[confirmedActs[0].id]==='pending','S14 no inicializó la decisión financiera de la actividad');
