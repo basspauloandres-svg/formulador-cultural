@@ -81,6 +81,15 @@ def _sentence_chunks(value: Any, max_sentences: int = 4) -> list[str]:
     return [" ".join(parts[i:i + max_sentences]) for i in range(0, len(parts), max_sentences)]
 
 
+def _source_entries(value: Any) -> list[str]:
+    """Present source evidence as separate supports while preserving the original wording."""
+    text = clean(value)
+    if text == POR_VERIFICAR:
+        return [text]
+    entries = [x.strip() for x in re.split(r"(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÜÑ0-9¿¡\[])", text) if x.strip()]
+    return entries or [text]
+
+
 def _compact_text(value: Any, max_chars: int = 120) -> str:
     text = clean(value)
     return text if len(text) <= max_chars else text[:max_chars - 1].rstrip(" ,.;:") + "…"
@@ -269,7 +278,7 @@ def _docx_body_paragraph(doc: Document, text: str, bold_label: str | None = None
             rb = p.add_run(bold_label)
             rb.bold = True
         p.add_run(chunk)
-        if (index + 1) % 4 == 0 and index < len(chunks) - 1:
+        if (index + 1) % 3 == 0 and index < len(chunks) - 1:
             doc.add_page_break()
 
 
@@ -352,6 +361,20 @@ def _docx_indicator_cards(doc: Document, indicators: list[dict[str, Any]]) -> No
         doc.add_paragraph()
 
 
+def _docx_source_entries(doc: Document, source_text: Any) -> None:
+    entries = _source_entries(source_text)
+    for n, entry in enumerate(entries, 1):
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        p.paragraph_format.left_indent = Cm(0.6)
+        p.paragraph_format.first_line_indent = Cm(-0.6)
+        p.paragraph_format.line_spacing = 1.25
+        p.paragraph_format.space_after = Pt(8)
+        r = p.add_run(f"{n}. ")
+        r.bold = True
+        p.add_run(entry)
+
+
 def _docx_resource_entries(doc: Document, budget: list[dict[str, Any]]) -> None:
     if not budget:
         _docx_body_paragraph(doc, POR_VERIFICAR)
@@ -412,19 +435,28 @@ def _tree_figure(nodes: list[dict[str, Any]], title: str, target: Path) -> Path 
     active_layers = [(zone, [n for n in nodes if n.get("zone") == zone]) for zone in order]
     active_layers = [(zone, layer) for zone, layer in active_layers if layer]
     max_in_layer = max((len(layer) for _, layer in active_layers), default=1)
-    fig_h = max(5.4, 1.55 * len(active_layers) + 1.0)
-    fig_w = max(11.5, 3.8 * min(max_in_layer, 3))
+    layer_count = len(active_layers)
+    fig_h = 3.6 if layer_count <= 2 else max(4.2, 1.15 * layer_count + 1.1)
+    fig_w = max(10.5, 3.6 * min(max_in_layer, 3))
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
     ax.set_axis_off()
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
 
     layout: dict[str, dict[str, Any]] = {}
-    top, bottom = .88, .10
-    layer_gap = (top - bottom) / max(1, len(active_layers) - 1) if len(active_layers) > 1 else 0
+    if layer_count == 1:
+        layer_positions = [.50]
+    elif layer_count == 2:
+        layer_positions = [.64, .34]
+    elif layer_count == 3:
+        layer_positions = [.74, .50, .26]
+    else:
+        top, bottom = .82, .18
+        layer_gap = (top - bottom) / max(1, layer_count - 1)
+        layer_positions = [top - i * layer_gap for i in range(layer_count)]
 
     for li, (zone, layer) in enumerate(active_layers):
-        y = top - li * layer_gap if len(active_layers) > 1 else .5
+        y = layer_positions[li]
         count = len(layer)
         horizontal_margin = .055
         gap = .035 if count <= 3 else .02
@@ -479,8 +511,8 @@ def _tree_figure(nodes: list[dict[str, Any]], title: str, target: Path) -> Path 
         ax.text(x, y + h / 2 + .018, item["label"], ha="center", va="bottom",
                 fontsize=7.2, color="#66717C", zorder=3)
 
-    ax.text(.5, .97, title, ha="center", va="top", fontsize=13, fontweight="bold", color="#173D2C")
-    fig.subplots_adjust(left=.02, right=.98, top=.98, bottom=.02)
+    ax.text(.5, .94, title, ha="center", va="top", fontsize=13, fontweight="bold", color="#173D2C")
+    fig.subplots_adjust(left=.025, right=.975, top=.96, bottom=.06)
     return _save_figure(fig, target)
 
 
@@ -637,11 +669,11 @@ def generate_docx(payload: dict[str, Any]) -> bytes:
             ("3. Población", lambda: _docx_body_paragraph(doc, p["population"])),
             ("4. Evidencia y antecedentes", lambda: (_docx_body_paragraph(doc, p["evidence"]), _docx_body_paragraph(doc, p["sources"], "Fuentes: "))),
             ("5. Priorización de situaciones · Matriz Vester", lambda: _docx_add_figure(doc, figures["vester"], "Figura 1. Plano de influencia y dependencia de la matriz Vester.")),
-            ("6. Planteamiento del problema", lambda: (_docx_body_paragraph(doc, p["problem"]), _docx_add_figure(doc, figures["problem"], "Figura 2. Árbol de problemas.", standalone=True))),
+            ("6. Planteamiento del problema", lambda: (_docx_body_paragraph(doc, p["problem"]), _docx_add_figure(doc, figures["problem"], "Figura 2. Árbol de problemas.", width_inches=6.45, standalone=False))),
             ("7. Objetivos", lambda: (
                 _docx_body_paragraph(doc, p["objective_general"], "Objetivo general: "),
                 _docx_table(doc, ["Objetivos específicos"], [[o.get("text", o)] for o in p["objectives"]]) if p["objectives"] else None,
-                _docx_add_figure(doc, figures["objective"], "Figura 3. Árbol de objetivos.", standalone=True)
+                _docx_add_figure(doc, figures["objective"], "Figura 3. Árbol de objetivos.", width_inches=6.45, standalone=False)
             )),
             ("8. Estrategia de intervención", lambda: _docx_body_paragraph(doc, p["strategy"])),
             ("9. Resultados esperados", lambda: _docx_table(doc, ["Resultados"], [[r.get("text", r)] for r in p["results"]]) if p["results"] else _docx_body_paragraph(doc, POR_VERIFICAR)),
@@ -663,7 +695,7 @@ def generate_docx(payload: dict[str, Any]) -> bytes:
             )),
             ("14. Riesgos y respuestas", lambda: _docx_table(doc, ["Origen", "Riesgo", "Probabilidad", "Impacto", "Nivel", "Prevención", "Contingencia", "Responsable"], [[r.get("linkedObjectType"), r.get("event"), r.get("probability"), r.get("impact"), r.get("riskLevel"), r.get("preventiveResponse"), r.get("contingencyResponse"), r.get("owner")] for r in p["risks"]])),
             ("15. Coherencia y trazabilidad", lambda: _docx_body_paragraph(doc, clean(p["coherence"].get("summary") or f"Índice orientativo: {p['coherence'].get('score', POR_VERIFICAR)}"))),
-            ("16. Fuentes y anexos", lambda: _docx_body_paragraph(doc, p["sources"])),
+            ("16. Fuentes y anexos", lambda: _docx_source_entries(doc, p["sources"])),
         ]
 
         for title, builder in sections:
@@ -765,6 +797,11 @@ def _pdf_indicator_cards(story: list[Any], indicators: list[dict[str, Any]], sty
         story.append(Spacer(1, 4 * mm))
 
 
+def _pdf_source_entries(story: list[Any], source_text: Any, styles) -> None:
+    for n, entry in enumerate(_source_entries(source_text), 1):
+        story.append(Paragraph(f"<b>{n}.</b> {xml_escape(entry)}", styles["FC_Record"]))
+
+
 def _pdf_resource_entries(story: list[Any], budget: list[dict[str, Any]], styles) -> None:
     if not budget:
         story.append(Paragraph(POR_VERIFICAR, styles["FC_Body"]))
@@ -831,7 +868,7 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
             chunks = _sentence_chunks(text, 4)
             for index, chunk in enumerate(chunks):
                 story.append(Paragraph(xml_escape(clean(chunk)), styles["FC_Body"]))
-                if (index + 1) % 4 == 0 and index < len(chunks) - 1:
+                if (index + 1) % 3 == 0 and index < len(chunks) - 1:
                     story.append(PageBreak())
         def add_img(path: Path | None, width_mm=160):
             if path and path.exists():
@@ -881,7 +918,7 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
         add_h1("14. Riesgos y respuestas")
         story.append(_pdf_table(["Origen","Riesgo","Prob.","Impacto","Nivel","Prevención","Contingencia","Responsable"], [[r.get("linkedObjectType"),r.get("event"),r.get("probability"),r.get("impact"),r.get("riskLevel"),r.get("preventiveResponse"),r.get("contingencyResponse"),r.get("owner")] for r in p["risks"]], [18*mm,34*mm,14*mm,14*mm,14*mm,30*mm,30*mm,20*mm]))
         add_h1("15. Coherencia y trazabilidad"); add_body(clean(p["coherence"].get("summary") or f"Índice orientativo: {p['coherence'].get('score', POR_VERIFICAR)}"))
-        add_h1("16. Fuentes y anexos"); add_body(p["sources"])
+        add_h1("16. Fuentes y anexos"); _pdf_source_entries(story, p["sources"], styles)
 
         doc.build(story)
     return out.getvalue()
