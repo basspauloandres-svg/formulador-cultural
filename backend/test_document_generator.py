@@ -269,3 +269,26 @@ def test_clean_preserves_numeric_zero():
     assert clean(0) == "0"
     assert clean(None) == "[POR VERIFICAR]"
     assert clean("") == "[POR VERIFICAR]"
+
+
+def test_pending_diagnostic_is_present_in_docx_and_pdf():
+    payload = sample_payload()
+    payload["document_status"] = "Proyecto en revisión"
+    payload["problem_description"] = "Descripción sustentada de prueba."
+    payload["coherence"] = {
+        "score": 50,
+        "summary": "Hay pendientes.",
+        "checks": [
+            {"dimension": "Tiempo", "label": "Actividades → cronograma", "status": "AÚN NO EVALUABLE", "message": "Todavía no hay actividades."},
+            {"dimension": "Lógica", "label": "Objetivos → resultados", "status": "REQUIERE AJUSTE", "message": "Falta un resultado."},
+        ],
+    }
+    docx = generate_docx(payload)
+    with ZipFile(BytesIO(docx)) as z:
+        xml = z.read("word/document.xml").decode("utf-8")
+        assert "Proyecto en revisión" in xml
+        assert "Descripción sustentada de prueba." in xml
+        assert "AÚN NO EVALUABLE" in xml
+        assert "REQUIERE AJUSTE" in xml
+    pdf = generate_pdf(payload)
+    assert b"%PDF" in pdf[:8]
