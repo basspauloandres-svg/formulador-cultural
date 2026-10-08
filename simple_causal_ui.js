@@ -64,6 +64,7 @@ function saveNote(key,value){
   if(!p)return;
   p.note=String(value||'').trim();
   write(s);
+  if(typeof session!=='undefined'&&session&&typeof syncSection==='function')syncSection('S06').catch(()=>{});
 }
 function render(){
   const root=$('#simpleCausalFlow');if(!root)return;
