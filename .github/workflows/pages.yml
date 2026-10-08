@@ -117,6 +117,65 @@ jobs:
           grep -q "S01–S16" index.html
           grep -q "Revisión del proyecto" coherence_engine.js
 
+      - name: Smoke E2E contra Render producción
+        run: |
+          set -euo pipefail
+          BASE="https://formulador-cultural-api.onrender.com"
+          curl --fail --silent --show-error --max-time 120 "$BASE/health" -o health.json
+          cat health.json
+          grep -q '"status":"ok"' health.json
+          grep -q '"persistence":"memory"' health.json
+
+          cat > payload.json <<'JSON'
+          {
+            "title":"Prueba E2E Formulador Cultural",
+            "entity":"Universidad de Caldas",
+            "territory":"Manizales",
+            "responsible":"Prueba automatizada",
+            "summary":"Validación de integración de producción.",
+            "problem":"Baja participación cultural de prueba.",
+            "objective_general":"Incrementar la participación cultural de prueba.",
+            "objectives":[{"id":"O1","text":"Fortalecer la participación cultural.","zone":"direct_cause","parentId":"OC"}],
+            "strategy":"Acompañamiento cultural territorial.",
+            "results":[{"id":"R1","text":"Proceso de acompañamiento implementado."}],
+            "activities":[{"id":"A1","resultId":"R1","resultText":"Proceso de acompañamiento implementado.","objectiveId":"O1","objectiveText":"Fortalecer la participación cultural.","text":"Realizar cuatro encuentros culturales."}],
+            "indicators":[],
+            "schedule":[],
+            "budget":[],
+            "risks":[],
+            "problem_tree":[{"id":"PC","zone":"central","text":"Baja participación cultural"}],
+            "objective_tree":[{"id":"OC","zone":"central","text":"Incrementar la participación cultural","confirmed":true}],
+            "vester":{"rows":[],"meanInfluence":0,"meanDependence":0},
+            "coherence":{"score":90,"summary":"Prueba controlada."}
+          }
+          JSON
+
+          curl --fail --silent --show-error --max-time 120 \
+            -X OPTIONS \
+            -H 'Origin: https://basspauloandres-svg.github.io' \
+            -H 'Access-Control-Request-Method: POST' \
+            -H 'Access-Control-Request-Headers: content-type' \
+            -D cors.headers "$BASE/documents/pdf" -o cors.body
+          grep -qi 'access-control-allow-origin: https://basspauloandres-svg.github.io' cors.headers
+
+          curl --fail --silent --show-error --max-time 180 \
+            -H 'Content-Type: application/json' \
+            -H 'Origin: https://basspauloandres-svg.github.io' \
+            --data-binary @payload.json -D docx.headers \
+            "$BASE/documents/docx" -o test.docx
+          test "$(head -c 2 test.docx)" = "PK"
+          test "$(wc -c < test.docx)" -gt 10000
+          grep -qi 'access-control-allow-origin: https://basspauloandres-svg.github.io' docx.headers
+
+          curl --fail --silent --show-error --max-time 180 \
+            -H 'Content-Type: application/json' \
+            -H 'Origin: https://basspauloandres-svg.github.io' \
+            --data-binary @payload.json -D pdf.headers \
+            "$BASE/documents/pdf" -o test.pdf
+          test "$(head -c 4 test.pdf)" = "%PDF"
+          test "$(wc -c < test.pdf)" -gt 10000
+          grep -qi 'access-control-allow-origin: https://basspauloandres-svg.github.io' pdf.headers
+
   deploy:
     if: github.ref == 'refs/heads/main'
     needs: test
