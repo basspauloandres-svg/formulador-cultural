@@ -19,3 +19,8 @@ Aplica estas reglas a todos los documentos DOCX y PDF generados por Formulador C
 Regla de decisión: cuando haya conflicto entre conservar una tabla horizontal y mantener la lectura, elige la lectura y transforma la información en fichas o registros verticales.
 
 14. Los árboles de problemas y objetivos deben usar una composición vertical compacta, sin páginas casi vacías ni conectores excesivamente largos; deben integrarse con el texto de la sección cuando el espacio lo permita.
+
+15. La portada debe ser limpia: título del proyecto, entidad u organización y responsable. El territorio y su descripción pertenecen al cuerpo del documento, no a la portada.
+16. La primera página de contenido debe iniciar con el contexto territorial, cultural y social; el resumen ejecutivo continúa después, con la misma lógica de párrafos equilibrados.
+17. El rótulo “FORMATO ESTÁNDAR DE PROYECTO CULTURAL” se mantiene como marca institucional en el pie de página, no como título visible de portada.
+18. Las figuras no deben llevar un título duplicado dentro de la imagen. La imagen y su pie deben permanecer unidos como un solo bloque para evitar superposiciones al abrir DOCX en Pages u otros editores.
