@@ -312,7 +312,8 @@ function indicatorFieldGuide(source,type,family,context={},current={}){
 }
 function indicatorFieldAssist(source,type,family,context={},current={}){
  const t=clean(source),battery=indicatorBattery(t,type,context),candidate=battery.find(x=>x.indicatorFamily===family)||battery[0]||{},out={};
- const add=(k,values)=>{const xs=[...new Set((values||[]).map(clean).filter(v=>v&&!isPlaceholder(v)))];if(xs.length)out[k]=xs};
+ const technicalValue=v=>String(v??'').replace(/\s+/g,' ').trim().replace(/[.]+$/,'');
+ const add=(k,values)=>{const xs=[...new Set((values||[]).map(technicalValue).filter(v=>v&&!isPlaceholder(v)))];if(xs.length)out[k]=xs};
  add('formula',[candidate.formula]);
  add('unidad',[candidate.unidad]);
  add('lineaBase',[candidate.lineaBase]);
