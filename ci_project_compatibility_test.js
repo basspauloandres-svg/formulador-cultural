@@ -98,7 +98,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  for(const field of ['resourceType','description','unit','quantity','frequency','unitCost','fundingSource'])assert(planningBudgetHelpSource.includes("budgetHelpDetails('"+field+"'"),'S14 no ofrece ayuda desplegable para '+field);
  assert(planningBudgetHelpSource.includes('cantidad × veces × costo unitario'),'S14 no explica el cálculo automático del total');
  assert(planningBudgetHelpSource.includes("status==='inkind'?'Escribe quién aporta este recurso en especie.'"),'S14 no adapta la ayuda de fuente para aportes en especie');
- assert(planningBudgetHelpSource.includes('<option '+(i.resourceType==='Honorarios'?'selected':'')),'S14 no conserva correctamente la categoría seleccionada');
+ assert(planningBudgetHelpSource.includes("i.resourceType==='Honorarios'?'selected':''"),'S14 no conserva correctamente la categoría seleccionada');
 
  if(errors.length)throw errors[0];
 
