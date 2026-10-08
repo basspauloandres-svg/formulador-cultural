@@ -1,0 +1,109 @@
+from io import BytesIO
+from zipfile import ZipFile
+
+from backend.document_generator import DOC_FOOTER, generate_docx, generate_pdf
+
+
+def sample_payload():
+    return {
+        "title": "Proyecto de prueba",
+        "entity": "Entidad de prueba",
+        "territory": "Territorio de prueba",
+        "responsible": "Paulo Olarte",
+        "summary": "Resumen verificable del proyecto.",
+        "context": "Contexto territorial del proyecto.",
+        "population": "Población participante.",
+        "evidence": "Evidencia confirmada.",
+        "sources": "Fuente institucional.",
+        "problem": "Problema central.",
+        "objective_general": "Mejorar la condición central.",
+        "objectives": [{"text": "Objetivo específico uno."}],
+        "strategy": "Estrategia seleccionada.",
+        "results": [{"text": "Resultado esperado uno."}],
+        "activities": [{"id": "A1", "resultText": "Resultado esperado uno.", "text": "Realizar seis talleres."}],
+        "indicators": [{
+            "linkedType": "Actividad",
+            "linkedText": "Realizar seis talleres.",
+            "indicator": "Porcentaje de talleres realizados.",
+            "formula": "(talleres realizados / 6) × 100",
+            "unidad": "%",
+            "lineaBase": "0 %",
+            "meta": "100 %",
+            "periodicidad": "Al cierre de cada taller",
+            "medioVerificacion": "Actas y listas de asistencia",
+            "responsable": "Coordinación",
+            "plazo": "Al cierre",
+        }],
+        "schedule": [{
+            "activityText": "Realizar seis talleres.",
+            "startDate": "2026-10-01",
+            "endDate": "2026-12-15",
+            "responsible": "Coordinación",
+            "frequency": "Mensual",
+        }],
+        "budget": [{
+            "activityText": "Realizar seis talleres.",
+            "description": "Honorarios",
+            "unit": "taller",
+            "quantity": 6,
+            "frequency": 1,
+            "unitCost": 500000,
+            "totalCost": 3000000,
+            "costType": "Monetario",
+        }],
+        "risks": [{
+            "linkedObjectType": "Actividad",
+            "event": "Retraso documental",
+            "probability": "Media",
+            "impact": "Alto",
+            "riskLevel": "Alto",
+            "preventiveResponse": "Solicitar documentos con antelación.",
+            "contingencyResponse": "Reprogramar como último recurso.",
+            "owner": "Coordinación",
+        }],
+        "problem_tree": [
+            {"id": "e1", "zone": "direct_effect", "text": "Efecto", "parentId": "c"},
+            {"id": "c", "zone": "central", "text": "Problema central"},
+            {"id": "d1", "zone": "direct_cause", "text": "Causa directa", "parentId": "c"},
+            {"id": "i1", "zone": "indirect_cause", "text": "Causa indirecta", "parentId": "d1"},
+        ],
+        "objective_tree": [
+            {"id": "f1", "zone": "direct_effect", "text": "Fin", "parentId": "oc"},
+            {"id": "oc", "zone": "central", "text": "Objetivo central"},
+            {"id": "m1", "zone": "direct_cause", "text": "Medio directo", "parentId": "oc"},
+        ],
+        "vester": {
+            "rows": [
+                {"text": "P1", "influence": 3, "dependence": 1, "quadrant": "Activo"},
+                {"text": "P2", "influence": 1, "dependence": 3, "quadrant": "Pasivo"},
+            ],
+            "meanInfluence": 2,
+            "meanDependence": 2,
+        },
+        "coherence": {"score": 92, "summary": "La cadena principal está conectada."},
+    }
+
+
+def test_docx_has_all_sections_footer_and_graphics():
+    data = generate_docx(sample_payload())
+    assert data[:2] == b"PK"
+    with ZipFile(BytesIO(data)) as z:
+        names = z.namelist()
+        xml = z.read("word/document.xml").decode("utf-8")
+        footer = z.read("word/footer1.xml").decode("utf-8")
+        assert DOC_FOOTER in footer
+        assert "1. Resumen ejecutivo" in xml
+        assert "5. Priorización de situaciones" in xml
+        assert "11. Indicadores y metas" in xml
+        assert "12. Cronograma" in xml
+        assert "13. Recursos y presupuesto" in xml
+        assert "16. Fuentes y anexos" in xml
+        media = [n for n in names if n.startswith("word/media/")]
+        assert len(media) >= 5
+
+
+def test_pdf_is_nonempty_and_contains_multiple_pages():
+    data = generate_pdf(sample_payload())
+    assert data.startswith(b"%PDF")
+    assert len(data) > 20000
+    assert data.count(b"/Type /Page") >= 5
