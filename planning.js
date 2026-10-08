@@ -35,7 +35,7 @@ function ganttHtml(xs){
 function renderS13(){
  const host=$('#fields');if(!host)return;const s=scheduleState(),xs=s.items||[];cursors.S13=Math.min(cursors.S13,Math.max(0,xs.length-1));const x=xs[cursors.S13],issues=scheduleIssues(s);
  host.innerHTML='<section class="plan-wrap"><div class="plan-note"><strong>Ubicar cada actividad en el tiempo</strong><p>Trabajaremos una actividad por vez. Primero decide cuándo empieza, cuánto dura y quién se encarga.</p></div>'+
- (x?'<div class="plan-progress">Actividad '+(cursors.S13+1)+' de '+xs.length+'</div><article class="plan-card"><small>'+esc(x.activityId)+'</small><h3>'+esc(x.activityText)+'</h3><div class="plan-grid">'+
+ (x?'<div class="plan-progress">Actividad '+(cursors.S13+1)+' de '+xs.length+'</div><article class="plan-card"><small>'+esc(x.activityId)+'</small><h3>'+esc(compactLabel(x.activityText,18))+'</h3><div class="plan-grid">'+
  '<label>¿Cuándo puede comenzar?<input type="date" data-sch="startDate" value="'+esc(x.startDate)+'"></label>'+
  '<label>¿Cuánto dura?<div class="inline"><input type="number" min="1" data-sch="duration" value="'+esc(x.duration)+'"><select data-sch="durationUnit"><option value="days" '+(x.durationUnit==='days'?'selected':'')+'>días</option><option value="weeks" '+(x.durationUnit==='weeks'?'selected':'')+'>semanas</option><option value="months" '+(x.durationUnit==='months'?'selected':'')+'>meses</option></select></div></label>'+
  '<label>¿Quién será responsable?<input data-sch="responsible" value="'+esc(x.responsible||'')+'" placeholder="[POR VERIFICAR]"></label>'+

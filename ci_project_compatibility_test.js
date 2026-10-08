@@ -50,6 +50,12 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  const coherenceSource=fs.readFileSync('coherence_engine.js','utf8');
  assert(coherenceSource.includes("x.selected!==false"),'La coherencia sigue tratando propuestas no seleccionadas como indicadores obligatorios');
 
+ const planningSource=fs.readFileSync('planning.js','utf8');
+ assert(planningSource.includes("compactLabel(x.activityText,18)"),'S13 vuelve a mostrar la actividad completa en lugar de una síntesis operativa');
+ const completionGuidanceSource=fs.readFileSync('completion.js','utf8');
+ assert(completionGuidanceSource.includes("Cómo resolverlo"),'S12 no ofrece orientación operativa para resolver campos técnicos pendientes');
+ assert(completionGuidanceSource.includes("indicatorResolutionHint"),'S12 perdió la guía específica por campo técnico');
+
  if(errors.length)throw errors[0];
 
  let cleaned=JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1'));

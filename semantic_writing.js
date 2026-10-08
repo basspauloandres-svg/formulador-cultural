@@ -164,6 +164,15 @@ function activityWritingReview(value){
  if(/\b(?:con el fin de|con el prop[oó]sito de)\b/i.test(t)&&words.length>20)issues.push('Evita repetir la justificación del proyecto dentro de la actividad.');
  return {ok:issues.length===0,issues,wordCount:words.length}
 }
+function activityNeedsSynthesis(value,result=''){
+ const t=clean(value),r=clean(result),words=t.split(/\s+/).filter(Boolean);
+ if(!t||isPlaceholder(t))return true;
+ if(r&&t===r)return true;
+ const nominal=/^(ampliaci[oó]n|mejora|incremento|fortalecimiento|reducci[oó]n|disminuci[oó]n|resultado esperado)\b/i.test(t);
+ const rHead=r.split(/\s+/).slice(0,8).join(' ').toLowerCase(),tLow=t.toLowerCase();
+ if(rHead&&rHead.split(/\s+/).length>=5&&tLow.startsWith(rHead))return true;
+ return words.length>28&&(nominal||!activityWritingReview(t).ok)
+}
 function activityGuidance(result,objective,context={}){
  const r=clean(result),o=clean(objective),p=clean(context.population),territory=clean(context.territory),existing=(context.existingActivities||[]).map(clean).filter(Boolean),t=(o+' '+r).toLowerCase(),suggestions=[],questions=[],object=activityObjectFromResult(r);
  const rq=r||'[POR VERIFICAR]',oq=o||'[POR VERIFICAR]';
@@ -262,14 +271,14 @@ function indicatorBattery(source,type,context={}){
   if(access){
    const m=t.match(/acceso a\s+(.+?)(?:\s+para\s+(.+))?$/i),resource=clean(m?.[1]||'los procesos definidos'),target=clean(m?.[2]||'la población vinculada').replace(/^algunas?\s+/i,'');
    add({indicatorFamily:'resultado_acceso',indicator:baseIndicator(t,'Resultado'),formula:'Número de '+target+' con acceso registrado a '+resource+' en seguimiento − número de '+target+' con acceso registrado a '+resource+' en la línea base',unidad:target,verificationSuggestions:['Registros de inscripción o participación','Listas de asistencia','Informe de seguimiento del acceso']});
-  }else add({indicatorFamily:change?'resultado_cambio':'resultado',indicator:baseIndicator(t,'Resultado'),verificationSuggestions:change?['Instrumento de valoración inicial y final','Rúbrica de seguimiento']:['Informe de resultados','Registro del producto o resultado']});
+  }else add({indicatorFamily:change?'resultado_cambio':'resultado',indicator:baseIndicator(t,'Resultado'),formula:change?'(Participantes con mejora verificada / participantes valorados) × 100':'(Criterios de logro cumplidos / criterios de logro definidos) × 100',unidad:'%',verificationSuggestions:change?['Instrumento de valoración inicial y final','Rúbrica de seguimiento']:['Informe de resultados','Registro del producto o resultado','Lista de chequeo de criterios de logro']});
  }
  if(type==='Objetivo'){
   const participation=/incrementar la participación.+(?:certámenes|encuentros|eventos|festivales)/i.test(t);
   if(participation){
    const m=t.match(/incrementar la participación(?: de .+?)? en (.+)$/i),scope=clean(m?.[1]||'los espacios definidos');
    add({indicatorFamily:'objetivo_participacion',indicator:baseIndicator(t,'Objetivo'),formula:'Número de '+scope+' con participación registrada en seguimiento − número de '+scope+' con participación registrada en la línea base',unidad:'espacios de participación',verificationSuggestions:['Registros de inscripción o participación','Certificaciones o constancias de participación','Informes de participación']});
-  }else add({indicatorFamily:'objetivo_cambio',indicator:baseIndicator(t,'Objetivo'),verificationSuggestions:['Fuente de seguimiento del objetivo']});
+  }else add({indicatorFamily:'objetivo_cambio',indicator:baseIndicator(t,'Objetivo'),formula:'(Criterios de avance cumplidos / criterios de avance definidos) × 100',unidad:'%',verificationSuggestions:['Fuente de seguimiento del objetivo','Matriz de seguimiento de criterios de avance']});
  }
  return items.length?items:[{...common,indicatorFamily:'pendiente',indicator:'[POR REVISAR]',formula:'[POR VERIFICAR]',unidad:'[POR VERIFICAR]',lineaBase:'[POR VERIFICAR]',meta:'[POR VERIFICAR]',medioVerificacion:'[POR VERIFICAR]',periodicidad:'[POR VERIFICAR]',responsable:'[POR VERIFICAR]',plazo:'[POR VERIFICAR]',verificationSuggestions:[]}]
 }
@@ -308,8 +317,15 @@ function indicatorFieldAssist(source,type,family,context={},current={}){
  if(type==='Actividad'){
    if(/taller|sesion|sesión|jornada|encuentro|capacitaci[oó]n|formaci[oó]n/i.test(t))add('periodicidad',['Al cierre de cada actividad realizada']);
    else add('periodicidad',['Al cierre de la actividad']);
- }else if(type==='Resultado')add('periodicidad',['Al inicio y al cierre del proceso']);
- else if(type==='Objetivo')add('periodicidad',['Al inicio y al cierre del proyecto']);
+   add('plazo',['Al cierre de la actividad']);
+ }else if(type==='Resultado'){
+   add('periodicidad',['Al inicio y al cierre del proceso']);
+   add('plazo',['Al cierre del proceso']);
+ }else if(type==='Objetivo'){
+   add('periodicidad',['Al inicio y al cierre del proyecto']);
+   add('plazo',['Al cierre del proyecto']);
+ }
+ add('responsable',['Coordinación del proyecto','Responsable de seguimiento']);
  return out
 }
 
@@ -339,5 +355,5 @@ function indicatorQuality(x){
 }
 
 function isPlaceholder(v){return /^\s*\[POR (REVISAR|VERIFICAR|DEFINIR)\]/i.test(String(v||''))}
-window.fcWriting={clean,compactPresentationText,resultWritingReview,objectiveProposals,objectiveWritingReview,looksLikeActivity,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activityWritingReview,activityObjectFromResult,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorFieldAssist,indicatorFieldGuide,indicatorQuality,isPlaceholder};
+window.fcWriting={clean,compactPresentationText,resultWritingReview,objectiveProposals,objectiveWritingReview,looksLikeActivity,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activityWritingReview,activityNeedsSynthesis,activityObjectFromResult,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorFieldAssist,indicatorFieldGuide,indicatorQuality,isPlaceholder};
 })();
