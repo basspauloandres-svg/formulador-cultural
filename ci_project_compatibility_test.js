@@ -211,6 +211,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  await w.fcNavigate('S16');await wait(80);
  assert(typeof w.fcTreeSvg==='function'&&/^<svg/.test(w.fcTreeSvg('problem')),'No se pudo generar SVG del árbol de problemas');
  assert(typeof w.fcProjectReportHTML==='function'&&/Proyecto de prueba/.test(w.fcProjectReportHTML()),'No se pudo construir el documento final HTML');
+ assert(/Formulador Cultural · Desarrollo por Paulo Olarte/.test(w.fcProjectReportHTML()),'El documento HTML no conserva la huella de autoría');
  const currentObjectives=w.fcGetObjectives();assert(Array.isArray(currentObjectives)&&currentObjectives.length,'No están disponibles los objetivos vigentes para exportación');
  const confirmedObjective=currentObjectives.find(x=>x.confirmed);if(confirmedObjective)assert(w.fcProjectReportHTML().includes(confirmedObjective.text),'El documento final no usa el objetivo estructurado vigente');
  assert(typeof w.fcExportCompleteWorkbook==='function','No está disponible la exportación técnica Excel');
