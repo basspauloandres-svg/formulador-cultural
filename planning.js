@@ -71,7 +71,7 @@ function renderS13(){
  host.querySelectorAll('[data-sch]').forEach(el=>el.onchange=()=>{const k=el.dataset.sch;x[k]=k==='duration'?Math.max(1,Number(el.value)||1):el.value;x.endDate=endDate(x.startDate,x.duration,x.durationUnit);x.confirmed=false;write('S13','schedule_state',s);renderS13()});
  host.querySelectorAll('[data-dep]').forEach(el=>el.onchange=()=>{x.dependencyIds=[...host.querySelectorAll('[data-dep]:checked')].map(z=>z.dataset.dep);x.confirmed=false;write('S13','schedule_state',s)});
  $('#confirmSchedule').onclick=()=>{x.endDate=endDate(x.startDate,x.duration,x.durationUnit);x.confirmed=!!x.startDate&&!!x.endDate&&!!x.responsible&&!/POR VERIFICAR/.test(x.responsible);write('S13','schedule_state',s);sync('S13');if(x.confirmed)window.fcReconcileIndicatorsFromSchedule?.();renderS13()};
- $('#schPrev').onclick=()=>{cursors.S13=Math.max(0,cursors.S13-1);renderS13()};$('#schNext').onclick=()=>{cursors.S13=Math.min(xs.length-1,cursors.S13+1);renderS13()}
+ $('#schPrev').onclick=()=>{cursors.S13=Math.max(0,cursors.S13-1);renderS13()};$('#schNext').onclick=()=>{cursors.S13=Math.min(xs.length-1,cursors.S13+1);const next=xs[cursors.S13];renderS13();const target=!next?.startDate?'[data-sch="startDate"]':(!next?.responsible||/POR VERIFICAR/.test(next.responsible))?'[data-sch="responsible"]':'.plan-card';window.fcContinueView?.(target,'.plan-card')}
 }
 function budgetState(){
  let s=read('S14','budget_state'),src=activities(),sig=src.map(x=>x.id+':'+x.text).join('|');s.items=s.items||[];s.activityStatus=s.activityStatus||{};
