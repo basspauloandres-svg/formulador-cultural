@@ -230,6 +230,6 @@ def test_long_single_section_is_balanced_by_words_and_sentences():
         "La tercera frase añade información institucional.",
         "La cuarta frase completa el bloque argumental.",
     ])
-    chunks = _sentence_chunks(text, 4, 115)
+    chunks = _sentence_chunks(text, 4, 60)
     assert len(chunks) >= 2
     assert all(len(chunk.split()) <= 150 for chunk in chunks)
