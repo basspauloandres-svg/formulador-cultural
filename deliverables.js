@@ -137,6 +137,7 @@ function documentApiBase(){
  const configured=clean(window.FC_DOCUMENT_API_URL||localStorage.getItem('fc_document_api_url'));
  if(configured)return configured.replace(/\/$/,'');
  if(['localhost','127.0.0.1'].includes(location.hostname))return 'http://127.0.0.1:8000';
+ if(location.hostname==='basspauloandres-svg.github.io')return 'https://formulador-cultural-api.onrender.com';
  return ''
 }
 function announceDocumentGenerator(detail){
