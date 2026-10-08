@@ -27,3 +27,6 @@
 .objective-writing-warning strong{color:#6d5600}
 .objective-writing-warning p{margin:0;color:#6a6246;font-size:.84rem;line-height:1.4}
 .objective-writing-help>button{border:1px solid #8ebca4;background:#f4fbf7;color:#1d6747;border-radius:11px;padding:9px 11px;font:inherit;font-weight:700}
+
+/* PF02: evitar recorte de texto en el diagrama S09 */
+.objective-node{height:auto!important;min-height:0!important;overflow:visible!important;white-space:normal!important;overflow-wrap:anywhere;word-break:normal}.objective-node strong{display:block;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.35}
