@@ -78,6 +78,13 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(completionHelpSource.includes('Reabrir para editar la definición'),'S12 no separa aprobación de edición posterior');
  assert(completionHelpSource.includes('indicatorNoProposalText'),'S12 no distingue ausencia de propuesta de ausencia de orientación');
 
+ const planningOrderSource=fs.readFileSync('planning.js','utf8');
+ assert(planningOrderSource.includes('Orden de las actividades'),'S13 perdió la sección visible para ordenar actividades');
+ assert(planningOrderSource.includes('data-order-up')&&planningOrderSource.includes('data-order-down'),'S13 no permite modificar la secuencia general de actividades');
+ assert(planningOrderSource.includes('Orden y dependencias de esta actividad'),'S13 no presenta dependencias como una decisión explícita');
+ assert(planningOrderSource.includes('moveScheduleItem'),'S13 no persiste el reordenamiento de actividades');
+ assert(!planningOrderSource.includes("</label></div>'+\n '<details><summary>¿Necesita que otra actividad termine antes?"),'S13 conserva la estructura HTML mal cerrada que ocultaba dependencias');
+
  if(errors.length)throw errors[0];
 
  let cleaned=JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1'));
