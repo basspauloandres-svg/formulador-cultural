@@ -6,7 +6,9 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 import math
+import re
 import textwrap
+from xml.sax.saxutils import escape as xml_escape
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch
@@ -32,6 +34,7 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
+    KeepTogether,
 )
 
 DOC_FOOTER = "Formulador Cultural · Desarrollo por Paulo Olarte"
@@ -45,7 +48,7 @@ class DocumentTheme:
     title_size: int = 22
     heading1_size: int = 15
     heading2_size: int = 12
-    line_spacing: float = 1.15
+    line_spacing: float = 1.28
     margin_top_cm: float = 2.3
     margin_bottom_cm: float = 2.0
     margin_left_cm: float = 2.5
@@ -65,6 +68,22 @@ def clean(value: Any) -> str:
 
 def rows(value: Any) -> list[dict[str, Any]]:
     return value if isinstance(value, list) else []
+
+
+def _sentence_chunks(value: Any, max_sentences: int = 4) -> list[str]:
+    """Split long prose into readable paragraphs without altering wording."""
+    text = clean(value)
+    if text == POR_VERIFICAR:
+        return [text]
+    parts = [x.strip() for x in re.split(r"(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÜÑ0-9¿¡\[])", text) if x.strip()]
+    if len(parts) <= max_sentences:
+        return [text]
+    return [" ".join(parts[i:i + max_sentences]) for i in range(0, len(parts), max_sentences)]
+
+
+def _compact_text(value: Any, max_chars: int = 120) -> str:
+    text = clean(value)
+    return text if len(text) <= max_chars else text[:max_chars - 1].rstrip(" ,.;:") + "…"
 
 
 def normalized_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -240,12 +259,18 @@ def _docx_cover(doc: Document, p: dict[str, Any]) -> None:
 
 
 def _docx_body_paragraph(doc: Document, text: str, bold_label: str | None = None) -> None:
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    if bold_label:
-        rb = p.add_run(bold_label)
-        rb.bold = True
-    p.add_run(text)
+    chunks = _sentence_chunks(text, 4)
+    for index, chunk in enumerate(chunks):
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        p.paragraph_format.line_spacing = 1.28
+        p.paragraph_format.space_after = Pt(9)
+        if bold_label and index == 0:
+            rb = p.add_run(bold_label)
+            rb.bold = True
+        p.add_run(chunk)
+        if (index + 1) % 4 == 0 and index < len(chunks) - 1:
+            doc.add_page_break()
 
 
 def _docx_table(doc: Document, headers: list[str], body: list[list[Any]], widths_cm: list[float] | None = None) -> None:
@@ -280,6 +305,76 @@ def _docx_table(doc: Document, headers: list[str], body: list[list[Any]], widths
                 if i < len(row.cells):
                     row.cells[i].width = Cm(w)
     doc.add_paragraph()
+
+
+def _docx_indicator_cards(doc: Document, indicators: list[dict[str, Any]]) -> None:
+    fields = [
+        ("Indicador", "indicator"),
+        ("Elemento asociado", "linkedText"),
+        ("Fórmula / criterio", "formula"),
+        ("Unidad", "unidad"),
+        ("Línea base", "lineaBase"),
+        ("Meta", "meta"),
+        ("Periodicidad", "periodicidad"),
+        ("Medio de verificación", "medioVerificacion"),
+        ("Responsable", "responsable"),
+        ("Plazo", "plazo"),
+    ]
+    for n, item in enumerate(indicators, 1):
+        level = clean(item.get("linkedType") or "Indicador")
+        h = doc.add_paragraph()
+        h.paragraph_format.space_before = Pt(8)
+        h.paragraph_format.space_after = Pt(4)
+        run = h.add_run(f"Indicador {n} · {level}")
+        run.bold = True
+        run.font.color.rgb = RGBColor.from_string("244A37")
+        table = doc.add_table(rows=0, cols=2)
+        table.style = "Table Grid"
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        for label, key in fields:
+            row = table.add_row().cells
+            row[0].text = label
+            value = item.get(key)
+            if key == "linkedText" and not value:
+                value = item.get("activityText")
+            row[1].text = clean(value)
+            _shade_cell(row[0], "EEF5F1")
+            for cell in row:
+                cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+                _set_cell_margins(cell, top=80, start=90, bottom=80, end=90)
+                for par in cell.paragraphs:
+                    par.paragraph_format.line_spacing = 1.12
+                    for rr in par.runs:
+                        rr.font.name = THEME.font
+                        rr.font.size = Pt(8.5)
+            for rr in row[0].paragraphs[0].runs:
+                rr.bold = True
+        doc.add_paragraph()
+
+
+def _docx_resource_entries(doc: Document, budget: list[dict[str, Any]]) -> None:
+    if not budget:
+        _docx_body_paragraph(doc, POR_VERIFICAR)
+        return
+    for n, item in enumerate(budget, 1):
+        activity = clean(item.get("activityId") or item.get("activityText") or item.get("activity"))
+        description = clean(item.get("description"))
+        source = clean(item.get("fundingSource"))
+        line = (
+            f"{activity} — Recurso: {description}; Unidad: {clean(item.get('unit'))}; "
+            f"Cantidad: {clean(item.get('quantity'))}; Veces: {clean(item.get('frequency'))}; "
+            f"Costo unitario: {clean(item.get('unitCost'))}; Total: {clean(item.get('totalCost'))}; "
+            f"Tipo: {clean(item.get('costType'))}; Fuente: {source}."
+        )
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        p.paragraph_format.left_indent = Cm(0.55)
+        p.paragraph_format.first_line_indent = Cm(-0.55)
+        p.paragraph_format.line_spacing = 1.22
+        p.paragraph_format.space_after = Pt(7)
+        r = p.add_run(f"{n}. ")
+        r.bold = True
+        p.add_run(line)
 
 
 def _save_figure(fig, target: Path) -> Path:
@@ -428,7 +523,7 @@ def _gantt_figure(schedule: list[dict[str, Any]], target: Path) -> Path | None:
         width = max((end - start).days, 1)
         ax.barh(i, width, left=start.toordinal(), height=.55)
     ax.set_yticks(range(len(valid)))
-    ax.set_yticklabels([v[0][:52] for v in valid], fontsize=8)
+    ax.set_yticklabels([_compact_text(v[0], 46) for v in valid], fontsize=7.5)
     ticks = ax.get_xticks()
     ax.set_xticklabels([dt.date.fromordinal(int(t)).isoformat() if t > 1 else "" for t in ticks], rotation=25, ha="right", fontsize=7)
     ax.set_title("Cronograma gráfico")
@@ -454,7 +549,7 @@ def _budget_figure(budget: list[dict[str, Any]], target: Path) -> Path | None:
     fig, ax = plt.subplots(figsize=(9.5, fig_h))
     ax.barh(range(len(items)), [v for _, v in items])
     ax.set_yticks(range(len(items)))
-    ax.set_yticklabels([k[:50] for k, _ in items], fontsize=8)
+    ax.set_yticklabels([_compact_text(k, 44) for k, _ in items], fontsize=7.5)
     ax.invert_yaxis()
     ax.set_title("Distribución del presupuesto por actividad")
     ax.set_xlabel("Valor")
@@ -550,20 +645,21 @@ def generate_docx(payload: dict[str, Any]) -> bytes:
             )),
             ("8. Estrategia de intervención", lambda: _docx_body_paragraph(doc, p["strategy"])),
             ("9. Resultados esperados", lambda: _docx_table(doc, ["Resultados"], [[r.get("text", r)] for r in p["results"]]) if p["results"] else _docx_body_paragraph(doc, POR_VERIFICAR)),
-            ("10. Plan de actividades", lambda: _docx_table(doc, ["ID", "Resultado / objetivo", "Actividad"], [[a.get("id"), a.get("resultText") or a.get("objectiveText"), a.get("text")] for a in p["activities"]])),
+            ("10. Plan de actividades", lambda: _docx_table(doc, ["ID", "Resultado / objetivo", "Actividad"], [[a.get("id"), a.get("resultText") or a.get("objectiveText"), a.get("text")] for a in p["activities"]], [2.2, 6.2, 9.0])),
             ("11. Indicadores y metas", lambda: (
                 doc.add_heading("11.1 Tabla resumida", level=2),
-                _docx_table(doc, ["Nivel", "Elemento", "Indicador", "Línea base", "Meta", "Medio de verificación"], _indicator_summary_rows(p["indicators"])),
-                doc.add_heading("11.2 Matriz técnica", level=2),
-                _docx_table(doc, ["Nivel", "Indicador", "Fórmula / criterio", "Unidad", "Línea base", "Meta", "Periodicidad", "Medio de verificación", "Responsable", "Plazo"], _indicator_technical_rows(p["indicators"]))
+                _docx_table(doc, ["Nivel", "Elemento", "Indicador", "Línea base", "Meta", "Medio de verificación"], _indicator_summary_rows(p["indicators"]), [1.7, 4.0, 4.5, 2.0, 2.0, 3.2]),
+                doc.add_heading("11.2 Fichas técnicas de indicadores", level=2),
+                _docx_indicator_cards(doc, p["indicators"])
             )),
             ("12. Cronograma", lambda: (
                 _docx_add_figure(doc, figures["gantt"], "Figura 4. Cronograma gráfico tipo Gantt."),
-                _docx_table(doc, ["Actividad", "Inicio", "Fin", "Responsable", "Frecuencia"], [[s.get("activityText"), s.get("startDate"), s.get("endDate"), s.get("responsible"), s.get("frequency")] for s in p["schedule"]])
+                _docx_table(doc, ["Actividad", "Inicio", "Fin", "Responsable", "Frecuencia"], [[s.get("activityText"), s.get("startDate"), s.get("endDate"), s.get("responsible"), s.get("frequency")] for s in p["schedule"]], [8.2, 2.5, 2.5, 3.4, 2.4])
             )),
             ("13. Recursos y presupuesto", lambda: (
                 _docx_add_figure(doc, figures["budget"], "Figura 5. Distribución del presupuesto por actividad."),
-                _docx_table(doc, ["Actividad", "Recurso", "Unidad", "Cantidad", "Veces", "Costo unitario", "Total", "Tipo"], [[b.get("activityText"), b.get("description"), b.get("unit"), b.get("quantity"), b.get("frequency"), b.get("unitCost"), b.get("totalCost"), b.get("costType")] for b in p["budget"]])
+                doc.add_heading("13.1 Soportes de recursos", level=2),
+                _docx_resource_entries(doc, p["budget"])
             )),
             ("14. Riesgos y respuestas", lambda: _docx_table(doc, ["Origen", "Riesgo", "Probabilidad", "Impacto", "Nivel", "Prevención", "Contingencia", "Responsable"], [[r.get("linkedObjectType"), r.get("event"), r.get("probability"), r.get("impact"), r.get("riskLevel"), r.get("preventiveResponse"), r.get("contingencyResponse"), r.get("owner")] for r in p["risks"]])),
             ("15. Coherencia y trazabilidad", lambda: _docx_body_paragraph(doc, clean(p["coherence"].get("summary") or f"Índice orientativo: {p['coherence'].get('score', POR_VERIFICAR)}"))),
@@ -602,7 +698,19 @@ def _pdf_styles():
     ))
     styles.add(ParagraphStyle(
         name="FC_Body", parent=styles["BodyText"], fontName="Helvetica",
-        fontSize=9.5, leading=13.2, alignment=TA_JUSTIFY, spaceAfter=6
+        fontSize=9.5, leading=15.0, alignment=TA_JUSTIFY, spaceAfter=8
+    ))
+    styles.add(ParagraphStyle(
+        name="FC_Table", parent=styles["BodyText"], fontName="Helvetica",
+        fontSize=7.2, leading=9.2, alignment=TA_LEFT, spaceAfter=0
+    ))
+    styles.add(ParagraphStyle(
+        name="FC_TableHead", parent=styles["BodyText"], fontName="Helvetica-Bold",
+        fontSize=7.2, leading=9.2, alignment=TA_LEFT, textColor=colors.HexColor("#244A37"), spaceAfter=0
+    ))
+    styles.add(ParagraphStyle(
+        name="FC_Record", parent=styles["BodyText"], fontName="Helvetica",
+        fontSize=8.8, leading=12.0, leftIndent=12, firstLineIndent=-12, spaceAfter=7
     ))
     styles.add(ParagraphStyle(
         name="FC_Small", parent=styles["BodyText"], fontName="Helvetica",
@@ -612,15 +720,15 @@ def _pdf_styles():
 
 
 def _pdf_table(headers: list[str], body: list[list[Any]], widths=None):
-    data = [headers] + [[clean(v) for v in row] for row in body]
-    table = Table(data, colWidths=widths, repeatRows=1, hAlign="CENTER")
+    styles = _pdf_styles()
+    head_style = styles["FC_TableHead"]
+    cell_style = styles["FC_Table"]
+    data = [[Paragraph(xml_escape(clean(h)), head_style) for h in headers]]
+    for row in body:
+        data.append([Paragraph(xml_escape(clean(v)), cell_style) for v in row])
+    table = Table(data, colWidths=widths, repeatRows=1, hAlign="CENTER", splitByRow=1)
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EEF5F1")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#244A37")),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-        ("FONTSIZE", (0, 0), (-1, -1), 6.8),
-        ("LEADING", (0, 0), (-1, -1), 8.4),
         ("GRID", (0, 0), (-1, -1), .35, colors.HexColor("#DCE7E1")),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 4),
@@ -629,6 +737,52 @@ def _pdf_table(headers: list[str], body: list[list[Any]], widths=None):
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
     return table
+
+
+def _pdf_indicator_cards(story: list[Any], indicators: list[dict[str, Any]], styles) -> None:
+    fields = [
+        ("Indicador", "indicator"),
+        ("Elemento asociado", "linkedText"),
+        ("Fórmula / criterio", "formula"),
+        ("Unidad", "unidad"),
+        ("Línea base", "lineaBase"),
+        ("Meta", "meta"),
+        ("Periodicidad", "periodicidad"),
+        ("Medio de verificación", "medioVerificacion"),
+        ("Responsable", "responsable"),
+        ("Plazo", "plazo"),
+    ]
+    for n, item in enumerate(indicators, 1):
+        level = clean(item.get("linkedType") or "Indicador")
+        story.append(Paragraph(f"<b>Indicador {n} · {xml_escape(level)}</b>", styles["FC_H2"]))
+        body = []
+        for label, key in fields:
+            value = item.get(key)
+            if key == "linkedText" and not value:
+                value = item.get("activityText")
+            body.append([label, value])
+        story.append(_pdf_table(["Campo", "Información"], body, [40 * mm, 125 * mm]))
+        story.append(Spacer(1, 4 * mm))
+
+
+def _pdf_resource_entries(story: list[Any], budget: list[dict[str, Any]], styles) -> None:
+    if not budget:
+        story.append(Paragraph(POR_VERIFICAR, styles["FC_Body"]))
+        return
+    for n, item in enumerate(budget, 1):
+        activity = clean(item.get("activityId") or item.get("activityText") or item.get("activity"))
+        line = (
+            f"<b>{n}. {xml_escape(activity)}</b> — "
+            f"Recurso: {xml_escape(clean(item.get('description')))}; "
+            f"Unidad: {xml_escape(clean(item.get('unit')))}; "
+            f"Cantidad: {xml_escape(clean(item.get('quantity')))}; "
+            f"Veces: {xml_escape(clean(item.get('frequency')))}; "
+            f"Costo unitario: {xml_escape(clean(item.get('unitCost')))}; "
+            f"Total: {xml_escape(clean(item.get('totalCost')))}; "
+            f"Tipo: {xml_escape(clean(item.get('costType')))}; "
+            f"Fuente: {xml_escape(clean(item.get('fundingSource')))}."
+        )
+        story.append(Paragraph(line, styles["FC_Record"]))
 
 
 def generate_pdf(payload: dict[str, Any]) -> bytes:
@@ -673,7 +827,12 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
                   Paragraph(DOC_FOOTER, styles["FC_Small"]), PageBreak()]
 
         def add_h1(text): story.append(Paragraph(text, styles["FC_H1"]))
-        def add_body(text): story.append(Paragraph(clean(text), styles["FC_Body"]))
+        def add_body(text):
+            chunks = _sentence_chunks(text, 4)
+            for index, chunk in enumerate(chunks):
+                story.append(Paragraph(xml_escape(clean(chunk)), styles["FC_Body"]))
+                if (index + 1) % 4 == 0 and index < len(chunks) - 1:
+                    story.append(PageBreak())
         def add_img(path: Path | None, width_mm=160):
             if path and path.exists():
                 img = Image(str(path), width=width_mm * mm)
@@ -710,14 +869,15 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
         story.append(Paragraph("11.1 Tabla resumida", styles["FC_H2"]))
         story.append(_pdf_table(["Nivel","Elemento","Indicador","Línea base","Meta","Medio de verificación"], _indicator_summary_rows(p["indicators"]), [18*mm,35*mm,45*mm,18*mm,18*mm,31*mm]))
         story.append(Spacer(1, 4*mm))
-        story.append(Paragraph("11.2 Matriz técnica", styles["FC_H2"]))
-        story.append(_pdf_table(["Nivel","Indicador","Fórmula / criterio","Unidad","Línea base","Meta","Periodicidad","Medio de verificación","Responsable","Plazo"], _indicator_technical_rows(p["indicators"]), [13*mm,27*mm,28*mm,13*mm,14*mm,14*mm,18*mm,22*mm,17*mm,15*mm]))
+        story.append(Paragraph("11.2 Fichas técnicas de indicadores", styles["FC_H2"]))
+        _pdf_indicator_cards(story, p["indicators"], styles)
         story.append(PageBreak())
         add_h1("12. Cronograma"); add_img(figs["gantt"])
         story.append(_pdf_table(["Actividad","Inicio","Fin","Responsable","Frecuencia"], [[s.get("activityText"),s.get("startDate"),s.get("endDate"),s.get("responsible"),s.get("frequency")] for s in p["schedule"]], [75*mm,22*mm,22*mm,27*mm,20*mm]))
         story.append(PageBreak())
         add_h1("13. Recursos y presupuesto"); add_img(figs["budget"])
-        story.append(_pdf_table(["Actividad","Recurso","Unidad","Cantidad","Veces","Costo unitario","Total","Tipo"], [[b.get("activityText"),b.get("description"),b.get("unit"),b.get("quantity"),b.get("frequency"),b.get("unitCost"),b.get("totalCost"),b.get("costType")] for b in p["budget"]], [48*mm,30*mm,14*mm,14*mm,12*mm,18*mm,18*mm,18*mm]))
+        story.append(Paragraph("13.1 Soportes de recursos", styles["FC_H2"]))
+        _pdf_resource_entries(story, p["budget"], styles)
         add_h1("14. Riesgos y respuestas")
         story.append(_pdf_table(["Origen","Riesgo","Prob.","Impacto","Nivel","Prevención","Contingencia","Responsable"], [[r.get("linkedObjectType"),r.get("event"),r.get("probability"),r.get("impact"),r.get("riskLevel"),r.get("preventiveResponse"),r.get("contingencyResponse"),r.get("owner")] for r in p["risks"]], [18*mm,34*mm,14*mm,14*mm,14*mm,30*mm,30*mm,20*mm]))
         add_h1("15. Coherencia y trazabilidad"); add_body(clean(p["coherence"].get("summary") or f"Índice orientativo: {p['coherence'].get('score', POR_VERIFICAR)}"))

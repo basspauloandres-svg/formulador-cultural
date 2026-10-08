@@ -1,7 +1,7 @@
 from io import BytesIO
 from zipfile import ZipFile
 
-from backend.document_generator import DOC_FOOTER, _tree_figure, _wrap_node_text, generate_docx, generate_pdf
+from backend.document_generator import DOC_FOOTER, _sentence_chunks, _tree_figure, _wrap_node_text, generate_docx, generate_pdf
 
 
 def sample_payload():
@@ -98,6 +98,9 @@ def test_docx_has_all_sections_footer_and_graphics():
         assert "11. Indicadores y metas" in xml
         assert "12. Cronograma" in xml
         assert "13. Recursos y presupuesto" in xml
+        assert "13.1 Soportes de recursos" in xml
+        assert "11.2 Fichas técnicas de indicadores" in xml
+        assert "Recurso:" in xml
         assert "16. Fuentes y anexos" in xml
         media = [n for n in names if n.startswith("word/media/")]
         assert len(media) >= 5
@@ -126,3 +129,32 @@ def test_tree_wraps_long_labels_without_single_line_overflow(tmp_path):
     assert result == target
     assert target.exists()
     assert target.stat().st_size > 10000
+
+
+def test_editorial_paragraph_chunks_limit_sentence_density():
+    text = "Uno. Dos. Tres. Cuatro. Cinco. Seis. Siete. Ocho. Nueve."
+    chunks = _sentence_chunks(text, 4)
+    assert len(chunks) == 3
+    assert all(part.count(".") <= 4 for part in chunks)
+
+
+def test_long_content_exports_without_table_overflow_failure():
+    payload = sample_payload()
+    payload["context"] = " ".join([
+        "La primera frase desarrolla el contexto territorial.",
+        "La segunda frase añade una condición cultural relevante.",
+        "La tercera frase precisa una relación institucional.",
+        "La cuarta frase delimita el alcance de la observación.",
+        "La quinta frase incorpora un dato complementario.",
+        "La sexta frase amplía el análisis.",
+        "La séptima frase registra otra condición.",
+        "La octava frase cierra la unidad argumental.",
+    ])
+    payload["activities"][0]["text"] = "Actividad extensa " * 30
+    payload["indicators"][0]["formula"] = "Criterio técnico extenso " * 18
+    payload["budget"][0]["fundingSource"] = "Institución educativa y aliado territorial"
+    docx = generate_docx(payload)
+    pdf = generate_pdf(payload)
+    assert docx[:2] == b"PK"
+    assert pdf.startswith(b"%PDF")
+    assert len(pdf) > 20000
