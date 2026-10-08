@@ -65,7 +65,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
  const completionApprovalSource=fs.readFileSync('completion.js','utf8');
  assert(completionApprovalSource.includes('Aprobar este indicador'),'S12 no ofrece aprobación explícita por indicador');
- assert(completionApprovalSource.includes('Reabrir aprobación'),'S12 no permite reabrir una aprobación individual');
+ assert(completionApprovalSource.includes('Reabrir para editar la definición')&&completionApprovalSource.includes('data-ind-reopen'),'S12 no permite reabrir una aprobación individual');
  assert(completionApprovalSource.includes('indicator-approval-progress'),'S12 no muestra el avance de aprobación por batería');
  const reviewDualSource=fs.readFileSync('review_dashboard.js','utf8');
  assert(reviewDualSource.includes('Ausencias y pendientes'),'S16 no separa el control de ausencias');
