@@ -169,7 +169,7 @@ function ensureS12(){
    items.forEach(normalizeIndicatorState);
    s={...s,sourceSignature:sig,items,staleItems:[...(s.staleItems||[]),...removed].slice(-100),updatedAt:null};write('S12',s)
  }
- let normalized=false;(s.items||[]).forEach(x=>{const d=x.confirmed?'DEFINIDO':'PENDIENTE',t=indicatorQuality(x).ok?'COMPLETA':'PENDIENTE';if(x.definitionStatus!==d||x.technicalStatus!==t){x.definitionStatus=d;x.technicalStatus=t;normalized=true}});
+ let normalized=false;(s.items||[]).forEach(x=>{if(x.selected===undefined){x.selected=!!x.confirmed||x.linkedType!=='Actividad'||x.indicatorFamily==='cumplimiento';normalized=true}const d=x.selected?(x.confirmed?'DEFINIDO':'PENDIENTE'):'NO_SELECCIONADO',t=indicatorQuality(x).ok?'COMPLETA':'PENDIENTE';if(x.definitionStatus!==d||x.technicalStatus!==t){x.definitionStatus=d;x.technicalStatus=t;normalized=true}});
  if(normalized)write('S12',s);
  return s
 }
