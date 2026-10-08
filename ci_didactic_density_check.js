@@ -127,3 +127,10 @@ if(!deliverableFooter.includes("DOC_FOOTER='Formulador Cultural · Desarrollo po
 if(!deliverableFooter.includes('footer1.xml')||!deliverableFooter.includes('docFooterXml'))fail('El DOCX no incorpora la huella en el pie real del documento');
 if(!deliverableFooter.includes('pdf.text(DOC_FOOTER'))fail('El PDF no imprime la huella en cada página');
 if(!deliverableFooter.includes('doc-footer'))fail('El HTML no incorpora la huella documental');
+
+const finalDoc=fs.readFileSync('deliverables.js','utf8');
+if(!finalDoc.includes('vesterMatrixHtml')||!finalDoc.includes('vesterScatterSvg'))fail('El documento estándar no integra la matriz Vester y su gráfica');
+if(!finalDoc.includes('ganttSvg'))fail('El documento estándar no integra cronograma gráfico tipo Gantt');
+if(!finalDoc.includes('budgetChartsSvg'))fail('El documento estándar no integra gráfica presupuestal');
+if(!finalDoc.includes('indicatorSummaryTable')||!finalDoc.includes('indicatorTechnicalTable'))fail('El documento estándar no presenta indicadores en tabla resumida y matriz técnica');
+if(!finalDoc.includes('Formato estándar de proyecto cultural'))fail('No existe portada institucional del formato estándar');
