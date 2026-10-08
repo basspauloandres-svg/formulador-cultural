@@ -50,7 +50,7 @@ function reformulationCandidates(){
   const raw=central().trim(); if(!raw)return [];
   if(!looksLikeSolution(raw)){
     return [
-      {label:'Conservar el núcleo',text:delimit(raw),note:'Mantiene el problema central confirmado en S07 y añade únicamente la delimitación disponible.'},
+      {label:'Conservar el núcleo',text:sentence(raw),note:'Mantiene de forma breve el problema central confirmado en S07. La población y el territorio permanecen en la descripción sustentada.'},
       {label:'Versión sintética',text:sentence(raw),note:'Conserva la formulación de S07 sin añadir información nueva.'}
     ];
   }
@@ -71,7 +71,7 @@ function reformulationCandidates(){
 }
 function vesterHint(){const vs=vesterState();if(!vs?.selected?.length)return '';const map=new Map(vs.selected.map(p=>[p.id,{...p,i:0,d:0}]));for(const [k,r] of Object.entries(vs.relations||{})){if(!Number.isInteger(r?.score))continue;const [a,b]=k.split('>');if(map.has(a))map.get(a).i+=r.score;if(map.has(b))map.get(b).d+=r.score}const c=(treeState()?.nodes||[]).find(n=>n.zone==='central');if(!c||!map.has(c.id))return '';const v=map.get(c.id);return `Vester: influencia ${v.i}, dependencia ${v.d}. Lectura orientativa, no evidencia causal.`}
 function src(label,val,source){return `<div class="synthesis-source"><strong>${label}</strong><div class="${val&&!String(val).startsWith('[POR VERIFICAR]')?'':'missing'}">${esc(val||'[POR VERIFICAR]')}</div><small>${source}</small></div>`}
-function buildProposal(){const c=central().trim();if(!c)return '[POR VERIFICAR] Define primero una situación negativa observable como problema central.';if(looksLikeSolution(c))return `[POR VERIFICAR] La formulación de S07 parece expresar una necesidad o solución («${c}»). Usa “Ayúdame a reformular” para revisar alternativas.`;return delimit(c)}
+function buildProposal(){const c=central().trim();if(!c)return '[POR VERIFICAR] Define primero una situación negativa observable como problema central.';if(looksLikeSolution(c))return `[POR VERIFICAR] La formulación de S07 parece expresar una necesidad o solución («${c}»). Usa “Ayúdame a reformular” para revisar alternativas.`;return sentence(c)}
 function longDescription(){
  const c=central().trim(),p=population()||'[POR VERIFICAR]',t=territory()||'[POR VERIFICAR]',ev=evidenceText(),cs=causes(),es=effects();
  if(!c)return 'El problema central permanece [POR VERIFICAR].';
