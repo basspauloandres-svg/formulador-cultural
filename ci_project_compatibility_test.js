@@ -85,6 +85,14 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(planningOrderSource.includes('moveScheduleItem'),'S13 no persiste el reordenamiento de actividades');
  assert(!planningOrderSource.includes("</label></div>'+\n '<details><summary>¿Necesita que otra actividad termine antes?"),'S13 conserva la estructura HTML mal cerrada que ocultaba dependencias');
 
+ const continuationSource=fs.readFileSync('completion.js','utf8');
+ assert(continuationSource.includes('function continueView(')&&continuationSource.includes('window.fcContinueView=continueView'),'No existe un mecanismo común para reubicar la vista al continuar');
+ assert(continuationSource.includes("continueView(target,'#completionS11 .didactic-card')"),'S11 no reubica la vista al avanzar de actividad');
+ assert(continuationSource.includes("continueView(target,'#completionS12 .didactic-card')"),'S12 no reubica la vista al avanzar de indicador');
+ const planningContinuationSource=fs.readFileSync('planning.js','utf8');
+ assert(planningContinuationSource.includes("window.fcContinueView?.(target,'.plan-card')"),'S13 no reubica la vista al avanzar de actividad');
+ assert(planningContinuationSource.includes("!next?.startDate?'[data-sch=\"startDate\"]'"),'S13 no prioriza el primer dato pendiente al continuar');
+
  if(errors.length)throw errors[0];
 
  let cleaned=JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1'));
