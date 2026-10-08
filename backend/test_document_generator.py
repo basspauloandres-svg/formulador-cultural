@@ -94,7 +94,8 @@ def test_docx_has_all_sections_footer_and_graphics():
         xml = z.read("word/document.xml").decode("utf-8")
         footer = z.read("word/footer1.xml").decode("utf-8")
         assert DOC_FOOTER in footer
-        assert "1. Resumen ejecutivo" in xml
+        assert "1. Contexto territorial, cultural y social" in xml
+        assert "2. Resumen ejecutivo" in xml
         assert "5. Priorización de situaciones" in xml
         assert "11. Indicadores y metas" in xml
         assert "12. Cronograma" in xml
@@ -186,3 +187,49 @@ def test_docx_sources_are_not_one_continuous_paragraph():
         assert "3. Registro administrativo tres." in paragraphs
         assert "Figura 2. Árbol de problemas." in xml
         assert "Figura 3. Árbol de objetivos." in xml
+
+
+def test_cover_is_clean_and_territory_moves_to_content():
+    payload = sample_payload()
+    payload["territory"] = "Texto territorial que no debe aparecer en portada."
+    data = generate_docx(payload)
+    with ZipFile(BytesIO(data)) as z:
+        xml = z.read("word/document.xml").decode("utf-8")
+        root = ET.fromstring(xml)
+        ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+        paragraphs = ["".join(t.text or "" for t in p.findall(".//w:t", ns)) for p in root.findall(".//w:p", ns)]
+        assert payload["title"] in paragraphs
+        assert "Entidad / organización: Entidad de prueba" in paragraphs
+        assert "Responsable: Paulo Olarte" in paragraphs
+        assert "Territorio: Texto territorial que no debe aparecer en portada." not in paragraphs
+        assert "FORMATO ESTÁNDAR DE PROYECTO CULTURAL" not in xml
+
+
+def test_figure_caption_shares_inline_paragraph_with_image():
+    data = generate_docx(sample_payload())
+    with ZipFile(BytesIO(data)) as z:
+        xml = z.read("word/document.xml").decode("utf-8")
+        root = ET.fromstring(xml)
+        ns = {
+            "w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+            "a": "http://schemas.openxmlformats.org/drawingml/2006/main",
+        }
+        matched = False
+        for p in root.findall(".//w:p", ns):
+            text = "".join(t.text or "" for t in p.findall(".//w:t", ns))
+            if "Figura 2. Árbol de problemas." in text and p.findall(".//a:blip", ns):
+                matched = True
+                break
+        assert matched
+
+
+def test_long_single_section_is_balanced_by_words_and_sentences():
+    text = " ".join([
+        "Esta primera frase contiene una descripción suficientemente extensa " + "territorial " * 35 + ".",
+        "La segunda frase complementa la descripción con otra condición relevante.",
+        "La tercera frase añade información institucional.",
+        "La cuarta frase completa el bloque argumental.",
+    ])
+    chunks = _sentence_chunks(text, 4, 115)
+    assert len(chunks) >= 2
+    assert all(len(chunk.split()) <= 150 for chunk in chunks)
