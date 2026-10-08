@@ -1,0 +1,104 @@
+name: Production E2E Smoke
+
+on:
+  push:
+    branches:
+      - audit/production-e2e-20261008
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Health
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 120 \
+            -D health.headers \
+            https://formulador-cultural-api.onrender.com/health \
+            -o health.json
+          cat health.headers
+          cat health.json
+          grep -q '"status":"ok"' health.json
+          grep -q '"persistence":"memory"' health.json
+
+      - name: Create controlled payload
+        run: |
+          cat > payload.json <<'JSON'
+          {
+            "title":"Prueba E2E Formulador Cultural",
+            "entity":"Universidad de Caldas",
+            "territory":"Manizales",
+            "responsible":"Prueba automatizada",
+            "summary":"Validación de integración de producción.",
+            "context":"Contexto de prueba controlado.",
+            "population":"Población de prueba.",
+            "evidence":"Evidencia de prueba.",
+            "sources":"Fuente de prueba.",
+            "problem":"Baja participación en procesos culturales de prueba.",
+            "objective_general":"Incrementar la participación en procesos culturales de prueba.",
+            "objectives":[{"id":"O1","text":"Fortalecer la participación cultural.","zone":"direct_cause","parentId":"OC"}],
+            "strategy":"Acompañamiento cultural territorial.",
+            "results":[{"id":"R1","text":"Proceso de acompañamiento implementado."}],
+            "activities":[{"id":"A1","resultId":"R1","resultText":"Proceso de acompañamiento implementado.","objectiveId":"O1","objectiveText":"Fortalecer la participación cultural.","text":"Realizar cuatro encuentros culturales."}],
+            "indicators":[{"id":"I1","linkedType":"Actividad","linkedText":"Realizar cuatro encuentros culturales.","indicator":"Porcentaje de encuentros realizados.","formula":"(encuentros realizados / 4) × 100","unidad":"%","lineaBase":"0 %","meta":"100 %","periodicidad":"Mensual","medioVerificacion":"Actas","responsable":"Coordinación","plazo":"4 meses","confirmed":true}],
+            "schedule":[{"activityId":"A1","activityText":"Realizar cuatro encuentros culturales.","startDate":"2026-10-15","endDate":"2027-01-15","responsible":"Coordinación","frequency":"Mensual"}],
+            "budget":[{"activityId":"A1","activityText":"Realizar cuatro encuentros culturales.","description":"Logística","unit":"encuentro","quantity":4,"frequency":1,"unitCost":100000,"totalCost":400000,"costType":"Monetario"}],
+            "risks":[{"linkedObjectType":"Actividad","event":"Baja asistencia","probability":"Media","impact":"Medio","riskLevel":"Medio","preventiveResponse":"Convocatoria anticipada.","contingencyResponse":"Reprogramación concertada.","owner":"Coordinación"}],
+            "problem_tree":[{"id":"PC","zone":"central","text":"Baja participación cultural"},{"id":"CD1","zone":"direct_cause","text":"Acceso limitado a espacios","parentId":"PC"},{"id":"ED1","zone":"direct_effect","text":"Menor circulación cultural","parentId":"PC"}],
+            "objective_tree":[{"id":"OC","zone":"central","text":"Incrementar la participación cultural","confirmed":true},{"id":"O1","zone":"direct_cause","text":"Fortalecer el acceso a espacios culturales","parentId":"OC","confirmed":true}],
+            "vester":{"rows":[{"text":"Acceso limitado","influence":3,"dependence":1,"quadrant":"Activo"}],"meanInfluence":3,"meanDependence":1},
+            "coherence":{"score":90,"summary":"Prueba controlada."}
+          }
+          JSON
+
+      - name: CORS preflight
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 120 \
+            -X OPTIONS \
+            -H 'Origin: https://basspauloandres-svg.github.io' \
+            -H 'Access-Control-Request-Method: POST' \
+            -H 'Access-Control-Request-Headers: content-type' \
+            -D cors.headers \
+            https://formulador-cultural-api.onrender.com/documents/pdf \
+            -o cors.body
+          cat cors.headers
+          grep -qi 'access-control-allow-origin: https://basspauloandres-svg.github.io' cors.headers
+          grep -qi 'access-control-allow-methods: .*POST' cors.headers
+
+      - name: DOCX production request
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 180 \
+            -H 'Content-Type: application/json' \
+            -H 'Origin: https://basspauloandres-svg.github.io' \
+            --data-binary @payload.json \
+            -D docx.headers \
+            https://formulador-cultural-api.onrender.com/documents/docx \
+            -o test.docx
+          cat docx.headers
+          test "$(head -c 2 test.docx)" = "PK"
+          test "$(wc -c < test.docx)" -gt 10000
+          grep -qi 'content-type: application/vnd.openxmlformats-officedocument.wordprocessingml.document' docx.headers
+          grep -qi 'access-control-allow-origin: https://basspauloandres-svg.github.io' docx.headers
+
+      - name: PDF production request
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 180 \
+            -H 'Content-Type: application/json' \
+            -H 'Origin: https://basspauloandres-svg.github.io' \
+            --data-binary @payload.json \
+            -D pdf.headers \
+            https://formulador-cultural-api.onrender.com/documents/pdf \
+            -o test.pdf
+          cat pdf.headers
+          test "$(head -c 4 test.pdf)" = "%PDF"
+          test "$(wc -c < test.pdf)" -gt 10000
+          grep -qi 'content-type: application/pdf' pdf.headers
+          grep -qi 'access-control-allow-origin: https://basspauloandres-svg.github.io' pdf.headers
