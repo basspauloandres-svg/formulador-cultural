@@ -126,7 +126,12 @@ function activityProposals(result,objective){
   'Implementar las acciones formativas previstas',
   'Registrar y revisar el desarrollo del proceso formativo'
  ]);
- return ['[POR REVISAR] Definir actividades concretas que produzcan el resultado: '+r+'.']
+ const object=activityObjectFromResult(r);
+ return uniq([
+  'Preparar las condiciones necesarias para '+object,
+  'Implementar las acciones necesarias para '+object,
+  'Registrar y verificar el avance de '+object
+ ])
 }
 function normalizeQuantityWord(v){
  const m={un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10,once:11,doce:12,trece:13,catorce:14,quince:15,dieciseis:16,dieciséis:16,diecisiete:17,dieciocho:18,diecinueve:19,veinte:20};
@@ -217,7 +222,7 @@ function baseIndicator(source,type){
   if(/^Implementar\b/i.test(t))return 'Porcentaje de acciones previstas efectivamente realizadas.';
   const q=extractQuantity(t),noun=sourceNoun(t);
   if(q)return 'Porcentaje de '+noun+' realizados respecto de los '+q.raw+' programados.';
-  return '[POR REVISAR] Definir un indicador de ejecución para: '+t+'.'
+  return 'Porcentaje de cumplimiento documentado de la actividad respecto de lo programado.'
  }
  if(type==='Resultado'){
   if(/Reducción verificable de las diferencias en los niveles de dominio instrumental/i.test(t))return 'Variación de la brecha entre niveles de dominio instrumental respecto de la línea base.';
@@ -227,7 +232,7 @@ function baseIndicator(source,type){
    return 'Variación en el número de '+target+' con acceso registrado a '+resource+' respecto de la línea base.'
   }
   if(/mejora|aprendizaje|desempeño|dominio|capacidad|formativ/i.test(t))return 'Porcentaje de participantes que muestran mejora entre la valoración inicial y la valoración final.';
-  return '[POR REVISAR] Definir un indicador de resultado para: '+t+'.'
+  return 'Nivel de logro del resultado respecto del criterio de verificación definido.'
  }
  if(type==='Objetivo'){
   if(/Reducir las diferencias en los niveles de dominio instrumental/i.test(t))return 'Cambio en la diferencia de niveles de dominio instrumental entre integrantes de una misma sección respecto de la línea base.';
@@ -236,7 +241,7 @@ function baseIndicator(source,type){
    const m=t.match(/incrementar la participación(?: de .+?)? en (.+)$/i),scope=clean(m?.[1]||'los espacios definidos');
    return 'Variación en el número de '+scope+' con participación registrada respecto de la línea base.'
   }
-  return '[POR REVISAR] Definir un indicador de cambio para: '+t+'.'
+  return 'Variación del avance del objetivo respecto de la línea base definida.'
  }
  return '[POR REVISAR]'
 }
@@ -247,7 +252,7 @@ function indicatorBattery(source,type,context={}){
  if(type==='Actividad'){
   if(q){
    add({indicatorFamily:'cumplimiento',indicator:'Porcentaje de '+noun+' realizados respecto de los '+q.raw+' programados.',formula:'('+noun.charAt(0).toUpperCase()+noun.slice(1)+' realizados / '+q.value+') × 100',unidad:'%',lineaBase:'0 '+noun+' ejecutados al inicio del periodo de ejecución (línea base operativa)',meta:q.raw+' '+noun+' realizados / 100 % de ejecución',verificationStatus:'PROPUESTA_DERIVADA',verificationSuggestions:['Registros de ejecución','Actas o informes de actividad']});
-  }else add({indicatorFamily:'cumplimiento',indicator:baseIndicator(t,'Actividad'),verificationSuggestions:['Registros de ejecución','Actas o informes de actividad']});
+  }else add({indicatorFamily:'cumplimiento',indicator:baseIndicator(t,'Actividad'),formula:'(Avance ejecutado / avance programado) × 100',unidad:'%',lineaBase:'0 % de ejecución al inicio del periodo',meta:'100 % de ejecución de la actividad programada',verificationStatus:'PROPUESTA_DERIVADA',verificationSuggestions:['Registros de ejecución','Actas o informes de actividad']});
   if(/taller|sesion|sesión|jornada|encuentro|formaci[oó]n|capacitaci[oó]n/i.test(t))add({indicatorFamily:'participacion',indicator:'Promedio de participantes asistentes por '+(noun==='acciones'?'actividad':noun.replace(/s$/,''))+'.',formula:'Total de asistencias registradas / '+(q?q.value:'número de actividades realizadas'),unidad:'personas por actividad',verificationSuggestions:['Registros de asistencia']});
   if(/taller|sesion|sesión|formaci[oó]n|capacitaci[oó]n/i.test(t))add({indicatorFamily:'calidad',indicator:'Porcentaje de '+noun+' desarrollados con los criterios de registro y seguimiento definidos.',formula:'('+noun.charAt(0).toUpperCase()+noun.slice(1)+' que cumplen criterios / '+noun+' revisados) × 100',unidad:'%',verificationSuggestions:['Lista de chequeo','Actas o informes de seguimiento']});
  }
@@ -299,6 +304,7 @@ function indicatorFieldAssist(source,type,family,context={},current={}){
  add('lineaBase',[candidate.lineaBase]);
  add('meta',[candidate.meta]);
  add('medioVerificacion',candidate.verificationSuggestions||[]);
+ if(!(out.unidad||[]).length&&(/×\s*100|\*\s*100|porcentaje/i.test(String(current.formula||candidate.formula||'')+' '+String(current.indicator||candidate.indicator||''))))add('unidad',['%']);
  if(type==='Actividad'){
    if(/taller|sesion|sesión|jornada|encuentro|capacitaci[oó]n|formaci[oó]n/i.test(t))add('periodicidad',['Al cierre de cada actividad realizada']);
    else add('periodicidad',['Al cierre de la actividad']);

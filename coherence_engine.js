@@ -6,7 +6,7 @@ function objectives(){try{return draft?.S09?.objectives_state||JSON.parse(localS
 function alternatives(){try{return window.fcGetAlternatives?.()||[]}catch{return []}}
 function results(){try{return window.fcGetResults?.()||[]}catch{return []}}
 function activities(){try{return window.fcGetActivities?.()||[]}catch{return []}}
-function indicators(){try{return window.fcGetIndicators?.()||[]}catch{return []}}
+function indicators(){try{return (window.fcGetIndicators?.()||[]).filter(x=>!x.stale&&(x.selected!==false||x.confirmed))}catch{return []}}
 function schedule(){try{return window.fcGetSchedule?.()||[]}catch{return []}}
 function budget(){try{return window.fcGetBudget?.()||[]}catch{return []}}
 function budgetState(){try{return window.fcGetBudgetState?.()||{}}catch{return {}}}
@@ -17,7 +17,7 @@ function pendingValue(v){return !String(v||'').trim()||/\[POR (VERIFICAR|REVISAR
 function currentValidationSnapshot(){
  const res=results().filter(x=>x.confirmed),acts=activities().filter(x=>x.confirmed),inds=indicators(),sch=schedule(),bud=budget(),rsk=risks();
  const indicatorFields=['formula','unidad','lineaBase','meta','medioVerificacion','periodicidad','responsable','plazo'];
- const indicatorPending=inds.map(x=>({
+ const indicatorPending=inds.filter(x=>x.selected!==false||x.confirmed).map(x=>({
   id:x.id||x.indicatorId,
   definitionPending:!x.confirmed||x.definitionStatus==='PENDIENTE'||pendingValue(x.indicator),
   technicalPending:x.confirmed&&indicatorFields.some(k=>pendingValue(x[k])),
