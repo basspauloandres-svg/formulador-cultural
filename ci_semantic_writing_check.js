@@ -108,3 +108,15 @@ const genericResultIndicator=w.indicatorBattery(genericResult,'Resultado')[0];
 if(/^\[POR REVISAR\]/.test(genericResultIndicator.indicator))fail('S12 deja un resultado válido sin indicador confirmable');
 const genericObjectiveIndicator=w.indicatorBattery('Fortalecer la articulación territorial entre agentes culturales.','Objetivo')[0];
 if(/^\[POR REVISAR\]/.test(genericObjectiveIndicator.indicator))fail('S12 deja un objetivo válido sin indicador confirmable');
+
+
+const legacyLongActivity='Ampliación verificable del acceso a talleres especializados para algunas familias instrumentales dirigido a la población participante estará conformada por los estudiantes de la Banda Sinfónica Estudiantil que participen directamente en los talleres instrumentales por secciones. Permanece por verificar el número exacto de participantes y sus criterios definitivos de selección.';
+if(!w.activityNeedsSynthesis(legacyLongActivity,'Ampliación verificable del acceso a talleres especializados para algunas familias instrumentales.'))fail('S11 no detecta una actividad heredada que en realidad repite el resultado y el contexto');
+if(w.activityNeedsSynthesis('Implementar las acciones formativas previstas','Ampliación verificable del acceso a talleres especializados para algunas familias instrumentales.'))fail('S11 intenta sintetizar una actividad ya correcta');
+
+const genericResultAid=w.indicatorBattery('Fortalecimiento de la articulación territorial entre agentes culturales y espacios de circulación.','Resultado')[0];
+if(!/100/.test(genericResultAid.formula)||genericResultAid.unidad!=='%')fail('S12 todavía deja sin orientación técnica un resultado cultural genérico');
+const genericObjectiveAid=w.indicatorBattery('Fortalecer la articulación territorial entre agentes culturales.','Objetivo')[0];
+if(!/100/.test(genericObjectiveAid.formula)||genericObjectiveAid.unidad!=='%')fail('S12 todavía deja sin orientación técnica un objetivo cultural genérico');
+const genericFieldAid=w.indicatorFieldAssist('Articular espacios de circulación para agrupaciones culturales del territorio.','Actividad','cumplimiento',{}, {indicator:'Porcentaje de cumplimiento documentado de la actividad respecto de lo programado.',formula:'(Avance ejecutado / avance programado) × 100'});
+if(!genericFieldAid.responsable?.length||!genericFieldAid.plazo?.length||!genericFieldAid.unidad?.includes('%'))fail('S12 no ofrece ayudas accionables para responsable, plazo y unidad');
