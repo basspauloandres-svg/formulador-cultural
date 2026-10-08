@@ -1,9 +1,12 @@
 from __future__ import annotations
 from uuid import UUID
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.responses import StreamingResponse
+from io import BytesIO
 from pydantic import BaseModel, Field
 from domain import Project, VesterRelation, calculate_vester
 from repository_memory import InMemoryProjectRepository
+from document_generator import generate_docx, generate_pdf
 
 app = FastAPI(title="Formulador Cultural API", version="0.2.0")
 repo = InMemoryProjectRepository()
@@ -64,6 +67,24 @@ def update_section(project_id: UUID, section_code: str, payload: SectionUpdate, 
         project.sections[section_code].set_value(key, value)
     repo.save(project)
     return {"project_id": str(project.id), "section": section_code, "data": project.sections[section_code].data}
+
+@app.post("/documents/docx")
+def document_docx(payload: dict) -> StreamingResponse:
+    data = generate_docx(payload)
+    return StreamingResponse(
+        BytesIO(data),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": 'attachment; filename="proyecto-cultural.docx"'},
+    )
+
+@app.post("/documents/pdf")
+def document_pdf(payload: dict) -> StreamingResponse:
+    data = generate_pdf(payload)
+    return StreamingResponse(
+        BytesIO(data),
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="proyecto-cultural.pdf"'},
+    )
 
 @app.post("/vester/calculate")
 def vester_calculate(payload: list[VesterInput]) -> dict:
