@@ -72,6 +72,12 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(reviewDualSource.includes('Coherencia metodológica'),'S16 no separa el control de coherencia');
  assert(reviewDualSource.includes('coherenceIssues'),'S16 no calcula rupturas de coherencia de forma independiente');
 
+ const completionHelpSource=fs.readFileSync('completion.js','utf8');
+ assert(completionHelpSource.includes('Indicador aprobado ✓'),'S12 no comunica con claridad que la definición ya está aprobada');
+ assert(completionHelpSource.includes('Pregunta para resolverlo'),'La ayuda de S12 sigue siendo explicativa y no orienta una decisión concreta');
+ assert(completionHelpSource.includes('Reabrir para editar la definición'),'S12 no separa aprobación de edición posterior');
+ assert(completionHelpSource.includes('indicatorNoProposalText'),'S12 no distingue ausencia de propuesta de ausencia de orientación');
+
  if(errors.length)throw errors[0];
 
  let cleaned=JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1'));
