@@ -168,9 +168,11 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  for(let i=0;i<indicators.length;i++){
    let current=w.fcGetIndicators()[i],ta=w.document.querySelector('[data-ind-field="'+current.id+':indicator"]');
    if(ta&&/^\s*\[POR REVISAR\]/i.test(ta.value)){ta.value='Indicador verificable de prueba '+(i+1);ta.dispatchEvent(new w.Event('change',{bubbles:true}));await wait(25)}
-   const use=w.document.querySelector('[data-ind-confirm]');assert(use,'S12 no muestra el control principal para usar el indicador '+(i+1));use.click();await wait(45);
- }
- assert(w.localStorage.getItem('fc_active')==='S13'||w.document.querySelector('#counter')?.textContent.startsWith('S13'),'S12 no avanzó a S13 al confirmar el último indicador');
+   const use=w.document.querySelector('[data-ind-confirm]');assert(use,'S12 no muestra el control específico de aprobación para el indicador '+(i+1));use.click();await wait(35);
+   assert(w.fcGetIndicators()[i].confirmed,'S12 no registró la aprobación individual del indicador '+(i+1));
+   const next=w.document.querySelector('#indNext');assert(next,'S12 no muestra navegación después de aprobar el indicador '+(i+1));next.click();await wait(45);
+  }
+  assert(w.localStorage.getItem('fc_active')==='S13'||w.document.querySelector('#counter')?.textContent.startsWith('S13'),'S12 no avanzó a S13 después de aprobar y recorrer todos los indicadores');
  assert(w.fcGetIndicators().every(x=>x.confirmed),'S12 no confirmó todos los indicadores durante el recorrido asistido');
  assert(w.fcGetIndicators().every(x=>x.definitionStatus==='DEFINIDO'),'S12 no registró el estado DEFINIDO de los indicadores confirmados');
  assert(w.fcGetIndicators().some(x=>x.technicalStatus==='PENDIENTE'),'S12 confundió definición confirmada con ficha técnica completa');
