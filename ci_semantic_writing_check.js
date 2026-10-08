@@ -89,3 +89,22 @@ if(!/valor inicial/i.test(noviceGuide.lineaBase.meaning))fail('La ayuda no expli
 if(!/compromete a alcanzar/i.test(noviceGuide.meta.meaning))fail('La ayuda no explica meta');
 if(!/fuente/i.test(noviceGuide.medioVerificacion.meaning))fail('La ayuda no explica medio de verificación');
 if(!/frecuencia|cada cuánto|momento/i.test(noviceGuide.periodicidad.meaning))fail('La ayuda no explica periodicidad');
+
+
+const genericResult='Fortalecimiento de la articulación territorial entre agentes culturales y espacios de circulación.';
+const genericActivities=w.activityProposals(genericResult,'Fortalecer la articulación territorial entre agentes culturales');
+if(!genericActivities.length||genericActivities.some(x=>/^\[POR REVISAR\]/.test(x)))fail('S11 deja resultados válidos sin actividades accionables cuando el vocabulario no coincide con patrones conocidos');
+if(!genericActivities.every(x=>w.activityWritingReview(x).ok))fail('Las actividades genéricas de respaldo no cumplen el contrato de escritura');
+
+const genericActivity='Articular espacios de circulación para agrupaciones culturales del territorio.';
+const genericBattery=w.indicatorBattery(genericActivity,'Actividad');
+if(!genericBattery.length||genericBattery.some(x=>/^\[POR REVISAR\]/.test(x.indicator)))fail('S12 deja actividades válidas sin una definición de indicador confirmable');
+const genericMain=genericBattery.find(x=>x.indicatorFamily==='cumplimiento')||genericBattery[0];
+if(genericMain.unidad!=='%'||!/100/.test(genericMain.formula)||!/100/.test(genericMain.meta))fail('El indicador genérico de actividad no entrega una ficha mínima coherente');
+const genericAssist=w.indicatorFieldAssist(genericActivity,'Actividad',genericMain.indicatorFamily,{},genericMain);
+if(!genericAssist.unidad?.includes('%'))fail('La ayuda técnica no conserva una unidad derivable de un indicador porcentual');
+
+const genericResultIndicator=w.indicatorBattery(genericResult,'Resultado')[0];
+if(/^\[POR REVISAR\]/.test(genericResultIndicator.indicator))fail('S12 deja un resultado válido sin indicador confirmable');
+const genericObjectiveIndicator=w.indicatorBattery('Fortalecer la articulación territorial entre agentes culturales.','Objetivo')[0];
+if(/^\[POR REVISAR\]/.test(genericObjectiveIndicator.indicator))fail('S12 deja un objetivo válido sin indicador confirmable');
