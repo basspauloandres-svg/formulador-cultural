@@ -51,7 +51,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(coherenceSource.includes("x.selected!==false"),'La coherencia sigue tratando propuestas no seleccionadas como indicadores obligatorios');
 
  const planningSource=fs.readFileSync('planning.js','utf8');
- assert(planningSource.includes("compactLabel(x.activityText,18)"),'S13 vuelve a mostrar la actividad completa en lugar de una síntesis operativa');
+ assert(planningSource.includes("scheduleActivityLabel(x,16)")&&planningSource.includes("activitySynthesisFromResult"),'S13 vuelve a mostrar la actividad completa en lugar de una síntesis operativa');
  const completionGuidanceSource=fs.readFileSync('completion.js','utf8');
  assert(completionGuidanceSource.includes("Pregunta para resolverlo")&&completionGuidanceSource.includes("Criterio de decisión"),'S12 no ofrece orientación operativa para resolver campos técnicos pendientes');
  assert(completionGuidanceSource.includes("indicatorResolutionHint"),'S12 perdió la guía específica por campo técnico');
