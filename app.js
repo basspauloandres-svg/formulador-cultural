@@ -80,11 +80,10 @@ function clearLocalProjectState(){
   for(const key of Object.keys(syncMeta))delete syncMeta[key];
   localStorage.setItem(storeKey,JSON.stringify(draft));
   localStorage.setItem(syncMetaKey,JSON.stringify(syncMeta));
-  const transient=[
-    'formulador-cultural-vester-v1','formulador-cultural-causal-validation-v1','formulador-cultural-problem-tree-v1',
-    'formulador-cultural-synthesis-v1','formulador-cultural-objectives-v1'
-  ];
-  transient.forEach(k=>localStorage.removeItem(k));
+  for(let i=localStorage.length-1;i>=0;i--){
+    const k=localStorage.key(i);
+    if(k&&k.startsWith('formulador-cultural-')&&![storeKey,syncMetaKey,cloudProjectKey].includes(k))localStorage.removeItem(k);
+  }
   active='S01';localStorage.setItem('fc_active',active);
 }
 async function switchCloudProject(projectId){
