@@ -284,8 +284,6 @@ def _docx_body_paragraph(doc: Document, text: str, bold_label: str | None = None
             rb = p.add_run(bold_label)
             rb.bold = True
         p.add_run(chunk)
-        if (index + 1) % 3 == 0 and index < len(chunks) - 1:
-            doc.add_page_break()
 
 
 def _docx_table(doc: Document, headers: list[str], body: list[list[Any]], widths_cm: list[float] | None = None) -> None:
@@ -868,8 +866,6 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
             chunks = _sentence_chunks(text, 4)
             for index, chunk in enumerate(chunks):
                 story.append(Paragraph(xml_escape(clean(chunk)), styles["FC_Body"]))
-                if (index + 1) % 3 == 0 and index < len(chunks) - 1:
-                    story.append(PageBreak())
         def add_img(path: Path | None, caption: str | None = None, width_mm=160):
             if path and path.exists():
                 img = Image(str(path), width=width_mm * mm)

@@ -233,3 +233,33 @@ def test_long_single_section_is_balanced_by_words_and_sentences():
     chunks = _sentence_chunks(text, 4, 60)
     assert len(chunks) >= 2
     assert all(len(chunk.split()) <= 150 for chunk in chunks)
+
+
+def test_same_context_has_no_forced_page_breaks_inside_body():
+    payload = sample_payload()
+    payload["context"] = " ".join([
+        "Primera frase de contexto.",
+        "Segunda frase de contexto.",
+        "Tercera frase de contexto.",
+        "Cuarta frase de contexto.",
+        "Quinta frase de contexto.",
+        "Sexta frase de contexto.",
+        "Séptima frase de contexto.",
+        "Octava frase de contexto.",
+    ])
+    data = generate_docx(payload)
+    with ZipFile(BytesIO(data)) as z:
+        xml = z.read("word/document.xml").decode("utf-8")
+        root = ET.fromstring(xml)
+        ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+        paragraphs = root.findall(".//w:p", ns)
+        texts = ["".join(t.text or "" for t in p.findall(".//w:t", ns)) for p in paragraphs]
+        start = texts.index("1. Contexto territorial, cultural y social")
+        end = texts.index("2. Resumen ejecutivo")
+        context_paragraphs = paragraphs[start + 1:end]
+        forced_breaks = []
+        for p in context_paragraphs:
+            for br in p.findall(".//w:br", ns):
+                if br.attrib.get("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}type") == "page":
+                    forced_breaks.append(br)
+        assert not forced_breaks
