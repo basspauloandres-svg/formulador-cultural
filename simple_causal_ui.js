@@ -3,7 +3,15 @@ const KEY='formulador-cultural-causal-validation-v1';
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 let cursor=0;
-function read(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch{return {variables:[],pairs:[]}}}
+function read(){
+  let local={variables:[],pairs:[]};try{local=JSON.parse(localStorage.getItem(KEY)||'{}')}catch{}
+  const cloud=(typeof draft!=='undefined'&&draft?.S06?.causal_validation)||null;
+  if(!cloud)return local;
+  const lt=Date.parse(local.updatedAt||0)||0,ct=Date.parse(cloud.updatedAt||0)||0;
+  const chosen=ct>=lt?JSON.parse(JSON.stringify(cloud)):local;
+  if(ct>=lt)localStorage.setItem(KEY,JSON.stringify(chosen));
+  return chosen
+}
 function write(s){
   s.updatedAt=new Date().toISOString();
   localStorage.setItem(KEY,JSON.stringify(s));
