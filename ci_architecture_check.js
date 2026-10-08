@@ -43,3 +43,11 @@ const workflow=read('.github/workflows/pages.yml');
 if(!workflow.includes("github.ref == 'refs/heads/main'"))fail('El despliegue no está limitado explícitamente a main durante auditoría');
 
 if(!process.exitCode)console.log('Architecture audit OK');
+
+const appManager=read('app.js');
+if(!appManager.includes('Nuevo proyecto')||!appManager.includes('Mis proyectos')||!appManager.includes('switchCloudProject'))fail('No existe gestor de proyectos independientes');
+const synthesisAudit=read('synthesis.js');
+if(!synthesisAudit.includes('return sentence(c)'))fail('S08 vuelve a concatenar contexto completo en el enunciado breve');
+if(!coherence.includes("'AÚN NO EVALUABLE'"))fail('S16 no distingue controles todavía no evaluables');
+const causalSimple=read('simple_causal_ui.js');
+if(!causalSimple.includes("draft?.S06?.causal_validation"))fail('S06 no reconcilia la vista guiada con el estado estructurado');
