@@ -134,3 +134,8 @@ if(!finalDoc.includes('ganttSvg'))fail('El documento estándar no integra cronog
 if(!finalDoc.includes('budgetChartsSvg'))fail('El documento estándar no integra gráfica presupuestal');
 if(!finalDoc.includes('indicatorSummaryTable')||!finalDoc.includes('indicatorTechnicalTable'))fail('El documento estándar no presenta indicadores en tabla resumida y matriz técnica');
 if(!finalDoc.includes('Formato estándar de proyecto cultural'))fail('No existe portada institucional del formato estándar');
+
+const documentClient=fs.readFileSync('deliverables.js','utf8');
+if(!documentClient.includes('fcProjectDocumentPayload'))fail('El front no construye el payload estructurado para el motor Python');
+if(!documentClient.includes("/documents/'+kind"))fail('El front no consume los endpoints documentales Python');
+if(!documentClient.includes('fc-document-generator-status'))fail('El front no informa el estado del generador profesional');
