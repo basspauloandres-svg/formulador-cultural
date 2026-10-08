@@ -51,7 +51,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(coherenceSource.includes("x.selected!==false"),'La coherencia sigue tratando propuestas no seleccionadas como indicadores obligatorios');
 
  const planningSource=fs.readFileSync('planning.js','utf8');
- assert(planningSource.includes("compactLabel(x.activityText,18)"),'S13 vuelve a mostrar la actividad completa en lugar de una síntesis operativa');
+ assert(planningSource.includes("scheduleActivityLabel(x,16)")&&planningSource.includes("activitySynthesisFromResult"),'S13 vuelve a mostrar la actividad completa en lugar de una síntesis operativa');
  const completionGuidanceSource=fs.readFileSync('completion.js','utf8');
  assert(completionGuidanceSource.includes("Pregunta para resolverlo")&&completionGuidanceSource.includes("Criterio de decisión"),'S12 no ofrece orientación operativa para resolver campos técnicos pendientes');
  assert(completionGuidanceSource.includes("indicatorResolutionHint"),'S12 perdió la guía específica por campo técnico');
@@ -61,7 +61,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(completionMigrationSource.includes("activitySynthesisFromResult"),'S11 no sintetiza actividades históricas extensas');
  assert(completionMigrationSource.includes("migrationOnly=x.type==='Actividad'"),'S12 desconfirma indicadores por una migración editorial de actividad');
  const planningMigrationSource=fs.readFileSync('planning.js','utf8');
- assert(planningMigrationSource.includes("compactLabel(y.activityText,16)"),'La tabla S13 vuelve a mostrar etiquetas de actividad demasiado extensas');
+ assert(planningMigrationSource.includes("scheduleActivityLabel(y,16)"),'La tabla S13 vuelve a mostrar etiquetas de actividad demasiado extensas');
 
  const completionApprovalSource=fs.readFileSync('completion.js','utf8');
  assert(completionApprovalSource.includes('Aprobar este indicador'),'S12 no ofrece aprobación explícita por indicador');
@@ -77,6 +77,13 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(completionHelpSource.includes('Pregunta para resolverlo'),'La ayuda de S12 sigue siendo explicativa y no orienta una decisión concreta');
  assert(completionHelpSource.includes('Reabrir para editar la definición'),'S12 no separa aprobación de edición posterior');
  assert(completionHelpSource.includes('indicatorNoProposalText'),'S12 no distingue ausencia de propuesta de ausencia de orientación');
+
+ const planningOrderSource=fs.readFileSync('planning.js','utf8');
+ assert(planningOrderSource.includes('Orden de las actividades'),'S13 perdió la sección visible para ordenar actividades');
+ assert(planningOrderSource.includes('data-order-up')&&planningOrderSource.includes('data-order-down'),'S13 no permite modificar la secuencia general de actividades');
+ assert(planningOrderSource.includes('Orden y dependencias de esta actividad'),'S13 no presenta dependencias como una decisión explícita');
+ assert(planningOrderSource.includes('moveScheduleItem'),'S13 no persiste el reordenamiento de actividades');
+ assert(!planningOrderSource.includes("</label></div>'+\n '<details><summary>¿Necesita que otra actividad termine antes?"),'S13 conserva la estructura HTML mal cerrada que ocultaba dependencias');
 
  if(errors.length)throw errors[0];
 
