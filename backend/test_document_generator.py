@@ -1,5 +1,6 @@
 from io import BytesIO
 from zipfile import ZipFile
+import xml.etree.ElementTree as ET
 
 from backend.document_generator import DOC_FOOTER, _sentence_chunks, _source_entries, _tree_figure, _wrap_node_text, generate_docx, generate_pdf
 
@@ -177,8 +178,11 @@ def test_docx_sources_are_not_one_continuous_paragraph():
     with ZipFile(BytesIO(data)) as z:
         xml = z.read("word/document.xml").decode("utf-8")
         assert "16. Fuentes y anexos" in xml
-        assert xml.count("Fuente institucional uno.") == 1
-        assert xml.count("Documento oficial dos.") == 1
-        assert xml.count("Registro administrativo tres.") == 1
+        root = ET.fromstring(xml)
+        ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+        paragraphs = ["".join(t.text or "" for t in p.findall(".//w:t", ns)) for p in root.findall(".//w:p", ns)]
+        assert "1. Fuente institucional uno." in paragraphs
+        assert "2. Documento oficial dos." in paragraphs
+        assert "3. Registro administrativo tres." in paragraphs
         assert "Figura 2. Árbol de problemas." in xml
         assert "Figura 3. Árbol de objetivos." in xml
