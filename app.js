@@ -66,7 +66,71 @@ async function syncSection(code=active){if(!session||!sb)return false;if(code===
 async function save(){saveLocal();if(!session){setStatus(`Borrador de ${active} guardado localmente. Inicia sesión para sincronizar.`);return}try{await syncSection(active);setStatus(`${active} guardada y sincronizada en la nube.`,true)}catch(e){console.error(e);setStatus(`Guardado local correcto. La sincronización falló: ${e.message||'error desconocido'}`)}}
 async function loadCloud(){if(!session||!sb)return;try{const project=await ensureProject();renderAuth();const {data,error}=await sb.from('sections').select('code,data,updated_at').eq('project_id',project.id);if(error)throw error;let keptLocal=0,loadedCloud=0,legacyProtected=0;for(const row of data||[]){const code=row.code,local=draft[code]||{},remote=row.data||{},m=metaFor(code),remoteTs=Date.parse(row.updated_at||0)||0,localIso=effectiveLocalUpdatedAt(code),localTs=Date.parse(localIso||0)||0,lastSyncTs=Date.parse(m.lastSyncedAt||0)||0;const localHas=meaningful(local);const remoteHas=meaningful(remote);const hasHistory=!!(m.localUpdatedAt||m.lastSyncedAt||m.cloudUpdatedAt);if(!localHas&&remoteHas){draft[code]=remote;m.localUpdatedAt=row.updated_at||new Date().toISOString();m.lastSyncedAt=row.updated_at||null;m.cloudUpdatedAt=row.updated_at||null;loadedCloud+=1;continue}if(localHas&&!hasHistory){draft[code]=mergeLegacy(remote,local);const now=new Date().toISOString();m.localUpdatedAt=now;m.cloudUpdatedAt=row.updated_at||null;legacyProtected+=1;continue}const localChanged=localTs>lastSyncTs;const remoteKnownTs=Date.parse(m.cloudUpdatedAt||0)||0;const cloudChanged=remoteTs>remoteKnownTs;if(localChanged&&cloudChanged){if(localTs>=remoteTs){keptLocal+=1}else{draft[code]={...local,...remote};m.localUpdatedAt=row.updated_at||new Date().toISOString();m.lastSyncedAt=row.updated_at||null;loadedCloud+=1}}else if(localChanged){keptLocal+=1}else{draft[code]={...local,...remote};m.localUpdatedAt=row.updated_at||m.localUpdatedAt||new Date().toISOString();m.lastSyncedAt=row.updated_at||m.lastSyncedAt||null;loadedCloud+=1}m.cloudUpdatedAt=row.updated_at||m.cloudUpdatedAt||null}localStorage.setItem(storeKey,JSON.stringify(draft));saveSyncMeta();render();const notes=[];if(loadedCloud)notes.push(`${loadedCloud} sección(es) actualizadas desde la nube`);if(keptLocal)notes.push(`${keptLocal} sección(es) locales más recientes conservadas`);if(legacyProtected)notes.push(`${legacyProtected} sección(es) de pruebas anteriores protegidas`);setStatus(`Proyecto «${project.title}» reconciliado. ${notes.join(' · ')||'Sin cambios.'}`,true)}catch(e){console.error(e);setStatus(`No fue posible cargar la nube: ${e.message||'error desconocido'}`)}}
 
-function renderAuth(){const out=q('#authSignedOut'),inside=q('#authSignedIn');if(session){out.classList.add('hidden');inside.classList.remove('hidden');q('#userLabel').textContent=session.user.email||'Sesión activa';q('#authHelp').textContent=cloudProject?`Proyecto activo: ${cloudProject.title}`:'Sesión activa. Recuperando tu proyecto…'}else{inside.classList.add('hidden');out.classList.remove('hidden');if(!/límite|contraseña|correo|cuenta|credenciales|registrado/i.test(q('#authHelp').textContent))q('#authHelp').textContent='Puedes entrar con correo y contraseña. El enlace por correo queda como alternativa.'}}
+function renderAuth(){const out=q('#authSignedOut'),inside=q('#authSignedIn');if(session){out.classList.add('hidden');inside.classList.remove('hidden');q('#userLabel').textContent=session.user.email||'Sesión activa';q('#authHelp').textContent=cloudProject?`Proyecto activo: ${cloudProject.title}`:'Sesión activa. Recuperando tu proyecto…';queueMicrotask(()=>renderProjectControls())}else{inside.classList.add('hidden');out.classList.remove('hidden');q('#projectManager')?.remove();if(!/límite|contraseña|correo|cuenta|credenciales|registrado/i.test(q('#authHelp').textContent))q('#authHelp').textContent='Puedes entrar con correo y contraseña. El enlace por correo queda como alternativa.'}}
+
+
+async function listCloudProjects(){
+  if(!session||!sb)return [];
+  const {data,error}=await sb.from('projects').select('id,title,created_at,updated_at').order('updated_at',{ascending:false});
+  if(error)throw error;
+  return data||[];
+}
+function clearLocalProjectState(){
+  for(const key of Object.keys(draft))delete draft[key];
+  for(const key of Object.keys(syncMeta))delete syncMeta[key];
+  localStorage.setItem(storeKey,JSON.stringify(draft));
+  localStorage.setItem(syncMetaKey,JSON.stringify(syncMeta));
+  const transient=[
+    'formulador-cultural-vester-v1','formulador-cultural-causal-validation-v1','formulador-cultural-problem-tree-v1',
+    'formulador-cultural-synthesis-v1','formulador-cultural-objectives-v1'
+  ];
+  transient.forEach(k=>localStorage.removeItem(k));
+  active='S01';localStorage.setItem('fc_active',active);
+}
+async function switchCloudProject(projectId){
+  if(!session||!sb||!projectId)return;
+  const found=await sb.from('projects').select('*').eq('id',projectId).single();
+  if(found.error)throw found.error;
+  clearLocalProjectState();
+  cloudProject=found.data;
+  localStorage.setItem(cloudProjectKey,cloudProject.id);
+  renderAuth();
+  await loadCloud();
+}
+async function createCloudProject(){
+  if(!session||!sb)return;
+  const title=prompt('Nombre del nuevo proyecto:','Nuevo proyecto cultural');
+  if(title===null)return;
+  const name=title.trim();
+  if(!name){q('#authHelp').textContent='Escribe un nombre para crear el proyecto.';return}
+  const created=await sb.from('projects').insert({title:name}).select().single();
+  if(created.error)throw created.error;
+  clearLocalProjectState();
+  cloudProject=created.data;
+  localStorage.setItem(cloudProjectKey,cloudProject.id);
+  draft.S01={nombre_del_proyecto:name};
+  markLocalUpdate('S01');
+  localStorage.setItem(storeKey,JSON.stringify(draft));
+  await syncSection('S01');
+  renderAuth();render();
+  setStatus('Proyecto nuevo creado y separado del proyecto anterior.',true);
+}
+async function renderProjectControls(){
+  const inside=q('#authSignedIn');if(!inside||!session)return;
+  let host=q('#projectManager');
+  if(!host){host=document.createElement('div');host.id='projectManager';host.className='project-manager';inside.appendChild(host)}
+  host.innerHTML='<button id="newProjectBtn" type="button">Nuevo proyecto</button><label class="project-switch-label">Mis proyectos <select id="projectSelect" aria-label="Seleccionar proyecto"><option>Cargando…</option></select></label>';
+  q('#newProjectBtn').onclick=async()=>{try{await createCloudProject();await renderProjectControls()}catch(e){console.error(e);q('#authHelp').textContent='No fue posible crear el proyecto: '+(e.message||'error desconocido')}};
+  try{
+    const projects=await listCloudProjects(),select=q('#projectSelect');
+    select.innerHTML=projects.map(p=>'<option value="'+esc(p.id)+'" '+(cloudProject?.id===p.id?'selected':'')+'>'+esc(p.title)+'</option>').join('');
+    if(!projects.length)select.innerHTML='<option value="">Sin proyectos</option>';
+    select.onchange=async()=>{if(!select.value||select.value===cloudProject?.id)return;try{await switchCloudProject(select.value);await renderProjectControls()}catch(e){console.error(e);q('#authHelp').textContent='No fue posible cambiar de proyecto: '+(e.message||'error desconocido')}};
+  }catch(e){console.error(e);host.insertAdjacentHTML('beforeend','<span>No fue posible cargar la lista de proyectos.</span>')}
+}
+window.fcListCloudProjects=listCloudProjects;
+window.fcCreateCloudProject=createCloudProject;
+window.fcSwitchCloudProject=switchCloudProject;
 
 async function passwordLogin(){const creds=validateCredentials();if(!creds)return;q('#passwordLoginBtn').disabled=true;q('#authHelp').textContent='Iniciando sesión…';const {error}=await sb.auth.signInWithPassword(creds);q('#passwordLoginBtn').disabled=false;if(error){q('#authHelp').textContent=`No fue posible iniciar sesión: ${error.message}`;return}q('#authHelp').textContent='Sesión iniciada correctamente.'}
 async function signupWithPassword(){const creds=validateCredentials();if(!creds)return;q('#signupBtn').disabled=true;q('#authHelp').textContent='Creando cuenta…';const redirectTo=location.origin+location.pathname;const {data,error}=await sb.auth.signUp({...creds,options:{emailRedirectTo:redirectTo}});q('#signupBtn').disabled=false;if(error){const msg=error.message||'';if(/rate limit|too many/i.test(msg)){q('#authHelp').textContent='Supabase alcanzó temporalmente el límite de correos de confirmación. La cuenta no puede completarse hasta que se libere el envío de email.'}else if(/already registered|already exists|user.*exists/i.test(msg)){q('#authHelp').textContent='Ese correo ya está registrado. Usa “Entrar con contraseña” si ya definiste una; si tu cuenta se creó con enlace de acceso, no debes crearla otra vez.'}else{q('#authHelp').textContent=`No fue posible crear la cuenta: ${msg}`}return}if(data?.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0){q('#authHelp').textContent='Ese correo ya está registrado. “Crear cuenta” es únicamente para correos nuevos. Usa el método de acceso de la cuenta existente.';return}q('#authHelp').textContent=data?.session?'Cuenta creada y sesión iniciada.':'Cuenta nueva creada. Revisa el correo de confirmación antes del primer ingreso.'}
