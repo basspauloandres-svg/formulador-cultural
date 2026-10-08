@@ -698,7 +698,19 @@ def _pdf_styles():
     ))
     styles.add(ParagraphStyle(
         name="FC_Body", parent=styles["BodyText"], fontName="Helvetica",
-        fontSize=9.5, leading=13.2, alignment=TA_JUSTIFY, spaceAfter=6
+        fontSize=9.5, leading=15.0, alignment=TA_JUSTIFY, spaceAfter=8
+    ))
+    styles.add(ParagraphStyle(
+        name="FC_Table", parent=styles["BodyText"], fontName="Helvetica",
+        fontSize=7.2, leading=9.2, alignment=TA_LEFT, spaceAfter=0
+    ))
+    styles.add(ParagraphStyle(
+        name="FC_TableHead", parent=styles["BodyText"], fontName="Helvetica-Bold",
+        fontSize=7.2, leading=9.2, alignment=TA_LEFT, textColor=colors.HexColor("#244A37"), spaceAfter=0
+    ))
+    styles.add(ParagraphStyle(
+        name="FC_Record", parent=styles["BodyText"], fontName="Helvetica",
+        fontSize=8.8, leading=12.0, leftIndent=12, firstLineIndent=-12, spaceAfter=7
     ))
     styles.add(ParagraphStyle(
         name="FC_Small", parent=styles["BodyText"], fontName="Helvetica",
@@ -708,15 +720,15 @@ def _pdf_styles():
 
 
 def _pdf_table(headers: list[str], body: list[list[Any]], widths=None):
-    data = [headers] + [[clean(v) for v in row] for row in body]
-    table = Table(data, colWidths=widths, repeatRows=1, hAlign="CENTER")
+    styles = _pdf_styles()
+    head_style = styles["FC_TableHead"]
+    cell_style = styles["FC_Table"]
+    data = [[Paragraph(xml_escape(clean(h)), head_style) for h in headers]]
+    for row in body:
+        data.append([Paragraph(xml_escape(clean(v)), cell_style) for v in row])
+    table = Table(data, colWidths=widths, repeatRows=1, hAlign="CENTER", splitByRow=1)
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EEF5F1")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#244A37")),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-        ("FONTSIZE", (0, 0), (-1, -1), 6.8),
-        ("LEADING", (0, 0), (-1, -1), 8.4),
         ("GRID", (0, 0), (-1, -1), .35, colors.HexColor("#DCE7E1")),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 4),
@@ -725,6 +737,52 @@ def _pdf_table(headers: list[str], body: list[list[Any]], widths=None):
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
     return table
+
+
+def _pdf_indicator_cards(story: list[Any], indicators: list[dict[str, Any]], styles) -> None:
+    fields = [
+        ("Indicador", "indicator"),
+        ("Elemento asociado", "linkedText"),
+        ("Fórmula / criterio", "formula"),
+        ("Unidad", "unidad"),
+        ("Línea base", "lineaBase"),
+        ("Meta", "meta"),
+        ("Periodicidad", "periodicidad"),
+        ("Medio de verificación", "medioVerificacion"),
+        ("Responsable", "responsable"),
+        ("Plazo", "plazo"),
+    ]
+    for n, item in enumerate(indicators, 1):
+        level = clean(item.get("linkedType") or "Indicador")
+        story.append(Paragraph(f"<b>Indicador {n} · {xml_escape(level)}</b>", styles["FC_H2"]))
+        body = []
+        for label, key in fields:
+            value = item.get(key)
+            if key == "linkedText" and not value:
+                value = item.get("activityText")
+            body.append([label, value])
+        story.append(_pdf_table(["Campo", "Información"], body, [40 * mm, 125 * mm]))
+        story.append(Spacer(1, 4 * mm))
+
+
+def _pdf_resource_entries(story: list[Any], budget: list[dict[str, Any]], styles) -> None:
+    if not budget:
+        story.append(Paragraph(POR_VERIFICAR, styles["FC_Body"]))
+        return
+    for n, item in enumerate(budget, 1):
+        activity = clean(item.get("activityId") or item.get("activityText") or item.get("activity"))
+        line = (
+            f"<b>{n}. {xml_escape(activity)}</b> — "
+            f"Recurso: {xml_escape(clean(item.get('description')))}; "
+            f"Unidad: {xml_escape(clean(item.get('unit')))}; "
+            f"Cantidad: {xml_escape(clean(item.get('quantity')))}; "
+            f"Veces: {xml_escape(clean(item.get('frequency')))}; "
+            f"Costo unitario: {xml_escape(clean(item.get('unitCost')))}; "
+            f"Total: {xml_escape(clean(item.get('totalCost')))}; "
+            f"Tipo: {xml_escape(clean(item.get('costType')))}; "
+            f"Fuente: {xml_escape(clean(item.get('fundingSource')))}."
+        )
+        story.append(Paragraph(line, styles["FC_Record"]))
 
 
 def generate_pdf(payload: dict[str, Any]) -> bytes:
@@ -769,7 +827,12 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
                   Paragraph(DOC_FOOTER, styles["FC_Small"]), PageBreak()]
 
         def add_h1(text): story.append(Paragraph(text, styles["FC_H1"]))
-        def add_body(text): story.append(Paragraph(clean(text), styles["FC_Body"]))
+        def add_body(text):
+            chunks = _sentence_chunks(text, 4)
+            for index, chunk in enumerate(chunks):
+                story.append(Paragraph(xml_escape(clean(chunk)), styles["FC_Body"]))
+                if (index + 1) % 4 == 0 and index < len(chunks) - 1:
+                    story.append(PageBreak())
         def add_img(path: Path | None, width_mm=160):
             if path and path.exists():
                 img = Image(str(path), width=width_mm * mm)
@@ -806,14 +869,15 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
         story.append(Paragraph("11.1 Tabla resumida", styles["FC_H2"]))
         story.append(_pdf_table(["Nivel","Elemento","Indicador","Línea base","Meta","Medio de verificación"], _indicator_summary_rows(p["indicators"]), [18*mm,35*mm,45*mm,18*mm,18*mm,31*mm]))
         story.append(Spacer(1, 4*mm))
-        story.append(Paragraph("11.2 Matriz técnica", styles["FC_H2"]))
-        story.append(_pdf_table(["Nivel","Indicador","Fórmula / criterio","Unidad","Línea base","Meta","Periodicidad","Medio de verificación","Responsable","Plazo"], _indicator_technical_rows(p["indicators"]), [13*mm,27*mm,28*mm,13*mm,14*mm,14*mm,18*mm,22*mm,17*mm,15*mm]))
+        story.append(Paragraph("11.2 Fichas técnicas de indicadores", styles["FC_H2"]))
+        _pdf_indicator_cards(story, p["indicators"], styles)
         story.append(PageBreak())
         add_h1("12. Cronograma"); add_img(figs["gantt"])
         story.append(_pdf_table(["Actividad","Inicio","Fin","Responsable","Frecuencia"], [[s.get("activityText"),s.get("startDate"),s.get("endDate"),s.get("responsible"),s.get("frequency")] for s in p["schedule"]], [75*mm,22*mm,22*mm,27*mm,20*mm]))
         story.append(PageBreak())
         add_h1("13. Recursos y presupuesto"); add_img(figs["budget"])
-        story.append(_pdf_table(["Actividad","Recurso","Unidad","Cantidad","Veces","Costo unitario","Total","Tipo"], [[b.get("activityText"),b.get("description"),b.get("unit"),b.get("quantity"),b.get("frequency"),b.get("unitCost"),b.get("totalCost"),b.get("costType")] for b in p["budget"]], [48*mm,30*mm,14*mm,14*mm,12*mm,18*mm,18*mm,18*mm]))
+        story.append(Paragraph("13.1 Soportes de recursos", styles["FC_H2"]))
+        _pdf_resource_entries(story, p["budget"], styles)
         add_h1("14. Riesgos y respuestas")
         story.append(_pdf_table(["Origen","Riesgo","Prob.","Impacto","Nivel","Prevención","Contingencia","Responsable"], [[r.get("linkedObjectType"),r.get("event"),r.get("probability"),r.get("impact"),r.get("riskLevel"),r.get("preventiveResponse"),r.get("contingencyResponse"),r.get("owner")] for r in p["risks"]], [18*mm,34*mm,14*mm,14*mm,14*mm,30*mm,30*mm,20*mm]))
         add_h1("15. Coherencia y trazabilidad"); add_body(clean(p["coherence"].get("summary") or f"Índice orientativo: {p['coherence'].get('score', POR_VERIFICAR)}"))
