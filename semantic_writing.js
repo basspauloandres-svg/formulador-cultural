@@ -292,11 +292,12 @@ function indicatorFieldGuide(source,type,family,context={},current={}){
  const qty=extractQuantity(t);
  const formulaExample=(assist.formula||[])[0]||'Describe cómo se obtiene el valor del indicador.';
  const unitExample=unit||'%, personas, talleres, puntos u otra unidad coherente con el indicador.';
+ const percent=/×\s*100|\*\s*100|porcentaje/i.test(String(current.formula||formulaExample||'')+' '+String(current.indicator||indicator||''));
  let baselineExample='Registra el valor real antes de iniciar el proyecto.';
- let targetExample='Registra el valor que se espera alcanzar al finalizar o en el momento definido.';
- if(type==='Actividad'&&family==='cumplimiento'&&qty){
-   baselineExample='Si el indicador mide únicamente ejecución del proyecto, puede proponerse 0 al inicio porque todavía no se ha realizado ninguna de las '+qty+' acciones programadas.';
-   targetExample=qty+' acciones realizadas o 100 % de cumplimiento, según la unidad elegida.';
+ let targetExample=unit&&!isPlaceholder(unit)?'Escribe el valor de compromiso en '+unit+'. El valor concreto debe corresponder al alcance real del proyecto.':'Registra el valor que se espera alcanzar al finalizar o en el momento definido.';
+ if(type==='Actividad'&&family==='cumplimiento'){
+   baselineExample=qty?'Si el indicador mide únicamente ejecución del proyecto, puede proponerse 0 al inicio porque todavía no se ha realizado ninguna de las '+qty+' acciones programadas.':'Si el indicador mide ejecución de una actividad programada, puede proponerse 0 % al inicio porque la ejecución aún no ha comenzado.';
+   targetExample=qty?qty+' acciones realizadas o 100 % de cumplimiento, según la unidad elegida.':(percent?'100 % de ejecución de la actividad programada, si el compromiso es completar todo lo previsto.':'Define el valor que representa el cumplimiento total de la actividad.');
  }
  return {
   formula:{meaning:'Explica la operación o regla que convierte los datos en el valor del indicador.',write:'Escribe la operación con palabras o números. Debe quedar claro qué se divide, resta, suma o compara.',example:formulaExample},
@@ -311,13 +312,16 @@ function indicatorFieldGuide(source,type,family,context={},current={}){
 }
 function indicatorFieldAssist(source,type,family,context={},current={}){
  const t=clean(source),battery=indicatorBattery(t,type,context),candidate=battery.find(x=>x.indicatorFamily===family)||battery[0]||{},out={};
- const add=(k,values)=>{const xs=[...new Set((values||[]).map(clean).filter(v=>v&&!isPlaceholder(v)))];if(xs.length)out[k]=xs};
+ const technicalValue=v=>String(v??'').replace(/\s+/g,' ').trim().replace(/[.]+$/,'');
+ const add=(k,values)=>{const xs=[...new Set((values||[]).map(technicalValue).filter(v=>v&&!isPlaceholder(v)))];if(xs.length)out[k]=xs};
  add('formula',[candidate.formula]);
  add('unidad',[candidate.unidad]);
  add('lineaBase',[candidate.lineaBase]);
  add('meta',[candidate.meta]);
  add('medioVerificacion',candidate.verificationSuggestions||[]);
- if(!(out.unidad||[]).length&&(/×\s*100|\*\s*100|porcentaje/i.test(String(current.formula||candidate.formula||'')+' '+String(current.indicator||candidate.indicator||''))))add('unidad',['%']);
+ const percent=/×\s*100|\*\s*100|porcentaje/i.test(String(current.formula||candidate.formula||'')+' '+String(current.indicator||candidate.indicator||''));
+ if(!(out.unidad||[]).length&&percent)add('unidad',['%']);
+ if(!(out.meta||[]).length&&type==='Actividad'&&family==='cumplimiento'&&percent)add('meta',['100 % de ejecución de la actividad programada']);
  if(type==='Actividad'){
    if(/taller|sesion|sesión|jornada|encuentro|capacitaci[oó]n|formaci[oó]n/i.test(t))add('periodicidad',['Al cierre de cada actividad realizada']);
    else add('periodicidad',['Al cierre de la actividad']);

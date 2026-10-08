@@ -120,3 +120,9 @@ const genericObjectiveAid=w.indicatorBattery('Fortalecer la articulación territ
 if(!/100/.test(genericObjectiveAid.formula)||genericObjectiveAid.unidad!=='%')fail('S12 todavía deja sin orientación técnica un objetivo cultural genérico');
 const genericFieldAid=w.indicatorFieldAssist('Articular espacios de circulación para agrupaciones culturales del territorio.','Actividad','cumplimiento',{}, {indicator:'Porcentaje de cumplimiento documentado de la actividad respecto de lo programado.',formula:'(Avance ejecutado / avance programado) × 100'});
 if(!genericFieldAid.responsable?.length||!genericFieldAid.plazo?.length||!genericFieldAid.unidad?.includes('%'))fail('S12 no ofrece ayudas accionables para responsable, plazo y unidad');
+
+
+const metaAssist=w.indicatorFieldAssist('Articular espacios de circulación para agrupaciones culturales del territorio.','Actividad','cumplimiento',{}, {indicator:'Porcentaje de cumplimiento documentado de la actividad respecto de lo programado.',formula:'(Avance ejecutado / avance programado) × 100',unidad:'%'});
+if(!metaAssist.meta?.some(v=>/100\s*%/.test(v)))fail('La ayuda de meta para cumplimiento porcentual no ofrece una propuesta resolutiva');
+const resultGuide=w.indicatorFieldGuide('Fortalecimiento de la articulación territorial entre agentes culturales.','Resultado','resultado',{}, {unidad:'%',formula:'(Criterios de logro cumplidos / criterios de logro definidos) × 100',indicator:'Porcentaje de criterios de logro cumplidos'});
+if(!/%/.test(resultGuide.meta.example)||!/alcance real del proyecto/i.test(resultGuide.meta.example))fail('La guía de meta de resultado no orienta la decisión en la unidad disponible');

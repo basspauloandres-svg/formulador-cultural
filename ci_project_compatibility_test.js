@@ -53,7 +53,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  const planningSource=fs.readFileSync('planning.js','utf8');
  assert(planningSource.includes("compactLabel(x.activityText,18)"),'S13 vuelve a mostrar la actividad completa en lugar de una síntesis operativa');
  const completionGuidanceSource=fs.readFileSync('completion.js','utf8');
- assert(completionGuidanceSource.includes("Cómo resolverlo"),'S12 no ofrece orientación operativa para resolver campos técnicos pendientes');
+ assert(completionGuidanceSource.includes("Pregunta para resolverlo")&&completionGuidanceSource.includes("Criterio de decisión"),'S12 no ofrece orientación operativa para resolver campos técnicos pendientes');
  assert(completionGuidanceSource.includes("indicatorResolutionHint"),'S12 perdió la guía específica por campo técnico');
 
  const completionMigrationSource=fs.readFileSync('completion.js','utf8');
@@ -65,12 +65,18 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
  const completionApprovalSource=fs.readFileSync('completion.js','utf8');
  assert(completionApprovalSource.includes('Aprobar este indicador'),'S12 no ofrece aprobación explícita por indicador');
- assert(completionApprovalSource.includes('Reabrir aprobación'),'S12 no permite reabrir una aprobación individual');
+ assert(completionApprovalSource.includes('Reabrir para editar la definición')&&completionApprovalSource.includes('data-ind-reopen'),'S12 no permite reabrir una aprobación individual');
  assert(completionApprovalSource.includes('indicator-approval-progress'),'S12 no muestra el avance de aprobación por batería');
  const reviewDualSource=fs.readFileSync('review_dashboard.js','utf8');
  assert(reviewDualSource.includes('Ausencias y pendientes'),'S16 no separa el control de ausencias');
  assert(reviewDualSource.includes('Coherencia metodológica'),'S16 no separa el control de coherencia');
  assert(reviewDualSource.includes('coherenceIssues'),'S16 no calcula rupturas de coherencia de forma independiente');
+
+ const completionHelpSource=fs.readFileSync('completion.js','utf8');
+ assert(completionHelpSource.includes('Indicador aprobado ✓'),'S12 no comunica con claridad que la definición ya está aprobada');
+ assert(completionHelpSource.includes('Pregunta para resolverlo'),'La ayuda de S12 sigue siendo explicativa y no orienta una decisión concreta');
+ assert(completionHelpSource.includes('Reabrir para editar la definición'),'S12 no separa aprobación de edición posterior');
+ assert(completionHelpSource.includes('indicatorNoProposalText'),'S12 no distingue ausencia de propuesta de ausencia de orientación');
 
  if(errors.length)throw errors[0];
 
