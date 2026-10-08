@@ -93,6 +93,13 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(planningContinuationSource.includes("window.fcContinueView?.(target,'.plan-card')"),'S13 no reubica la vista al avanzar de actividad');
  assert(planningContinuationSource.includes("!next?.startDate?'[data-sch=\"startDate\"]'"),'S13 no prioriza el primer dato pendiente al continuar');
 
+ const planningBudgetHelpSource=fs.readFileSync('planning.js','utf8');
+ assert(planningBudgetHelpSource.includes('¿Cómo diligenciar los recursos de esta actividad?'),'S14 no ofrece orientación general desplegable');
+ for(const field of ['resourceType','description','unit','quantity','frequency','unitCost','fundingSource'])assert(planningBudgetHelpSource.includes("budgetHelpDetails('"+field+"'"),'S14 no ofrece ayuda desplegable para '+field);
+ assert(planningBudgetHelpSource.includes('cantidad × veces × costo unitario'),'S14 no explica el cálculo automático del total');
+ assert(planningBudgetHelpSource.includes("status==='inkind'?'Escribe quién aporta este recurso en especie.'"),'S14 no adapta la ayuda de fuente para aportes en especie');
+ assert(planningBudgetHelpSource.includes("i.resourceType==='Honorarios'?'selected':''"),'S14 no conserva correctamente la categoría seleccionada');
+
  if(errors.length)throw errors[0];
 
  let cleaned=JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1'));
