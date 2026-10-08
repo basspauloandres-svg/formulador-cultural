@@ -61,7 +61,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(completionMigrationSource.includes("activitySynthesisFromResult"),'S11 no sintetiza actividades históricas extensas');
  assert(completionMigrationSource.includes("migrationOnly=x.type==='Actividad'"),'S12 desconfirma indicadores por una migración editorial de actividad');
  const planningMigrationSource=fs.readFileSync('planning.js','utf8');
- assert(planningMigrationSource.includes("compactLabel(y.activityText,16)"),'La tabla S13 vuelve a mostrar etiquetas de actividad demasiado extensas');
+ assert(planningMigrationSource.includes("scheduleActivityLabel(y,16)"),'La tabla S13 vuelve a mostrar etiquetas de actividad demasiado extensas');
 
  const completionApprovalSource=fs.readFileSync('completion.js','utf8');
  assert(completionApprovalSource.includes('Aprobar este indicador'),'S12 no ofrece aprobación explícita por indicador');
