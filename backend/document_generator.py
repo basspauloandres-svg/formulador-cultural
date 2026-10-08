@@ -62,8 +62,10 @@ THEME = DocumentTheme()
 
 
 def clean(value: Any) -> str:
-    text = " ".join(str(value or "").split())
-    return text or POR_VERIFICAR
+    if value is None:
+        return POR_VERIFICAR
+    text = " ".join(str(value).split())
+    return text if text != "" else POR_VERIFICAR
 
 
 def rows(value: Any) -> list[dict[str, Any]]:
