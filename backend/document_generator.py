@@ -6,6 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 import math
+import textwrap
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch
@@ -287,7 +288,22 @@ def _save_figure(fig, target: Path) -> Path:
     return target
 
 
+def _wrap_node_text(value: Any, width: int = 38, max_lines: int = 5) -> str:
+    text = clean(value)
+    lines = textwrap.wrap(text, width=max(18, width), break_long_words=False, break_on_hyphens=False)
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        if lines:
+            lines[-1] = lines[-1].rstrip(" .") + "…"
+    return "\n".join(lines) or POR_VERIFICAR
+
+
 def _tree_figure(nodes: list[dict[str, Any]], title: str, target: Path) -> Path | None:
+    """Render a legible tree with adaptive boxes and wrapped text.
+
+    The document uses this raster figure in both DOCX and PDF, so the layout must
+    remain readable at A4 width and on mobile document viewers.
+    """
     if not nodes:
         return None
     order = ["indirect_effect", "direct_effect", "central", "direct_cause", "indirect_cause"]
@@ -298,38 +314,78 @@ def _tree_figure(nodes: list[dict[str, Any]], title: str, target: Path) -> Path 
         "direct_cause": "Causas / medios directos",
         "indirect_cause": "Causas / medios indirectos",
     }
-    fig, ax = plt.subplots(figsize=(12, 7))
+    active_layers = [(zone, [n for n in nodes if n.get("zone") == zone]) for zone in order]
+    active_layers = [(zone, layer) for zone, layer in active_layers if layer]
+    max_in_layer = max((len(layer) for _, layer in active_layers), default=1)
+    fig_h = max(5.4, 1.55 * len(active_layers) + 1.0)
+    fig_w = max(11.5, 3.8 * min(max_in_layer, 3))
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
     ax.set_axis_off()
-    positions: dict[str, tuple[float, float]] = {}
-    for li, zone in enumerate(order):
-        layer = [n for n in nodes if n.get("zone") == zone]
-        if not layer:
-            continue
-        y = 1 - (li + 1) / (len(order) + 1)
-        xs = [(i + 1) / (len(layer) + 1) for i in range(len(layer))]
-        for x, n in zip(xs, layer):
-            nid = str(n.get("id", f"{zone}-{x}"))
-            positions[nid] = (x, y)
-            box = FancyBboxPatch((x - 0.105, y - 0.045), 0.21, 0.09,
-                                 boxstyle="round,pad=0.012,rounding_size=0.01",
-                                 linewidth=1.4, edgecolor="#2d8a61" if zone != "central" else "#b27a00",
-                                 facecolor="#f6fbf8" if zone != "central" else "#fff7d6")
-            ax.add_patch(box)
-            txt = clean(n.get("text"))
-            ax.text(x, y, txt[:95], ha="center", va="center", fontsize=8, wrap=True)
-            ax.text(x, y + 0.061, labels[zone], ha="center", va="bottom", fontsize=7, color="#66717c")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+
+    layout: dict[str, dict[str, Any]] = {}
+    top, bottom = .88, .10
+    layer_gap = (top - bottom) / max(1, len(active_layers) - 1) if len(active_layers) > 1 else 0
+
+    for li, (zone, layer) in enumerate(active_layers):
+        y = top - li * layer_gap if len(active_layers) > 1 else .5
+        count = len(layer)
+        horizontal_margin = .055
+        gap = .035 if count <= 3 else .02
+        available = 1 - 2 * horizontal_margin - gap * max(0, count - 1)
+        box_w = min(.46 if zone == "central" else .36, available / max(1, count))
+        total = box_w * count + gap * max(0, count - 1)
+        start = .5 - total / 2
+        wrap_width = max(24, int(52 * box_w / .36))
+        for i, n in enumerate(layer):
+            x = start + box_w / 2 + i * (box_w + gap)
+            wrapped = _wrap_node_text(n.get("text"), width=wrap_width, max_lines=5)
+            line_count = max(1, wrapped.count("\n") + 1)
+            box_h = min(.16, .055 + .020 * line_count)
+            nid = str(n.get("id", f"{zone}-{i}"))
+            layout[nid] = {
+                "x": x, "y": y, "w": box_w, "h": box_h, "zone": zone,
+                "text": wrapped, "label": labels[zone],
+            }
+
     central = next((n for n in nodes if n.get("zone") == "central"), None)
+    central_id = str(central.get("id")) if central else None
+
+    # Connectors first so lines never cross over node text.
     for n in nodes:
-        if n.get("zone") == "central":
+        nid = str(n.get("id"))
+        src = layout.get(nid)
+        if not src or n.get("zone") == "central":
             continue
-        src = positions.get(str(n.get("id")))
-        parent_id = n.get("parentId")
-        if not parent_id and central:
-            parent_id = central.get("id")
-        dst = positions.get(str(parent_id))
-        if src and dst:
-            ax.annotate("", xy=dst, xytext=src, arrowprops=dict(arrowstyle="-", color="#8a9690", lw=1))
-    ax.set_title(title, fontsize=14, fontweight="bold", color="#173D2C", pad=14)
+        parent_id = str(n.get("parentId")) if n.get("parentId") else central_id
+        dst = layout.get(parent_id) if parent_id else None
+        if not dst:
+            continue
+        src_y = src["y"] + (src["h"] / 2 if dst["y"] > src["y"] else -src["h"] / 2)
+        dst_y = dst["y"] - (dst["h"] / 2 if dst["y"] > src["y"] else -dst["h"] / 2)
+        ax.plot([src["x"], src["x"], dst["x"]], [src_y, (src_y + dst_y) / 2, dst_y],
+                color="#93A19A", linewidth=1.05, zorder=1)
+
+    for item in layout.values():
+        central_zone = item["zone"] == "central"
+        x, y, w, h = item["x"], item["y"], item["w"], item["h"]
+        box = FancyBboxPatch(
+            (x - w / 2, y - h / 2), w, h,
+            boxstyle="round,pad=0.008,rounding_size=0.012",
+            linewidth=1.5,
+            edgecolor="#B27A00" if central_zone else "#2D8A61",
+            facecolor="#FFF7D6" if central_zone else "#F5FBF7",
+            zorder=2,
+        )
+        ax.add_patch(box)
+        ax.text(x, y, item["text"], ha="center", va="center", fontsize=8.2,
+                color="#23312B", linespacing=1.25, zorder=3)
+        ax.text(x, y + h / 2 + .018, item["label"], ha="center", va="bottom",
+                fontsize=7.2, color="#66717C", zorder=3)
+
+    ax.text(.5, .97, title, ha="center", va="top", fontsize=13, fontweight="bold", color="#173D2C")
+    fig.subplots_adjust(left=.02, right=.98, top=.98, bottom=.02)
     return _save_figure(fig, target)
 
 
@@ -407,17 +463,29 @@ def _budget_figure(budget: list[dict[str, Any]], target: Path) -> Path | None:
     return _save_figure(fig, target)
 
 
-def _docx_add_figure(doc: Document, path: Path | None, caption: str, width_inches=6.3) -> None:
+def _docx_add_figure(
+    doc: Document,
+    path: Path | None,
+    caption: str,
+    width_inches: float = 6.35,
+    standalone: bool = False,
+) -> None:
     if not path or not path.exists():
         return
+    if standalone:
+        doc.add_page_break()
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.keep_with_next = True
     p.add_run().add_picture(str(path), width=Inches(width_inches))
     cap = doc.add_paragraph(caption)
     cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    cap.paragraph_format.keep_with_next = False
     cap.runs[0].italic = True
     cap.runs[0].font.size = Pt(8)
     cap.runs[0].font.color.rgb = RGBColor.from_string(THEME.muted_hex)
+    if standalone:
+        doc.add_page_break()
 
 
 def _indicator_summary_rows(indicators: list[dict[str, Any]]) -> list[list[Any]]:
@@ -474,11 +542,11 @@ def generate_docx(payload: dict[str, Any]) -> bytes:
             ("3. Población", lambda: _docx_body_paragraph(doc, p["population"])),
             ("4. Evidencia y antecedentes", lambda: (_docx_body_paragraph(doc, p["evidence"]), _docx_body_paragraph(doc, p["sources"], "Fuentes: "))),
             ("5. Priorización de situaciones · Matriz Vester", lambda: _docx_add_figure(doc, figures["vester"], "Figura 1. Plano de influencia y dependencia de la matriz Vester.")),
-            ("6. Planteamiento del problema", lambda: (_docx_body_paragraph(doc, p["problem"]), _docx_add_figure(doc, figures["problem"], "Figura 2. Árbol de problemas."))),
+            ("6. Planteamiento del problema", lambda: (_docx_body_paragraph(doc, p["problem"]), _docx_add_figure(doc, figures["problem"], "Figura 2. Árbol de problemas.", standalone=True))),
             ("7. Objetivos", lambda: (
                 _docx_body_paragraph(doc, p["objective_general"], "Objetivo general: "),
                 _docx_table(doc, ["Objetivos específicos"], [[o.get("text", o)] for o in p["objectives"]]) if p["objectives"] else None,
-                _docx_add_figure(doc, figures["objective"], "Figura 3. Árbol de objetivos.")
+                _docx_add_figure(doc, figures["objective"], "Figura 3. Árbol de objetivos.", standalone=True)
             )),
             ("8. Estrategia de intervención", lambda: _docx_body_paragraph(doc, p["strategy"])),
             ("9. Resultados esperados", lambda: _docx_table(doc, ["Resultados"], [[r.get("text", r)] for r in p["results"]]) if p["results"] else _docx_body_paragraph(doc, POR_VERIFICAR)),

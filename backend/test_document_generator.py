@@ -1,7 +1,7 @@
 from io import BytesIO
 from zipfile import ZipFile
 
-from backend.document_generator import DOC_FOOTER, generate_docx, generate_pdf
+from backend.document_generator import DOC_FOOTER, _tree_figure, _wrap_node_text, generate_docx, generate_pdf
 
 
 def sample_payload():
@@ -68,9 +68,10 @@ def sample_payload():
             {"id": "i1", "zone": "indirect_cause", "text": "Causa indirecta", "parentId": "d1"},
         ],
         "objective_tree": [
-            {"id": "f1", "zone": "direct_effect", "text": "Fin", "parentId": "oc"},
-            {"id": "oc", "zone": "central", "text": "Objetivo central"},
-            {"id": "m1", "zone": "direct_cause", "text": "Medio directo", "parentId": "oc"},
+            {"id": "f1", "zone": "direct_effect", "text": "Incrementar la participación de la banda en espacios de circulación musical.", "parentId": "oc"},
+            {"id": "oc", "zone": "central", "text": "Incrementar la participación de la banda en certámenes musicales de mayor exigencia interpretativa."},
+            {"id": "m1", "zone": "direct_cause", "text": "Ampliar el acceso a talleres especializados para algunas familias instrumentales.", "parentId": "oc"},
+            {"id": "m2", "zone": "direct_cause", "text": "Reducir las diferencias en los niveles de dominio instrumental entre integrantes de una misma sección de la banda.", "parentId": "oc"},
         ],
         "vester": {
             "rows": [
@@ -107,3 +108,21 @@ def test_pdf_is_nonempty_and_contains_multiple_pages():
     assert data.startswith(b"%PDF")
     assert len(data) > 20000
     assert data.count(b"/Type /Page") >= 5
+
+
+def test_tree_wraps_long_labels_without_single_line_overflow(tmp_path):
+    text = "Reducir las diferencias en los niveles de dominio instrumental entre integrantes de una misma sección de la banda."
+    wrapped = _wrap_node_text(text, width=34)
+    assert "\n" in wrapped
+    assert max(len(line) for line in wrapped.splitlines()) <= 45
+
+    nodes = [
+        {"id": "c", "zone": "central", "text": "Incrementar la participación de la banda en certámenes musicales de mayor exigencia interpretativa."},
+        {"id": "m1", "zone": "direct_cause", "text": "Ampliar el acceso a talleres especializados para algunas familias instrumentales.", "parentId": "c"},
+        {"id": "m2", "zone": "direct_cause", "text": text, "parentId": "c"},
+    ]
+    target = tmp_path / "tree.png"
+    result = _tree_figure(nodes, "Árbol de objetivos", target)
+    assert result == target
+    assert target.exists()
+    assert target.stat().st_size > 10000
