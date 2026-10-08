@@ -163,7 +163,7 @@ function ensureS12(){
        if(!prev&&idx===0)prev=old.find(o=>!used.has(o)&&(o.linkedType||'Actividad')===x.type&&(o.linkedId||o.activityId||o.resultId||o.objectiveId)===x.source.id&&!o.indicatorFamily);
        const fresh=indicatorProposal(x.source,seq++,x.type,tpl);
        if(prev){
-         used.add(prev);const changed=String(prev.linkedText||'')!==String(text||''),materialChange=changed&&editorialSource(prev.linkedText)!==editorialSource(text),placeholder=window.fcWriting?.isPlaceholder?.(prev.indicator);
+         used.add(prev);const changed=String(prev.linkedText||'')!==String(text||''),migrationOnly=x.type==='Actividad'&&x.source?.provenance==='sintesis_actividad_heredada',materialChange=changed&&!migrationOnly&&editorialSource(prev.linkedText)!==editorialSource(text),placeholder=window.fcWriting?.isPlaceholder?.(prev.indicator);
          const refreshed=placeholder&&!window.fcWriting?.isPlaceholder?.(fresh.indicator);
          const derived={};for(const k of ['formula','unidad','lineaBase','meta'])if(window.fcWriting?.isPlaceholder?.(prev[k])&&!window.fcWriting?.isPlaceholder?.(fresh[k]))derived[k]=fresh[k];
          const selected=prev.selected!==undefined?!!prev.selected:(!!prev.confirmed||fresh.selected);
