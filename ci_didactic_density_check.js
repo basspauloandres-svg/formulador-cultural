@@ -139,3 +139,6 @@ const documentClient=fs.readFileSync('deliverables.js','utf8');
 if(!documentClient.includes('fcProjectDocumentPayload'))fail('El front no construye el payload estructurado para el motor Python');
 if(!documentClient.includes("/documents/'+kind"))fail('El front no consume los endpoints documentales Python');
 if(!documentClient.includes('fc-document-generator-status'))fail('El front no informa el estado del generador profesional');
+
+const publicDocumentClient=fs.readFileSync('deliverables.js','utf8');
+if(!publicDocumentClient.includes('https://formulador-cultural-api.onrender.com'))fail('El front público no apunta al backend Python desplegado');
