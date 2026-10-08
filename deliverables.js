@@ -101,6 +101,70 @@ function reportHtml(){
  <section class="section"><div class="section-title"><span class="section-no">16</span><h2>Fuentes y anexos</h2></div><p>${esc(p(draft?.S04?.fuentes))}</p><small>Los vacíos conservan la marca [POR VERIFICAR].</small></section>
  <div class="doc-footer">${esc(DOC_FOOTER)}</div></body></html>`
 }
+function professionalDocumentPayload(){
+ const obj=objectiveNodes().filter(x=>x.confirmed),central=obj.find(x=>x.zone==='central');
+ const v=vesterSnapshot();
+ return {
+  title:p(draft?.S01?.nombre_del_proyecto),
+  entity:p(draft?.S01?.entidad_u_organizacion),
+  territory:p(draft?.S02?.territorio_o_lugar_de_intervencion||draft?.S01?.municipio),
+  responsible:p(draft?.S01?.responsable),
+  summary:p(draft?.S08?.enunciado),
+  context:[draft?.S02?.territorio_o_lugar_de_intervencion,draft?.S02?.caracteristicas_culturales,draft?.S02?.principales_dinamicas_sociales,draft?.S02?.antecedentes].map(clean).filter(Boolean).join('\n\n'),
+  population:[draft?.S03?.poblacion_afectada,draft?.S03?.poblacion_participante,draft?.S03?.caracterizacion].map(clean).filter(Boolean).join('\n\n'),
+  evidence:[draft?.S04?.evidencia_disponible,draft?.S04?.datos_por_verificar].map(clean).filter(Boolean).join('\n\n'),
+  sources:p(draft?.S04?.fuentes),
+  problem:p(draft?.S08?.enunciado),
+  strategy:p(rows(window.fcGetAlternatives).find(x=>x.selected&&x.confirmed)?.text),
+  objective_general:p(central?.text),
+  objectives:obj.filter(x=>x.zone==='direct_cause').map(x=>({id:x.id,text:x.text,zone:x.zone,parentId:x.parentId||null})),
+  results:rows(window.fcGetResults).filter(x=>x.confirmed).map(x=>({...x,text:compact(x.text,40)})),
+  activities:rows(window.fcGetActivities).filter(x=>x.confirmed).map(x=>({...x,text:compact(x.text,32)})),
+  indicators:rows(window.fcGetIndicators).filter(x=>x.confirmed),
+  schedule:rows(window.fcGetSchedule),
+  budget:rows(window.fcGetBudget),
+  risks:rows(window.fcGetRisks),
+  problem_tree:problemNodes(),
+  objective_tree:obj,
+  vester:{rows:v.rows,meanInfluence:v.meanInfluence,meanDependence:v.meanDependence},
+  coherence:{score:(window.fcGetCoherenceReport?.()||{}).score||0,summary:'La revisión interna del formulador reporta el estado vigente de coherencia y trazabilidad.'}
+ }
+}
+let documentGeneratorStatus={mode:'browser',connected:false,message:'Generador profesional Python no conectado.'};
+function documentApiBase(){
+ const params=new URLSearchParams(location.search),fromQuery=clean(params.get('document_api'));
+ if(fromQuery){localStorage.setItem('fc_document_api_url',fromQuery);return fromQuery.replace(/\/$/,'')}
+ const configured=clean(window.FC_DOCUMENT_API_URL||localStorage.getItem('fc_document_api_url'));
+ if(configured)return configured.replace(/\/$/,'');
+ if(['localhost','127.0.0.1'].includes(location.hostname))return 'http://127.0.0.1:8000';
+ return ''
+}
+function announceDocumentGenerator(detail){
+ documentGeneratorStatus={...documentGeneratorStatus,...detail};
+ window.dispatchEvent(new CustomEvent('fc-document-generator-status',{detail:documentGeneratorStatus}))
+}
+async function exportProfessionalDocument(kind,fallback){
+ const api=documentApiBase();
+ if(!api){
+  announceDocumentGenerator({mode:'browser',connected:false,message:'El motor Python todavía no tiene una URL pública. Se usará temporalmente la exportación del navegador.'});
+  return fallback()
+ }
+ try{
+  announceDocumentGenerator({mode:'python',connected:true,message:'Generando documento profesional…'});
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);
+  const response=await fetch(api+'/documents/'+kind,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(professionalDocumentPayload()),signal:controller.signal});
+  clearTimeout(timer);
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  const blob=await response.blob(),ext=kind==='docx'?'docx':'pdf';
+  download(filename()+'-proyecto-profesional.'+ext,blob);
+  announceDocumentGenerator({mode:'python',connected:true,message:'Documento profesional generado con el motor Python.'});
+  return true
+ }catch(error){
+  console.error('Generador documental Python',error);
+  announceDocumentGenerator({mode:'browser',connected:false,message:'No fue posible usar el motor Python. Se generará una copia temporal con el navegador.'});
+  return fallback()
+ }
+}
 function exportHtml(){download(filename()+'-proyecto.html',new Blob([reportHtml()],{type:'text/html;charset=utf-8'}))}
 async function exportPdf(){await loadScript('https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js',()=>typeof html2pdf!=='undefined');const holder=document.createElement('div');holder.innerHTML=reportHtml().match(/<body>([\s\S]*)<\/body>/i)?.[1]||reportHtml();holder.querySelector('.doc-footer')?.remove();document.body.appendChild(holder);try{const worker=html2pdf().set({margin:[10,10,16,10],filename:filename()+'-proyecto.pdf',image:{type:'jpeg',quality:.96},html2canvas:{scale:1.3,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(holder).toPdf();const pdf=await worker.get('pdf');const pages=pdf.internal.getNumberOfPages();for(let page=1;page<=pages;page++){pdf.setPage(page);pdf.setFontSize(8);pdf.setTextColor(102,113,124);pdf.text(DOC_FOOTER,pdf.internal.pageSize.getWidth()/2,pdf.internal.pageSize.getHeight()-6,{align:'center'})}await worker.save()}finally{holder.remove()}}
 function xmlEsc(v){return clean(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}
@@ -130,5 +194,5 @@ function reportParagraphs(){
 }
 async function exportDocx(){await loadScript('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js',()=>typeof JSZip!=='undefined');const zip=new JSZip(),body=reportParagraphs();zip.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>');zip.folder('_rels').file('.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');zip.folder('word').folder('_rels').file('document.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>');zip.folder('word').file('document.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>'+body+'<w:sectPr><w:footerReference w:type="default" r:id="rId2"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>');zip.folder('word').file('footer1.xml',docFooterXml());zip.folder('word').file('styles.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:sz w:val="30"/></w:rPr></w:style></w:styles>');const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});download(filename()+'-proyecto.docx',blob)}
 async function treePdf(kind){await loadScript('https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js',()=>typeof html2pdf!=='undefined');const div=document.createElement('div');div.style.padding='20px';div.innerHTML='<h2>'+(kind==='problem'?'Árbol de problemas':'Árbol de objetivos')+'</h2>'+svgFor(kind);document.body.appendChild(div);try{await html2pdf().set({filename:filename()+'-'+(kind==='problem'?'arbol-problemas':'arbol-objetivos')+'.pdf',margin:8,html2canvas:{scale:1.5},jsPDF:{unit:'mm',format:'a3',orientation:'landscape'}}).from(div).save()}finally{div.remove()}}
-window.fcTreeSvg=svgFor;window.fcExportProblemTreeSVG=()=>exportSvg('problem');window.fcExportObjectiveTreeSVG=()=>exportSvg('objective');window.fcOpenProblemTree=()=>openSvg('problem');window.fcOpenObjectiveTree=()=>openSvg('objective');window.fcExportProblemTreePDF=()=>treePdf('problem');window.fcExportObjectiveTreePDF=()=>treePdf('objective');window.fcExportProjectHTML=exportHtml;window.fcExportProjectPDF=exportPdf;window.fcExportProjectDOCX=exportDocx;window.fcProjectReportHTML=reportHtml;
+window.fcTreeSvg=svgFor;window.fcExportProblemTreeSVG=()=>exportSvg('problem');window.fcExportObjectiveTreeSVG=()=>exportSvg('objective');window.fcOpenProblemTree=()=>openSvg('problem');window.fcOpenObjectiveTree=()=>openSvg('objective');window.fcExportProblemTreePDF=()=>treePdf('problem');window.fcExportObjectiveTreePDF=()=>treePdf('objective');window.fcExportProjectHTML=exportHtml;window.fcExportProjectPDF=()=>exportProfessionalDocument('pdf',exportPdf);window.fcExportProjectDOCX=()=>exportProfessionalDocument('docx',exportDocx);window.fcProjectReportHTML=reportHtml;window.fcProjectDocumentPayload=professionalDocumentPayload;window.fcGetDocumentGeneratorStatus=()=>({...documentGeneratorStatus});window.fcSetDocumentApiUrl=url=>{const cleanUrl=clean(url);if(cleanUrl)localStorage.setItem('fc_document_api_url',cleanUrl);else localStorage.removeItem('fc_document_api_url');return documentApiBase()};
 })();
