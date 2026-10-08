@@ -70,7 +70,7 @@ def rows(value: Any) -> list[dict[str, Any]]:
     return value if isinstance(value, list) else []
 
 
-def _sentence_chunks(value: Any, max_sentences: int = 4, max_words: int = 115) -> list[str]:
+def _sentence_chunks(value: Any, max_sentences: int = 4, max_words: int = 95) -> list[str]:
     """Split prose into balanced paragraphs while preserving the original wording."""
     text = clean(value)
     if text == POR_VERIFICAR:
@@ -78,16 +78,23 @@ def _sentence_chunks(value: Any, max_sentences: int = 4, max_words: int = 115) -
     sentences = [x.strip() for x in re.split(r"(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÜÑ0-9¿¡\[])", text) if x.strip()]
     if not sentences:
         return [text]
+    units: list[str] = []
+    for sentence in sentences:
+        if len(sentence.split()) > max_words:
+            clauses = [x.strip() for x in re.split(r"(?<=[;:])\s+", sentence) if x.strip()]
+            units.extend(clauses or [sentence])
+        else:
+            units.append(sentence)
     chunks: list[str] = []
     current: list[str] = []
     words = 0
-    for sentence in sentences:
-        sw = len(sentence.split())
-        if current and (len(current) >= max_sentences or words + sw > max_words):
+    for unit in units:
+        uw = len(unit.split())
+        if current and (len(current) >= max_sentences or words + uw > max_words):
             chunks.append(" ".join(current))
             current, words = [], 0
-        current.append(sentence)
-        words += sw
+        current.append(unit)
+        words += uw
     if current:
         chunks.append(" ".join(current))
     return chunks or [text]
