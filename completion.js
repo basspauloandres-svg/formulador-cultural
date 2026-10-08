@@ -58,7 +58,8 @@ function ensureS11(){
      const obj=(objectives().items||[]).find(o=>o.id===r.objectiveId)||{};
      const existing=old.filter(x=>x.resultId===r.id||(!x.resultId&&x.objectiveId===r.objectiveId));
      if(existing.length){
-       for(const x of existing)items.push({...x,id:x.id||x.activityId,activityId:x.activityId||x.id,objectiveId:r.objectiveId,objectiveText:r.objectiveText||x.objectiveText||'',causeId:x.causeId||obj.id||r.objectiveId,resultId:r.id,resultText:r.text,source:x.source||'histórico',provenance:x.provenance||'compatibilidad',updatedAt:x.updatedAt||null})
+       const freshForResult=activityProposals().filter(x=>x.resultId===r.id);
+       for(let i=0;i<existing.length;i++){const x=existing[i],fresh=freshForResult[i]||freshForResult[0],placeholder=window.fcWriting?.isPlaceholder?.(x.text),replacement=placeholder&&fresh?.text?fresh.text:x.text;items.push({...x,id:x.id||x.activityId,activityId:x.activityId||x.id,objectiveId:r.objectiveId,objectiveText:r.objectiveText||x.objectiveText||'',causeId:x.causeId||obj.id||r.objectiveId,resultId:r.id,resultText:r.text,text:replacement,confirmed:placeholder?false:!!x.confirmed,source:placeholder?'propuesta_sistema':(x.source||'histórico'),provenance:placeholder?'recuperacion_orientada':(x.provenance||'compatibilidad'),updatedAt:placeholder?new Date().toISOString():(x.updatedAt||null)})}
      }else items.push(...activityProposals().filter(x=>x.resultId===r.id))
    }
    for(const x of old){
