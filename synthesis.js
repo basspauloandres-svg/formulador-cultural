@@ -44,7 +44,7 @@ function pendingEvidence(){return structuredEvidence.filter(e=>e.verification_st
 function evidenceText(){return verifiedEvidence().map(e=>e.title||e.text).filter(Boolean)}
 function evidenceDisplay(){const verified=verifiedEvidence(),pending=pendingEvidence();if(!verified.length)return `[POR VERIFICAR]${pending.length?` · ${pending.length} registro(s) pendiente(s)`:''}`;const names=verified.slice(0,3).map(e=>e.title||e.text).join(' · ');return `${verified.length} verificada(s): ${names}${verified.length>3?' …':''}${pending.length?` · ${pending.length} pendiente(s)`:''}`}
 function looksLikeSolution(text){const clean=String(text||'').trim().toLowerCase();if(/^(falta de |ausencia de |carencia de )/.test(clean))return true;return /\b(requiere|necesita|debe|debería|implementar|crear|ofrecer|realizar|desarrollar|fortalecer|capacitar|taller(?:es)?|programa|proyecto|estrategia)\b/i.test(clean)}
-function sentence(v){const t=String(v||'').trim().replace(/[.]+$/,'');return t?t.charAt(0).toUpperCase()+t.slice(1):t}
+function sentence(v){const t=String(v||'').trim().replace(/[.!?;:]+$/,'');return t?t.charAt(0).toUpperCase()+t.slice(1):t}
 function delimit(text){let out=sentence(text);const p=population(),t=territory();if(p&&!out.toLowerCase().includes(p.toLowerCase()))out+=` en ${p}`;if(t&&!out.toLowerCase().includes(t.toLowerCase()))out+=` en ${t}`;return out}
 function reformulationCandidates(){
   const raw=central().trim(); if(!raw)return [];
@@ -76,8 +76,8 @@ function longDescription(){
  const c=central().trim(),p=population()||'[POR VERIFICAR]',t=territory()||'[POR VERIFICAR]',ev=evidenceText(),cs=causes(),es=effects();
  if(!c)return 'El problema central permanece [POR VERIFICAR].';
  const parts=[];
- parts.push(looksLikeSolution(c)?`La formulación actual del problema central («${c}») todavía parece expresar una solución o necesidad y requiere revisión antes de continuar.`:`El problema central definido es: ${c}.`);
- parts.push(`La población relacionada es ${p} y el territorio registrado corresponde a ${t}.`);
+ parts.push(looksLikeSolution(c)?`La formulación actual del problema central («${sentence(c)}») todavía parece expresar una solución o necesidad y requiere revisión antes de continuar.`:`El problema central definido es: ${sentence(c)}.`);
+ parts.push(`La población relacionada es ${sentence(p)} y el territorio registrado corresponde a ${sentence(t)}.`);
  parts.push(ev.length?`La evidencia verificada disponible incluye: ${ev.join('; ')}.`:'La evidencia que respalda esta formulación permanece [POR VERIFICAR].');
  parts.push(cs.length?`Las causas directas identificadas son: ${cs.join('; ')}.`:'Las causas directas permanecen [POR VERIFICAR].');
  parts.push(es.length?`Los efectos directos identificados son: ${es.join('; ')}.`:'Los efectos directos permanecen [POR VERIFICAR].');

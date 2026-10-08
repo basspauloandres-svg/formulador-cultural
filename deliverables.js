@@ -103,7 +103,7 @@ function reportHtml(){
 }
 function professionalDocumentPayload(){
  const obj=objectiveNodes().filter(x=>x.confirmed),central=obj.find(x=>x.zone==='central');
- const v=vesterSnapshot();
+ const v=vesterSnapshot(),coherence=window.fcGetCoherenceReport?.()||{score:0,checks:[]},review=window.fcGetReviewSnapshot?.()||{};
  return {
   title:p(draft?.S01?.nombre_del_proyecto),
   entity:p(draft?.S01?.entidad_u_organizacion),
@@ -115,6 +115,7 @@ function professionalDocumentPayload(){
   evidence:[draft?.S04?.evidencia_disponible,draft?.S04?.datos_por_verificar].map(clean).filter(Boolean).join('\n\n'),
   sources:p(draft?.S04?.fuentes),
   problem:p(draft?.S08?.enunciado),
+  problem_description:p(draft?.S08?.descripcion_borrador||draft?.S08?.synthesis_state?.description),
   strategy:p(rows(window.fcGetAlternatives).find(x=>x.selected&&x.confirmed)?.text),
   objective_general:p(central?.text),
   objectives:obj.filter(x=>x.zone==='direct_cause').map(x=>({id:x.id,text:x.text,zone:x.zone,parentId:x.parentId||null})),
@@ -127,7 +128,8 @@ function professionalDocumentPayload(){
   problem_tree:problemNodes(),
   objective_tree:obj,
   vester:{rows:v.rows,meanInfluence:v.meanInfluence,meanDependence:v.meanDependence},
-  coherence:{score:(window.fcGetCoherenceReport?.()||{}).score||0,summary:'La revisión interna del formulador reporta el estado vigente de coherencia y trazabilidad.'}
+  document_status:review.ready?'Proyecto listo para presentar':'Proyecto en revisión',
+  coherence:{score:coherence.score||0,checks:coherence.checks||[],summary:review.ready?'La revisión interna no reporta rupturas bloqueantes en la cadena principal.':'El proyecto conserva pendientes o relaciones todavía no evaluables; revise los controles siguientes antes de presentar.'}
  }
 }
 let documentGeneratorStatus={mode:'browser',connected:false,message:'Generador profesional Python no conectado.'};

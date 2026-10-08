@@ -129,6 +129,8 @@ def normalized_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "evidence": clean(payload.get("evidence")),
         "sources": clean(payload.get("sources")),
         "problem": clean(payload.get("problem")),
+        "problem_description": clean(payload.get("problem_description")),
+        "document_status": clean(payload.get("document_status") or "Proyecto en revisión"),
         "strategy": clean(payload.get("strategy")),
         "objective_general": clean(payload.get("objective_general")),
         "objectives": rows(payload.get("objectives")),
@@ -667,11 +669,11 @@ def generate_docx(payload: dict[str, Any]) -> bytes:
 
         sections: list[tuple[str, callable]] = [
             ("1. Contexto territorial, cultural y social", lambda: _docx_body_paragraph(doc, p["context"])),
-            ("2. Resumen ejecutivo", lambda: _docx_body_paragraph(doc, p["summary"])),
+            ("2. Resumen ejecutivo", lambda: (_docx_body_paragraph(doc, p["document_status"]), _docx_body_paragraph(doc, p["summary"]))),
             ("3. Población", lambda: _docx_body_paragraph(doc, p["population"])),
             ("4. Evidencia y antecedentes", lambda: (_docx_body_paragraph(doc, p["evidence"]), _docx_body_paragraph(doc, p["sources"], "Fuentes: "))),
             ("5. Priorización de situaciones · Matriz Vester", lambda: _docx_add_figure(doc, figures["vester"], "Figura 1. Plano de influencia y dependencia de la matriz Vester.")),
-            ("6. Planteamiento del problema", lambda: (_docx_body_paragraph(doc, p["problem"]), _docx_add_figure(doc, figures["problem"], "Figura 2. Árbol de problemas.", width_inches=6.45, standalone=False))),
+            ("6. Planteamiento del problema", lambda: (_docx_body_paragraph(doc, p["problem"]), _docx_body_paragraph(doc, p["problem_description"], "Descripción sustentada: "), _docx_add_figure(doc, figures["problem"], "Figura 2. Árbol de problemas.", width_inches=6.45, standalone=False))),
             ("7. Objetivos", lambda: (
                 _docx_body_paragraph(doc, p["objective_general"], "Objetivo general: "),
                 _docx_table(doc, ["Objetivos específicos"], [[o.get("text", o)] for o in p["objectives"]]) if p["objectives"] else None,
@@ -696,7 +698,7 @@ def generate_docx(payload: dict[str, Any]) -> bytes:
                 _docx_resource_entries(doc, p["budget"])
             )),
             ("14. Riesgos y respuestas", lambda: _docx_table(doc, ["Origen", "Riesgo", "Probabilidad", "Impacto", "Nivel", "Prevención", "Contingencia", "Responsable"], [[r.get("linkedObjectType"), r.get("event"), r.get("probability"), r.get("impact"), r.get("riskLevel"), r.get("preventiveResponse"), r.get("contingencyResponse"), r.get("owner")] for r in p["risks"]])),
-            ("15. Coherencia y trazabilidad", lambda: _docx_body_paragraph(doc, clean(p["coherence"].get("summary") or f"Índice orientativo: {p['coherence'].get('score', POR_VERIFICAR)}"))),
+            ("15. Coherencia y trazabilidad", lambda: _docx_coherence_section(doc, p["coherence"])),
             ("16. Fuentes y anexos", lambda: _docx_source_entries(doc, p["sources"])),
         ]
 
@@ -804,6 +806,33 @@ def _pdf_source_entries(story: list[Any], source_text: Any, styles) -> None:
         story.append(Paragraph(f"<b>{n}.</b> {xml_escape(entry)}", styles["FC_Record"]))
 
 
+def _coherence_rows(coherence: dict[str, Any]) -> list[list[Any]]:
+    return [[
+        item.get("dimension"),
+        item.get("label"),
+        item.get("status"),
+        item.get("message"),
+    ] for item in rows(coherence.get("checks"))]
+
+
+def _docx_coherence_section(doc: Document, coherence: dict[str, Any]) -> None:
+    _docx_body_paragraph(doc, clean(coherence.get("summary")))
+    checks = _coherence_rows(coherence)
+    if checks:
+        _docx_table(doc, ["Dimensión", "Control", "Estado", "Diagnóstico"], checks, [3.0, 4.8, 3.2, 7.0])
+    else:
+        _docx_body_paragraph(doc, POR_VERIFICAR)
+
+
+def _pdf_coherence_section(story: list[Any], coherence: dict[str, Any], styles) -> None:
+    story.append(Paragraph(xml_escape(clean(coherence.get("summary"))), styles["FC_Body"]))
+    checks = _coherence_rows(coherence)
+    if checks:
+        story.append(_pdf_table(["Dimensión", "Control", "Estado", "Diagnóstico"], checks, [30*mm, 43*mm, 30*mm, 62*mm]))
+    else:
+        story.append(Paragraph(POR_VERIFICAR, styles["FC_Body"]))
+
+
 def _pdf_resource_entries(story: list[Any], budget: list[dict[str, Any]], styles) -> None:
     if not budget:
         story.append(Paragraph(POR_VERIFICAR, styles["FC_Body"]))
@@ -880,7 +909,7 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
                 story.append(Spacer(1, 4 * mm))
 
         add_h1("1. Contexto territorial, cultural y social"); add_body(p["context"])
-        add_h1("2. Resumen ejecutivo"); add_body(p["summary"])
+        add_h1("2. Resumen ejecutivo"); add_body(p["document_status"]); add_body(p["summary"])
         add_h1("3. Población"); add_body(p["population"])
         add_h1("4. Evidencia y antecedentes"); add_body(p["evidence"]); add_body("Fuentes: " + p["sources"])
         story.append(PageBreak())
@@ -890,7 +919,7 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
                                     [[r.get("text"), r.get("influence"), r.get("dependence"), r.get("quadrant")] for r in p["vester"]["rows"]],
                                     [85*mm, 25*mm, 25*mm, 28*mm]))
         story.append(PageBreak())
-        add_h1("6. Planteamiento del problema"); add_body(p["problem"]); add_img(figs["problem"], "Figura 2. Árbol de problemas.")
+        add_h1("6. Planteamiento del problema"); add_body(p["problem"]); add_body("Descripción sustentada: " + p["problem_description"]); add_img(figs["problem"], "Figura 2. Árbol de problemas.")
         story.append(PageBreak())
         add_h1("7. Objetivos"); add_body("Objetivo general: " + p["objective_general"])
         if p["objectives"]:
@@ -918,7 +947,7 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
         _pdf_resource_entries(story, p["budget"], styles)
         add_h1("14. Riesgos y respuestas")
         story.append(_pdf_table(["Origen","Riesgo","Prob.","Impacto","Nivel","Prevención","Contingencia","Responsable"], [[r.get("linkedObjectType"),r.get("event"),r.get("probability"),r.get("impact"),r.get("riskLevel"),r.get("preventiveResponse"),r.get("contingencyResponse"),r.get("owner")] for r in p["risks"]], [18*mm,34*mm,14*mm,14*mm,14*mm,30*mm,30*mm,20*mm]))
-        add_h1("15. Coherencia y trazabilidad"); add_body(clean(p["coherence"].get("summary") or f"Índice orientativo: {p['coherence'].get('score', POR_VERIFICAR)}"))
+        add_h1("15. Coherencia y trazabilidad"); _pdf_coherence_section(story, p["coherence"], styles)
         add_h1("16. Fuentes y anexos"); _pdf_source_entries(story, p["sources"], styles)
 
         doc.build(story)
