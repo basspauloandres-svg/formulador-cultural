@@ -121,3 +121,9 @@ if(!reviewGuide.includes('saveReviewProgress'))fail('S16 no tiene persistencia v
 
 if(!completion.includes('¿Qué significa?')||!completion.includes('¿Qué debes escribir?')||!completion.includes('Ejemplo para orientarte'))fail('S12 no explica cada campo técnico en lenguaje de principiante');
 if(!semantic.includes('indicatorFieldGuide'))fail('No existe guía contextual por campo del indicador');
+
+const deliverableFooter=fs.readFileSync('deliverables.js','utf8');
+if(!deliverableFooter.includes("DOC_FOOTER='Formulador Cultural · Desarrollo por Paulo Olarte'"))fail('Las exportaciones no conservan la huella documental acordada');
+if(!deliverableFooter.includes('footer1.xml')||!deliverableFooter.includes('docFooterXml'))fail('El DOCX no incorpora la huella en el pie real del documento');
+if(!deliverableFooter.includes('pdf.text(DOC_FOOTER'))fail('El PDF no imprime la huella en cada página');
+if(!deliverableFooter.includes('doc-footer'))fail('El HTML no incorpora la huella documental');
