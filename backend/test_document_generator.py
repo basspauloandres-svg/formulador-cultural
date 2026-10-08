@@ -2,7 +2,7 @@ from io import BytesIO
 from zipfile import ZipFile
 import xml.etree.ElementTree as ET
 
-from backend.document_generator import DOC_FOOTER, _sentence_chunks, _source_entries, _tree_figure, _wrap_node_text, generate_docx, generate_pdf
+from backend.document_generator import DOC_FOOTER, _sentence_chunks, _source_entries, _tree_figure, _wrap_node_text, clean, generate_docx, generate_pdf
 
 
 def sample_payload():
@@ -263,3 +263,9 @@ def test_same_context_has_no_forced_page_breaks_inside_body():
                 if br.attrib.get("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}type") == "page":
                     forced_breaks.append(br)
         assert not forced_breaks
+
+
+def test_clean_preserves_numeric_zero():
+    assert clean(0) == "0"
+    assert clean(None) == "[POR VERIFICAR]"
+    assert clean("") == "[POR VERIFICAR]"
