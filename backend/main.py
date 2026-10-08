@@ -1,6 +1,7 @@
 from __future__ import annotations
 from uuid import UUID
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from io import BytesIO
 from pydantic import BaseModel, Field
@@ -8,7 +9,20 @@ from domain import Project, VesterRelation, calculate_vester
 from repository_memory import InMemoryProjectRepository
 from document_generator import generate_docx, generate_pdf
 
-app = FastAPI(title="Formulador Cultural API", version="0.2.0")
+app = FastAPI(title="Formulador Cultural API", version="0.3.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://basspauloandres-svg.github.io",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+    ],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 repo = InMemoryProjectRepository()
 
 class ProjectCreate(BaseModel):
