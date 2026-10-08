@@ -1,7 +1,8 @@
 from io import BytesIO
 from zipfile import ZipFile
+import xml.etree.ElementTree as ET
 
-from backend.document_generator import DOC_FOOTER, _sentence_chunks, _tree_figure, _wrap_node_text, generate_docx, generate_pdf
+from backend.document_generator import DOC_FOOTER, _sentence_chunks, _source_entries, _tree_figure, _wrap_node_text, generate_docx, generate_pdf
 
 
 def sample_payload():
@@ -158,3 +159,30 @@ def test_long_content_exports_without_table_overflow_failure():
     assert docx[:2] == b"PK"
     assert pdf.startswith(b"%PDF")
     assert len(pdf) > 20000
+
+
+def test_sources_are_split_into_separate_support_entries():
+    text = "Fuente institucional uno. Documento oficial dos. Registro administrativo tres."
+    entries = _source_entries(text)
+    assert entries == [
+        "Fuente institucional uno.",
+        "Documento oficial dos.",
+        "Registro administrativo tres.",
+    ]
+
+
+def test_docx_sources_are_not_one_continuous_paragraph():
+    payload = sample_payload()
+    payload["sources"] = "Fuente institucional uno. Documento oficial dos. Registro administrativo tres."
+    data = generate_docx(payload)
+    with ZipFile(BytesIO(data)) as z:
+        xml = z.read("word/document.xml").decode("utf-8")
+        assert "16. Fuentes y anexos" in xml
+        root = ET.fromstring(xml)
+        ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+        paragraphs = ["".join(t.text or "" for t in p.findall(".//w:t", ns)) for p in root.findall(".//w:p", ns)]
+        assert "1. Fuente institucional uno." in paragraphs
+        assert "2. Documento oficial dos." in paragraphs
+        assert "3. Registro administrativo tres." in paragraphs
+        assert "Figura 2. Árbol de problemas." in xml
+        assert "Figura 3. Árbol de objetivos." in xml
