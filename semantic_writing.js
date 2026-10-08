@@ -164,6 +164,10 @@ function activityWritingReview(value){
  if(/\b(?:con el fin de|con el prop[oó]sito de)\b/i.test(t)&&words.length>20)issues.push('Evita repetir la justificación del proyecto dentro de la actividad.');
  return {ok:issues.length===0,issues,wordCount:words.length}
 }
+function activitySynthesisFromResult(result){
+ const object=activityObjectFromResult(result);
+ return finish('Implementar acciones orientadas a '+object)
+}
 function activityNeedsSynthesis(value,result=''){
  const t=clean(value),r=clean(result),words=t.split(/\s+/).filter(Boolean);
  if(!t||isPlaceholder(t))return true;
@@ -355,5 +359,5 @@ function indicatorQuality(x){
 }
 
 function isPlaceholder(v){return /^\s*\[POR (REVISAR|VERIFICAR|DEFINIR)\]/i.test(String(v||''))}
-window.fcWriting={clean,compactPresentationText,resultWritingReview,objectiveProposals,objectiveWritingReview,looksLikeActivity,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activityWritingReview,activityNeedsSynthesis,activityObjectFromResult,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorFieldAssist,indicatorFieldGuide,indicatorQuality,isPlaceholder};
+window.fcWriting={clean,compactPresentationText,resultWritingReview,objectiveProposals,objectiveWritingReview,looksLikeActivity,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activityWritingReview,activitySynthesisFromResult,activityNeedsSynthesis,activityObjectFromResult,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorFieldAssist,indicatorFieldGuide,indicatorQuality,isPlaceholder};
 })();

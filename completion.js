@@ -51,7 +51,7 @@ function activityProposals(){
 }
 function ensureS11(){
  let s=read('S11'),alt=selectedAlternative(),res=confirmedResults().filter(r=>alt?.sourceIds?.includes(r.objectiveId));
- const sig=alt?`${alt.id}:${(alt.sourceIds||[]).join(',')}|${res.map(r=>r.id+':'+r.text).join('|')}`:'';
+ const sig=alt?`s11-migration-v2|${alt.id}:${(alt.sourceIds||[]).join(',')}|${res.map(r=>r.id+':'+r.text).join('|')}`:'';
  if(!s.items||s.sourceSignature!==sig){
    const old=s.items||[],validResultIds=new Set(res.map(r=>r.id)),items=[];
    for(const r of res){
@@ -59,7 +59,13 @@ function ensureS11(){
      const existing=old.filter(x=>x.resultId===r.id||(!x.resultId&&x.objectiveId===r.objectiveId));
      if(existing.length){
        const freshForResult=activityProposals().filter(x=>x.resultId===r.id);
-       for(let i=0;i<existing.length;i++){const x=existing[i],fresh=freshForResult[i]||freshForResult[0],placeholder=window.fcWriting?.isPlaceholder?.(x.text),generatedSource=!x.source||['histórico','compatibilidad','propuesta_sistema','sistema'].includes(x.source),needsSynthesis=!!window.fcWriting?.activityNeedsSynthesis?.(x.text,r.text),repair=(placeholder||(generatedSource&&needsSynthesis))&&fresh?.text,replacement=repair?fresh.text:x.text;items.push({...x,id:x.id||x.activityId,activityId:x.activityId||x.id,objectiveId:r.objectiveId,objectiveText:r.objectiveText||x.objectiveText||'',causeId:x.causeId||obj.id||r.objectiveId,resultId:r.id,resultText:r.text,text:replacement,confirmed:repair?false:!!x.confirmed,source:repair?'propuesta_sistema':(x.source||'histórico'),provenance:repair?'sintesis_actividad_heredada':(x.provenance||'compatibilidad'),updatedAt:repair?new Date().toISOString():(x.updatedAt||null)})}
+       for(let i=0;i<existing.length;i++){
+         const x=existing[i],fresh=freshForResult[i]||freshForResult[0],placeholder=window.fcWriting?.isPlaceholder?.(x.text),generatedSource=!x.source||['histórico','compatibilidad','propuesta_sistema','sistema'].includes(x.source),needsSynthesis=!!window.fcWriting?.activityNeedsSynthesis?.(x.text,r.text);
+         const synthesized=generatedSource&&needsSynthesis?window.fcWriting?.activitySynthesisFromResult?.(r.text):'';
+         const replacement=placeholder&&fresh?.text?fresh.text:(synthesized||x.text);
+         const repaired=String(replacement||'')!==String(x.text||'');
+         items.push({...x,id:x.id||x.activityId,activityId:x.activityId||x.id,objectiveId:r.objectiveId,objectiveText:r.objectiveText||x.objectiveText||'',causeId:x.causeId||obj.id||r.objectiveId,resultId:r.id,resultText:r.text,text:replacement,confirmed:placeholder?false:!!x.confirmed,source:repaired?'propuesta_sistema':(x.source||'histórico'),provenance:repaired?'sintesis_actividad_heredada':(x.provenance||'compatibilidad'),updatedAt:repaired?new Date().toISOString():(x.updatedAt||null)})
+       }
      }else items.push(...activityProposals().filter(x=>x.resultId===r.id))
    }
    for(const x of old){
@@ -157,7 +163,7 @@ function ensureS12(){
        if(!prev&&idx===0)prev=old.find(o=>!used.has(o)&&(o.linkedType||'Actividad')===x.type&&(o.linkedId||o.activityId||o.resultId||o.objectiveId)===x.source.id&&!o.indicatorFamily);
        const fresh=indicatorProposal(x.source,seq++,x.type,tpl);
        if(prev){
-         used.add(prev);const changed=String(prev.linkedText||'')!==String(text||''),materialChange=changed&&editorialSource(prev.linkedText)!==editorialSource(text),placeholder=window.fcWriting?.isPlaceholder?.(prev.indicator);
+         used.add(prev);const changed=String(prev.linkedText||'')!==String(text||''),migrationOnly=x.type==='Actividad'&&x.source?.provenance==='sintesis_actividad_heredada',materialChange=changed&&!migrationOnly&&editorialSource(prev.linkedText)!==editorialSource(text),placeholder=window.fcWriting?.isPlaceholder?.(prev.indicator);
          const refreshed=placeholder&&!window.fcWriting?.isPlaceholder?.(fresh.indicator);
          const derived={};for(const k of ['formula','unidad','lineaBase','meta'])if(window.fcWriting?.isPlaceholder?.(prev[k])&&!window.fcWriting?.isPlaceholder?.(fresh[k]))derived[k]=fresh[k];
          const selected=prev.selected!==undefined?!!prev.selected:(!!prev.confirmed||fresh.selected);

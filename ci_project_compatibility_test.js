@@ -56,6 +56,13 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(completionGuidanceSource.includes("Cómo resolverlo"),'S12 no ofrece orientación operativa para resolver campos técnicos pendientes');
  assert(completionGuidanceSource.includes("indicatorResolutionHint"),'S12 perdió la guía específica por campo técnico');
 
+ const completionMigrationSource=fs.readFileSync('completion.js','utf8');
+ assert(completionMigrationSource.includes("s11-migration-v2"),'S11 no fuerza la migración de actividades históricas');
+ assert(completionMigrationSource.includes("activitySynthesisFromResult"),'S11 no sintetiza actividades históricas extensas');
+ assert(completionMigrationSource.includes("migrationOnly=x.type==='Actividad'"),'S12 desconfirma indicadores por una migración editorial de actividad');
+ const planningMigrationSource=fs.readFileSync('planning.js','utf8');
+ assert(planningMigrationSource.includes("compactLabel(y.activityText,16)"),'La tabla S13 vuelve a mostrar etiquetas de actividad demasiado extensas');
+
  if(errors.length)throw errors[0];
 
  let cleaned=JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1'));
