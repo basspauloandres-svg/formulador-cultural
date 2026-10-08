@@ -40,6 +40,16 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
 (async()=>{
  await wait(120);
+ const completionSource=fs.readFileSync('completion.js','utf8');
+ assert(completionSource.includes("data-ind-skip"),'S12 no permite descartar propuestas de la batería');
+ assert(completionSource.includes("selected=true"),'S12 no registra explícitamente los indicadores elegidos');
+ assert(completionSource.includes("definitionStatus='NO_SELECCIONADO'"),'S12 no distingue propuestas descartadas de indicadores pendientes');
+ const guidedSource=fs.readFileSync('guided_experience.js','utf8');
+ assert(guidedSource.includes("covered===groups.size"),'El recorrido sigue exigiendo confirmar toda la batería de S12');
+ assert(guidedSource.includes("prior.some(x=>state(x)!=='complete')"),'S16 no retrocede cuando una dependencia previa deja de estar completa');
+ const coherenceSource=fs.readFileSync('coherence_engine.js','utf8');
+ assert(coherenceSource.includes("x.selected!==false"),'La coherencia sigue tratando propuestas no seleccionadas como indicadores obligatorios');
+
  if(errors.length)throw errors[0];
 
  let cleaned=JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1'));
