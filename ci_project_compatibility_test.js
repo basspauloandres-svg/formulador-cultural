@@ -63,6 +63,15 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  const planningMigrationSource=fs.readFileSync('planning.js','utf8');
  assert(planningMigrationSource.includes("compactLabel(y.activityText,16)"),'La tabla S13 vuelve a mostrar etiquetas de actividad demasiado extensas');
 
+ const completionApprovalSource=fs.readFileSync('completion.js','utf8');
+ assert(completionApprovalSource.includes('Aprobar este indicador'),'S12 no ofrece aprobación explícita por indicador');
+ assert(completionApprovalSource.includes('Reabrir aprobación'),'S12 no permite reabrir una aprobación individual');
+ assert(completionApprovalSource.includes('indicator-approval-progress'),'S12 no muestra el avance de aprobación por batería');
+ const reviewDualSource=fs.readFileSync('review_dashboard.js','utf8');
+ assert(reviewDualSource.includes('Ausencias y pendientes'),'S16 no separa el control de ausencias');
+ assert(reviewDualSource.includes('Coherencia metodológica'),'S16 no separa el control de coherencia');
+ assert(reviewDualSource.includes('coherenceIssues'),'S16 no calcula rupturas de coherencia de forma independiente');
+
  if(errors.length)throw errors[0];
 
  let cleaned=JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1'));
