@@ -142,18 +142,22 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(alts.length>=1,'S10 no produjo alternativas tras confirmar objetivos');
  const first=alts[0];
  let altText=w.document.querySelector('[data-alt-text="'+first.id+'"]');
- if(altText&&/^\s*\[POR REVISAR\]/i.test(altText.value)){altText.value='Estrategia verificable de prueba para alcanzar el objetivo específico.';altText.dispatchEvent(new w.Event('change',{bubbles:true}));await wait(25)}
+ if(altText){altText.value='Estrategia personalizada PF02 de prueba.';altText.dispatchEvent(new w.Event('input',{bubbles:true}));await wait(25)}
+ let altNote=w.document.querySelector('[data-alt-note="'+first.id+'"]');if(altNote){altNote.value='Nota personalizada PF02';altNote.dispatchEvent(new w.Event('input',{bubbles:true}));await wait(15)}
  let confirm=w.document.querySelector('[data-alt-confirm="'+first.id+'"]');assert(confirm,'No existe confirmación de alternativa');confirm.click();await wait(25);
  let select=w.document.querySelector('[data-alt-select="'+first.id+'"]');assert(select,'No existe selección de alternativa');select.click();await wait(40);
+ assert(w.fcGetAlternatives()[0].text==='Estrategia personalizada PF02 de prueba.','S10 sustituyó la redacción personalizada al elegir');
+ assert(w.fcGetAlternatives()[0].note==='Nota personalizada PF02','S10 perdió la nota personalizada al elegir');
 
  await w.fcNavigate('S11');await wait(100);
  let resultBtn=w.document.querySelector('[data-result-confirm]');
  assert(resultBtn,'S11 no presentó resultados para aprobación');
  let resultText=w.document.querySelector('[data-result-text]');
- if(resultText&&/^\s*\[POR REVISAR\]/i.test(resultText.value)){resultText.value='Resultado verificable redactado manualmente para la prueba.';resultText.dispatchEvent(new w.Event('change',{bubbles:true}));await wait(20)}
+ if(resultText){resultText.value='Ocho sesiones comunitarias realizadas para 30 jóvenes.';resultText.dispatchEvent(new w.Event('input',{bubbles:true}));await wait(20)}
  resultBtn=w.document.querySelector('[data-result-confirm]');resultBtn.click();await wait(100);
  const results=w.fcGetResults().filter(x=>x.confirmed);
  assert(results.length>=1,'No quedó un resultado confirmado');
+ assert(results[0].text==='Ocho sesiones comunitarias realizadas para 30 jóvenes.','S11 sustituyó el resultado manual antes de aprobar');
  const activities=w.fcGetActivities();
  assert(activities.length>=1,'No se generaron actividades desde el resultado confirmado');
  assert(activities.every(x=>x.resultId),'Existe actividad propuesta sin resultId');
@@ -195,9 +199,11 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
  for(let i=0;i<indicators.length;i++){
    let current=w.fcGetIndicators()[i],ta=w.document.querySelector('[data-ind-field="'+current.id+':indicator"]');
+   if(i===0&&ta){ta.value='Porcentaje PF02 de participantes con asistencia suficiente';ta.dispatchEvent(new w.Event('input',{bubbles:true}));await wait(20);for(const [k,v] of Object.entries({formula:'(participantes que cumplen / 30) x 100',unidad:'%',lineaBase:'40%',meta:'80%',medioVerificacion:'Lista de asistencia',periodicidad:'Semanal y cierre',responsable:'Coordinación PF02',plazo:'27/12/2026'})){const el=w.document.querySelector('[data-ind-field="'+current.id+':'+k+'"]');if(el){el.value=v;el.dispatchEvent(new w.Event('input',{bubbles:true}))}}await wait(25)}
    if(ta&&/^\s*\[POR REVISAR\]/i.test(ta.value)){ta.value='Indicador verificable de prueba '+(i+1);ta.dispatchEvent(new w.Event('change',{bubbles:true}));await wait(25)}
    const use=w.document.querySelector('[data-ind-confirm]');assert(use,'S12 no muestra el control específico de aprobación para el indicador '+(i+1));use.click();await wait(35);
    assert(w.fcGetIndicators()[i].confirmed,'S12 no registró la aprobación individual del indicador '+(i+1));
+   if(i===0){const z=w.fcGetIndicators()[i];assert(z.indicator==='Porcentaje PF02 de participantes con asistencia suficiente','S12 sustituyó la definición personalizada');assert(z.meta==='80%'&&z.lineaBase==='40%'&&z.responsable==='Coordinación PF02','S12 perdió la ficha técnica personalizada')}
    const next=w.document.querySelector('#indNext');assert(next,'S12 no muestra navegación después de aprobar el indicador '+(i+1));next.click();await wait(45);
   }
   assert(w.localStorage.getItem('fc_active')==='S13'||w.document.querySelector('#counter')?.textContent.startsWith('S13'),'S12 no avanzó a S13 después de aprobar y recorrer todos los indicadores');
