@@ -94,6 +94,37 @@ function hash(snapshot){
   return fnv1a(stable(s))
 }
 
+// Auditoría reproducible, estrictamente de solo lectura, de vínculos S10–S15.
+function integrityReport(snapshot){
+  const s=snapshot||build(),d=s.derived||{},problems=[];
+  const list=v=>Array.isArray(v)?v:[];
+  const ids=v=>new Set(list(v).map(x=>String(x?.id||'')));
+  const results=ids(d.results),activities=ids(d.activities);
+  const objectives=ids(d.objectives?.items);
+  const add=(section,kind,id,ref)=>problems.push({section,kind,id:String(id||''),reference:String(ref||''),status:'POR_VERIFICAR'});
+  for(const a of list(d.activities)){
+    if(a.resultId&&!results.has(String(a.resultId)))add('S11','RESULTADO_AUSENTE',a.id,a.resultId);
+    if(a.objectiveId&&!objectives.has(String(a.objectiveId)))add('S11','OBJETIVO_AUSENTE',a.id,a.objectiveId);
+  }
+  for(const row of list(d.schedule))if(row.activityId&&!activities.has(String(row.activityId)))add('S13','ACTIVIDAD_AUSENTE',row.id,row.activityId);
+  for(const row of list(d.budget))if(row.activityId&&!activities.has(String(row.activityId)))add('S14','ACTIVIDAD_AUSENTE',row.id,row.activityId);
+  for(const [id,status] of Object.entries(d.budget_state?.activityStatus||{})){
+    if(!activities.has(String(id)))add('S14','ESTADO_FINANCIERO_HUERFANO',id,status);
+  }
+  for(const row of list(d.risks)){
+    if(row.linkedObjectType==='Actividad'&&row.linkedObjectId&&!activities.has(String(row.linkedObjectId)))add('S15','ACTIVIDAD_AUSENTE',row.id,row.linkedObjectId);
+    if(row.linkedObjectType==='Resultado'&&row.linkedObjectId&&!results.has(String(row.linkedObjectId)))add('S15','RESULTADO_AUSENTE',row.id,row.linkedObjectId);
+  }
+  for(const [key,value] of Object.entries(d.risk_state?.assessments||{})){
+    const [kind,id]=key.split(':');
+    if(kind==='activity'&&!activities.has(id))add('S15','EVALUACION_ACTIVIDAD_HUERFANA',key,value);
+    if(kind==='result'&&!results.has(id))add('S15','EVALUACION_RESULTADO_HUERFANA',key,value);
+  }
+  return deepFreeze({schema:'project_integrity_report_v1',project_id:s.project?.project_id||null,snapshot_hash:hash(s),ok:problems.length===0,issues:problems});
+}
+window.fcGetProjectIntegrityReport=()=>integrityReport(build());
+window.fcAuditProjectSnapshot=integrityReport;
+
 window.fcGetProjectSnapshot=build;
 window.fcGetProjectSnapshotHash=()=>hash(build());
 window.fcProjectSnapshotStableStringify=stable;
