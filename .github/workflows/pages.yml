@@ -13,7 +13,8 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages-v2
+  # Aislar cada rama/PR para que las pruebas no cancelen el despliegue de main.
+  group: pages-v2-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
