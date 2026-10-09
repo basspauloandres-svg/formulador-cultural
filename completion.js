@@ -35,11 +35,23 @@ function writingProposals(x){
 function ensureS10(){
  let s=read('S10'),means=confirmedMeans(),sig=means.map(x=>`${x.id}:${x.text}`).join('|');
  if(!means.length){
-   if(Array.isArray(s.items)&&s.items.length){s={...s,items:[],sourceSignature:'',archivedItems:[...(s.archivedItems||[]),...s.items.map(x=>({...x,archived:true,archiveReason:'sin_objetivo_especifico_confirmado',archivedAt:new Date().toISOString()}))].slice(-250),updatedAt:new Date().toISOString()};write('S10',s)}
+   // La falta temporal de dependencias no autoriza borrar alternativas registradas.
    return s
  }
  if(!s.items||s.sourceSignature!==sig){
-   s={...s,sourceSignature:sig,items:makeAlternatives(),updatedAt:null};write('S10',s)
+   const proposals=makeAlternatives(),existing=Array.isArray(s.items)?s.items:[];
+   // La identidad de la alternativa depende de los objetivos vinculados, no de su posición.
+   const sourceKey=x=>(x.sourceIds||[]).slice().sort().join('|');
+   const existingKeys=new Set(existing.map(sourceKey)),usedIds=new Set(existing.map(x=>x.id));
+   let nextId=1;
+   const additions=proposals.filter(x=>!existingKeys.has(sourceKey(x))).map(x=>{
+     while(usedIds.has('A'+nextId))nextId++;
+     const id='A'+nextId++;usedIds.add(id);
+     return {...x,id,selected:false,confirmed:false}
+   });
+   const activeKeys=new Set(proposals.map(sourceKey));
+   const retained=existing.map(x=>activeKeys.has(sourceKey(x))?x:{...x,requiresReview:true,reviewReason:'objetivo_no_disponible'});
+   s={...s,sourceSignature:sig,items:[...retained,...additions],requiresReview:retained.some(x=>x.requiresReview),updatedAt:null};write('S10',s)
  }
  return s
 }
@@ -58,6 +70,8 @@ function activityProposals(){
 function ensureS11(){
  let s=read('S11'),alt=selectedAlternative(),res=confirmedResults().filter(r=>alt?.sourceIds?.includes(r.objectiveId));
  const sig=alt?`s11-migration-v2|${alt.id}:${(alt.sourceIds||[]).join(',')}|${res.map(r=>r.id+':'+r.text).join('|')}`:'';
+ // Dependencias vacías o pendientes requieren revisión explícita, no reconciliación destructiva.
+ if((!alt||!res.length)&&Array.isArray(s.items)&&s.items.length)return s;
  if(!s.items||s.sourceSignature!==sig){
    const old=s.items||[],validResultIds=new Set(res.map(r=>r.id)),items=[];
    for(const r of res){
@@ -75,6 +89,7 @@ function ensureS11(){
      }else items.push(...activityProposals().filter(x=>x.resultId===r.id))
    }
    for(const x of old){
+     if(!items.some(y=>y.id===x.id)&&x.resultId&&!validResultIds.has(x.resultId))items.push({...x,requiresReview:true,reviewReason:'resultado_no_disponible'});
      if(x.status==='risk_response'&&x.resultId&&validResultIds.has(x.resultId)&&!items.some(y=>y.id===x.id))items.push({...x,activityId:x.activityId||x.id})
      else if(!x.resultId&&!x.objectiveId&&!items.some(y=>y.id===x.id))items.push({...x,activityId:x.activityId||x.id,status:x.status||'manual_sin_vinculo',confirmed:false})
    }
@@ -157,6 +172,7 @@ function indicatorSources(){
 }
 function ensureS12(){
  let s=read('S12');const src=indicatorSources(),sig='s12-context-v3|'+src.map(x=>`${x.type}:${x.source.id}:${x.source.text}`).join('|');
+ if(!src.length&&Array.isArray(s.items)&&s.items.length)return s;
  if(!s.items||s.sourceSignature!==sig){
    const old=s.items||[],used=new Set(),items=[];let seq=0;
    for(const x of src){
@@ -179,7 +195,7 @@ function ensureS12(){
    }
    const removed=old.filter(o=>!used.has(o)).map(o=>({...o,confirmed:false,stale:true,status:'desactualizado',verificationStatus:'REQUIERE_REVISIÓN'}));
    items.forEach(normalizeIndicatorState);
-   s={...s,sourceSignature:sig,items,staleItems:[...(s.staleItems||[]),...removed].slice(-100),updatedAt:null};write('S12',s)
+   s={...s,sourceSignature:sig,items,staleItems:[...(s.staleItems||[]),...removed],updatedAt:null};write('S12',s)
  }
  let normalized=false;(s.items||[]).forEach(x=>{if(x.selected===undefined){x.selected=!!x.confirmed||x.linkedType!=='Actividad'||x.indicatorFamily==='cumplimiento';normalized=true}const d=x.selected?(x.confirmed?'DEFINIDO':'PENDIENTE'):'NO_SELECCIONADO',t=indicatorQuality(x).ok?'COMPLETA':'PENDIENTE';if(x.definitionStatus!==d||x.technicalStatus!==t){x.definitionStatus=d;x.technicalStatus=t;normalized=true}});
  if(normalized)write('S12',s);

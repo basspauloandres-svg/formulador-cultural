@@ -3,6 +3,8 @@ name: Publicar prototipo
 on:
   push:
     branches: ["main", "audit/**", "ux/**"]
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:

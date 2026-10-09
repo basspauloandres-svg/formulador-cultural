@@ -20,6 +20,7 @@ function riskWritingIssues(r){
 }
 function scheduleState(){
  let s=read('S13','schedule_state'),src=activities(),oldItems=s.items||[],old=new Map(oldItems.map(x=>[x.activityId,x])),sig=src.map(x=>x.id+':'+x.text).join('|');
+ if(!src.length&&oldItems.length)return s;
  if(!s.items||s.sourceSignature!==sig){
   const srcMap=new Map(src.map(a=>[a.id,a])),ordered=[];
   for(const prev of oldItems){const a=srcMap.get(prev.activityId);if(a){ordered.push(a);srcMap.delete(prev.activityId)}}
@@ -75,7 +76,8 @@ function renderS13(){
 }
 function budgetState(){
  let s=read('S14','budget_state'),src=activities(),sig=src.map(x=>x.id+':'+x.text).join('|');s.items=s.items||[];s.activityStatus=s.activityStatus||{};
- if(s.sourceSignature!==sig){const ids=new Set(src.map(x=>x.id));s.items=s.items.filter(x=>ids.has(x.activityId));for(const a of src)if(!s.activityStatus[a.id])s.activityStatus[a.id]='pending';s.sourceSignature=sig;write('S14','budget_state',s)}return s
+ if(!src.length&&(s.items.length||Object.keys(s.activityStatus).length))return s;
+ if(s.sourceSignature!==sig){const ids=new Set(src.map(x=>x.id));s.items=s.items.map(x=>ids.has(x.activityId)?x:{...x,requiresReview:true,reviewReason:'actividad_no_disponible'});for(const a of src)if(!s.activityStatus[a.id])s.activityStatus[a.id]='pending';s.sourceSignature=sig;write('S14','budget_state',s)}return s
 }
 function addBudgetItem(s,a){
  const n=(s.items||[]).filter(x=>x.activityId===a.id).length+1;s.items.push({id:'B-'+a.id+'-'+n,activityId:a.id,activityText:a.text,resourceType:'Materiales',description:'',unit:'unidad',quantity:1,frequency:1,unitCost:'',totalCost:0,fundingSource:'[POR VERIFICAR]',costType:'Monetario',confirmed:false})
@@ -122,7 +124,8 @@ function riskTargets(){
 }
 function riskState(){
  let s=read('S15','risk_state'),targets=riskTargets(),sig=targets.map(x=>x.id+':'+x.text).join('|');s.items=s.items||[];s.assessments=s.assessments||{};
- if(s.sourceSignature!==sig){const ids=new Set(targets.map(x=>x.id));s.items=s.items.filter(x=>ids.has(x.targetId));for(const t of targets){if(!s.assessments[t.id])s.assessments[t.id]='pending';const existing=s.items.find(x=>x.targetId===t.id);if(existing){existing.linkedObjectType=t.type;existing.linkedObjectId=t.sourceId;existing.sourceText=t.text}}s.targets=targets;s.sourceSignature=sig;write('S15','risk_state',s)}return s
+ if(!targets.length&&(s.items.length||Object.keys(s.assessments).length))return s;
+ if(s.sourceSignature!==sig){const ids=new Set(targets.map(x=>x.id));s.items=s.items.map(x=>ids.has(x.targetId)?x:{...x,requiresReview:true,reviewReason:'dependencia_no_disponible'});for(const t of targets){if(!s.assessments[t.id])s.assessments[t.id]='pending';const existing=s.items.find(x=>x.targetId===t.id);if(existing){existing.linkedObjectType=t.type;existing.linkedObjectId=t.sourceId;existing.sourceText=t.text}}s.targets=targets;s.sourceSignature=sig;write('S15','risk_state',s)}return s
 }
 function score(v){return {Baja:1,Media:2,Alta:3,Bajo:1,Medio:2,Alto:3}[v]||0}
 function level(r){const n=score(r.probability)*score(r.impact);return n>=7?'Alto':n>=4?'Medio':n?'Bajo':'[POR VERIFICAR]'}
