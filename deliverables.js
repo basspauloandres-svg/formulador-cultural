@@ -107,6 +107,7 @@ function reportHtml(){
 function professionalDocumentPayload(){
  const obj=objectiveNodes().filter(x=>x.confirmed),central=obj.find(x=>x.zone==='central');
  const v=vesterSnapshot(),coherence=window.fcGetCoherenceReport?.()||{score:0,checks:[]},review=window.fcGetReviewSnapshot?.()||{};
+ const documentReady=review.ready===true&&window.fcGetProjectIntegrityReport?.().ok===true;
  return {
   title:p(draft?.S01?.nombre_del_proyecto),
   entity:p(draft?.S01?.entidad_u_organizacion),
@@ -131,8 +132,8 @@ function professionalDocumentPayload(){
   problem_tree:problemNodes(),
   objective_tree:obj,
   vester:{rows:v.rows,meanInfluence:v.meanInfluence,meanDependence:v.meanDependence},
-  document_status:review.ready?'Proyecto listo para presentar':'Proyecto en revisión',
-  coherence:{score:coherence.score||0,checks:coherence.checks||[],summary:review.ready?'La revisión interna no reporta rupturas bloqueantes en la cadena principal.':'El proyecto conserva pendientes o relaciones todavía no evaluables; revise los controles siguientes antes de presentar.'}
+  document_status:documentReady?'Proyecto listo para presentar':'Proyecto en revisión',
+  coherence:{score:coherence.score||0,checks:coherence.checks||[],summary:documentReady?'La revisión interna no reporta rupturas bloqueantes en la cadena principal.':'El proyecto conserva pendientes o relaciones todavía no evaluables; revise los controles siguientes antes de presentar.'}
  }
 }
 let documentGeneratorStatus={mode:'browser',connected:false,message:'Generador profesional Python no conectado.'};
