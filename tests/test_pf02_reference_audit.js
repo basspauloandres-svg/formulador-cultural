@@ -1,0 +1,11 @@
+const {execFileSync}=require('child_process');
+const path=require('path');
+const fixture=path.join(__dirname,'fixtures','pf02_orphan_references_sanitized.json');
+const script=path.join(__dirname,'..','scripts','audit_pf02_references.js');
+const out=JSON.parse(execFileSync(process.execPath,[script,fixture],{encoding:'utf8'}));
+if(out.status!=='REQUIERE_REVISION')throw new Error('No detectó discrepancias');
+const types=out.findings.map(x=>x.type);
+if(types.filter(x=>x==='orphan_budget_activity_status').length!==3)throw new Error('No detectó referencias de presupuesto');
+if(types.filter(x=>x==='orphan_risk_activity_assessment').length!==3)throw new Error('No detectó referencias de riesgo a actividades');
+if(!types.includes('orphan_risk_result_assessment'))throw new Error('No detectó referencia de riesgo a resultado');
+console.log('PF02 reference audit regression PASS');
