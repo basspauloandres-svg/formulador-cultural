@@ -42,7 +42,8 @@ function snapshot(){
 }
 function bar(label,value){return '<div class="dash-bar"><div><span>'+esc(label)+'</span><b>'+value+'%</b></div><div class="bar-track"><i style="width:'+Math.max(0,Math.min(100,value))+'%"></i></div></div>'}
 async function saveReviewProgress(s,confirmed=false){
- draft.S16=draft.S16||{};draft.S16.review_state={confirmed:!!confirmed,ready:s.ready,completion:s.completion,coherence:s.coh.score,updatedAt:new Date().toISOString()};localStorage.setItem(storeKey,JSON.stringify(draft));
+ draft.S16=draft.S16||{};const integrityOk=window.fcGetProjectIntegrityReport?.().ok===true;
+ draft.S16.review_state={confirmed:!!confirmed&&s.ready&&integrityOk,ready:!!s.ready&&integrityOk,completion:s.completion,coherence:s.coh.score,updatedAt:new Date().toISOString()};localStorage.setItem(storeKey,JSON.stringify(draft));
  let synced=false;try{if(typeof session!=='undefined'&&session&&typeof syncSection==='function'){await syncSection('S16');synced=true}}catch(e){console.error('Sincronización S16',e)}
  window.fcRenderJourney?.();return {saved:true,synced}
 }
