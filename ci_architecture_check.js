@@ -51,3 +51,8 @@ if(!synthesisAudit.includes('return sentence(c)'))fail('S08 vuelve a concatenar 
 if(!coherence.includes("'AÚN NO EVALUABLE'"))fail('S16 no distingue controles todavía no evaluables');
 const causalSimple=read('simple_causal_ui.js');
 if(!causalSimple.includes("draft?.S06?.causal_validation"))fail('S06 no reconcilia la vista guiada con el estado estructurado');
+
+const exportCompletionPf02=read('export_completion.js');
+const deliverablesPf02=read('deliverables.js');
+for(const token of ['fcGetActivitiesSnapshot','fcGetScheduleSnapshot','fcGetBudgetSnapshot','fcGetRiskSnapshot']){if(!exportCompletionPf02.includes(token)||!deliverablesPf02.includes(token))fail('PF02-F09: exportación no usa snapshot inmutable '+token)}
+if(!read('app.js').includes('Recargar desde nube'))fail('No existe recuperación explícita del proyecto desde nube');
