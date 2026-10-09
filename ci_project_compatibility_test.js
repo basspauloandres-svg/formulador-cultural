@@ -322,6 +322,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
  assert(typeof w.fcExportProjectDOCX==='function'&&typeof w.fcExportProjectPDF==='function','No están disponibles las exportaciones documentales');
  assert(typeof w.fcProjectDocumentPayload==='function','No existe el payload profesional de documentos');
+ assert(fs.readFileSync('deliverables.js','utf8').includes('document_status:documentReady?'),'La exportación documental declara listo sin verificar integridad');
  assert(typeof w.fcGetProjectSnapshot==='function','No existe el snapshot canónico del proyecto');
  assert(typeof w.fcGetProjectSnapshotHash==='function','No existe hash funcional del snapshot canónico');
  assert(typeof w.fcAuditProjectSnapshot==='function','Falta auditoría de integridad referencial de solo lectura');
