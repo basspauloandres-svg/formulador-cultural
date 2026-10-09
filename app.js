@@ -125,8 +125,9 @@ async function renderProjectControls(){
   const inside=q('#authSignedIn');if(!inside||!session)return;
   let host=q('#projectManager');
   if(!host){host=document.createElement('div');host.id='projectManager';host.className='project-manager';inside.appendChild(host)}
-  host.innerHTML='<button id="newProjectBtn" type="button">Nuevo proyecto</button><label class="project-switch-label">Mis proyectos <select id="projectSelect" aria-label="Seleccionar proyecto"><option>Cargando…</option></select></label>';
+  host.innerHTML='<button id="newProjectBtn" type="button">Nuevo proyecto</button><button id="reloadCloudProjectBtn" type="button">Recargar desde nube</button><label class="project-switch-label">Mis proyectos <select id="projectSelect" aria-label="Seleccionar proyecto"><option>Cargando…</option></select></label>';
   q('#newProjectBtn').onclick=async()=>{try{await createCloudProject();await renderProjectControls()}catch(e){console.error(e);q('#authHelp').textContent='No fue posible crear el proyecto: '+(e.message||'error desconocido')}};
+  q('#reloadCloudProjectBtn').onclick=async()=>{if(!cloudProject)return;const ok=confirm('Recargar desde nube reemplazará el estado local de este proyecto por la última versión sincronizada. Úsalo para recuperar el estado guardado en la nube. ¿Continuar?');if(!ok)return;try{await switchCloudProject(cloudProject.id);await renderProjectControls();q('#authHelp').textContent='Proyecto recargado desde la última versión sincronizada en la nube.'}catch(e){console.error(e);q('#authHelp').textContent='No fue posible recargar desde nube: '+(e.message||'error desconocido')}};
   try{
     const projects=await listCloudProjects(),select=q('#projectSelect');
     select.innerHTML=projects.map(p=>'<option value="'+esc(p.id)+'" '+(cloudProject?.id===p.id?'selected':'')+'>'+esc(p.title)+'</option>').join('');

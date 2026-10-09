@@ -78,8 +78,8 @@ function indicatorTechnicalTable(inds){
  return table(['Nivel','Indicador','Fórmula / criterio','Unidad','Línea base','Meta','Periodicidad','Medio de verificación','Responsable','Plazo'],inds.map(x=>[x.linkedType||'Actividad',x.indicator,x.formula||'[POR VERIFICAR]',x.unidad,x.lineaBase,x.meta,x.periodicidad,x.medioVerificacion,x.responsable,x.plazo]))
 }
 function reportHtml(){
- const acts=rows(window.fcGetActivities).filter(x=>x.confirmed),res=rows(window.fcGetResults).filter(x=>x.confirmed),inds=rows(window.fcGetIndicators).filter(x=>x.confirmed),sch=rows(window.fcGetSchedule),bud=rows(window.fcGetBudget),risks=rows(window.fcGetRisks),bs=window.fcGetBudgetSummary?.()||{},vester=vesterSnapshot();
- const obj=objectiveNodes().filter(x=>x.confirmed),central=obj.find(x=>x.zone==='central'),spec=obj.filter(x=>x.zone==='direct_cause'),meansIndirect=obj.filter(x=>x.zone==='indirect_cause'),ends=obj.filter(x=>x.zone==='direct_effect'||x.zone==='indirect_effect'),alt=rows(window.fcGetAlternatives).find(x=>x.selected&&x.confirmed),coherence=window.fcGetCoherenceReport?.()||{score:0,checks:[]};
+ const acts=rows(window.fcGetActivitiesSnapshot||window.fcGetActivities).filter(x=>x.confirmed),res=rows(window.fcGetResultsSnapshot||window.fcGetResults).filter(x=>x.confirmed),inds=rows(window.fcGetIndicatorsSnapshot||window.fcGetIndicators).filter(x=>x.confirmed),sch=rows(window.fcGetScheduleSnapshot||window.fcGetSchedule),bud=rows(window.fcGetBudgetSnapshot||window.fcGetBudget),risks=rows(window.fcGetRiskSnapshot||window.fcGetRisks),bs=(window.fcGetBudgetSummarySnapshot?.()||window.fcGetBudgetSummary?.())||{},vester=vesterSnapshot();
+ const obj=objectiveNodes().filter(x=>x.confirmed),central=obj.find(x=>x.zone==='central'),spec=obj.filter(x=>x.zone==='direct_cause'),meansIndirect=obj.filter(x=>x.zone==='indirect_cause'),ends=obj.filter(x=>x.zone==='direct_effect'||x.zone==='indirect_effect'),alt=rows(window.fcGetAlternativesSnapshot||window.fcGetAlternatives).find(x=>x.selected&&x.confirmed),coherence=window.fcGetCoherenceReport?.()||{score:0,checks:[]};
  const project=esc(p(draft?.S01?.nombre_del_proyecto)),entity=esc(p(draft?.S01?.entidad_u_organizacion)),territory=esc(p(draft?.S02?.territorio_o_lugar_de_intervencion||draft?.S01?.municipio)),responsible=esc(p(draft?.S01?.responsable));
  return `<!doctype html><html><head><meta charset="utf-8"><title>${project}</title><style>
  @page{size:A4;margin:20mm 16mm 18mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#23312b;line-height:1.5;max-width:1000px;margin:auto;padding:24px;background:#fff}
@@ -119,15 +119,15 @@ function professionalDocumentPayload(){
   sources:p(draft?.S04?.fuentes),
   problem:p(draft?.S08?.enunciado),
   problem_description:p(draft?.S08?.descripcion_borrador||draft?.S08?.synthesis_state?.description),
-  strategy:p(rows(window.fcGetAlternatives).find(x=>x.selected&&x.confirmed)?.text),
+  strategy:p(rows(window.fcGetAlternativesSnapshot||window.fcGetAlternatives).find(x=>x.selected&&x.confirmed)?.text),
   objective_general:p(central?.text),
   objectives:obj.filter(x=>x.zone==='direct_cause').map(x=>({id:x.id,text:x.text,zone:x.zone,parentId:x.parentId||null})),
-  results:rows(window.fcGetResults).filter(x=>x.confirmed).map(x=>({...x,text:compact(x.text,40)})),
-  activities:rows(window.fcGetActivities).filter(x=>x.confirmed).map(x=>({...x,text:compact(x.text,32)})),
-  indicators:rows(window.fcGetIndicators).filter(x=>x.confirmed),
-  schedule:rows(window.fcGetSchedule),
-  budget:rows(window.fcGetBudget),
-  risks:rows(window.fcGetRisks),
+  results:rows(window.fcGetResultsSnapshot||window.fcGetResults).filter(x=>x.confirmed).map(x=>({...x,text:compact(x.text,40)})),
+  activities:rows(window.fcGetActivitiesSnapshot||window.fcGetActivities).filter(x=>x.confirmed).map(x=>({...x,text:compact(x.text,32)})),
+  indicators:rows(window.fcGetIndicatorsSnapshot||window.fcGetIndicators).filter(x=>x.confirmed),
+  schedule:rows(window.fcGetScheduleSnapshot||window.fcGetSchedule),
+  budget:rows(window.fcGetBudgetSnapshot||window.fcGetBudget),
+  risks:rows(window.fcGetRiskSnapshot||window.fcGetRisks),
   problem_tree:problemNodes(),
   objective_tree:obj,
   vester:{rows:v.rows,meanInfluence:v.meanInfluence,meanDependence:v.meanDependence},
@@ -188,13 +188,13 @@ function reportParagraphs(){
  add('6. Objetivos específicos',docObj.filter(x=>x.zone==='direct_cause').map(x=>p(x.text)));
  if(docObj.some(x=>x.zone==='indirect_cause'))add('Medios del árbol de objetivos',docObj.filter(x=>x.zone==='indirect_cause').map(x=>p(x.text)));
  if(docObj.some(x=>x.zone==='direct_effect'||x.zone==='indirect_effect'))add('Fines esperados',docObj.filter(x=>x.zone==='direct_effect'||x.zone==='indirect_effect').map(x=>p(x.text)));
- add('7. Estrategia',p(rows(window.fcGetAlternatives).find(x=>x.selected&&x.confirmed)?.text));
- add('8. Resultados',rows(window.fcGetResults).filter(x=>x.confirmed).map(x=>p(compact(x.text,32))));
- add('9. Actividades',rows(window.fcGetActivities).filter(x=>x.confirmed).map(x=>x.id+' · '+p(compact(x.text,28))));
- add('10. Cronograma',rows(window.fcGetSchedule).map(x=>p(compact(x.activityText,28))+' | '+p(x.startDate)+' - '+p(x.endDate)+' | '+p(x.responsible)));
- add('11. Indicadores y metas',rows(window.fcGetIndicators).filter(x=>x.confirmed).map(x=>p(x.linkedType)+' · '+p(x.indicator)+' | Fórmula/criterio: '+p(x.formula)+' | Línea base: '+p(x.lineaBase)+' | Meta: '+p(x.meta)+' | Unidad: '+p(x.unidad)+' | Periodicidad: '+p(x.periodicidad)+' | Fuente: '+p(x.medioVerificacion)+' | Responsable: '+p(x.responsable)+' | Plazo: '+p(x.plazo)));
- add('12. Presupuesto',rows(window.fcGetBudget).map(x=>p(x.activityText)+' | '+p(x.description)+' | '+moneyRaw(x.totalCost)));
- add('13. Riesgos',rows(window.fcGetRisks).map(x=>p(compact(x.event,30))+' | '+p(x.riskLevel)+' | '+p(compact(x.preventiveResponse,36))));
+ add('7. Estrategia',p(rows(window.fcGetAlternativesSnapshot||window.fcGetAlternatives).find(x=>x.selected&&x.confirmed)?.text));
+ add('8. Resultados',rows(window.fcGetResultsSnapshot||window.fcGetResults).filter(x=>x.confirmed).map(x=>p(compact(x.text,32))));
+ add('9. Actividades',rows(window.fcGetActivitiesSnapshot||window.fcGetActivities).filter(x=>x.confirmed).map(x=>x.id+' · '+p(compact(x.text,28))));
+ add('10. Cronograma',rows(window.fcGetScheduleSnapshot||window.fcGetSchedule).map(x=>p(compact(x.activityText,28))+' | '+p(x.startDate)+' - '+p(x.endDate)+' | '+p(x.responsible)));
+ add('11. Indicadores y metas',rows(window.fcGetIndicatorsSnapshot||window.fcGetIndicators).filter(x=>x.confirmed).map(x=>p(x.linkedType)+' · '+p(x.indicator)+' | Fórmula/criterio: '+p(x.formula)+' | Línea base: '+p(x.lineaBase)+' | Meta: '+p(x.meta)+' | Unidad: '+p(x.unidad)+' | Periodicidad: '+p(x.periodicidad)+' | Fuente: '+p(x.medioVerificacion)+' | Responsable: '+p(x.responsable)+' | Plazo: '+p(x.plazo)));
+ add('12. Presupuesto',rows(window.fcGetBudgetSnapshot||window.fcGetBudget).map(x=>p(x.activityText)+' | '+p(x.description)+' | '+moneyRaw(x.totalCost)));
+ add('13. Riesgos',rows(window.fcGetRiskSnapshot||window.fcGetRisks).map(x=>p(compact(x.event,30))+' | '+p(x.riskLevel)+' | '+p(compact(x.preventiveResponse,36))));
  add('14. Fuentes',p(draft?.S04?.fuentes));
  return out.join('')
 }
