@@ -324,6 +324,19 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  w.fcGetProjectIntegrityReport();
  assert(JSON.stringify(JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1')||'{}'))===beforeIntegrity,'Auditoría S16 mutó estado');
 
+ // PF02: relación histórica conservada aun cuando el catálogo activo usa otro ID.
+ const pf02Historical={project:{project_id:'pf02-fixture'},derived:{
+  objectives:{items:[{id:'O1'}]},results:[],
+  activities:[{id:'ACT1-0277',objectiveId:'O1',confirmed:false}],
+  schedule:[],budget:[],
+  budget_state:{items:[],activityStatus:{'ACT-R1-1':'inkind','ACT-R1-2':'cost','ACT-R1-3':'cost'}},
+  risks:[],risk_state:{items:[],assessments:{'result:R1':'pending','activity:ACT-R1-1':'pending','activity:ACT-R1-2':'pending','activity:ACT-R1-3':'pending'}}
+ }};
+ const historicalBefore=JSON.stringify(pf02Historical);
+ const historicalAudit=w.fcAuditProjectSnapshot(pf02Historical);
+ assert(historicalAudit.issues.filter(x=>x.section==='S14').length===3,'PF02: faltan tres referencias presupuestales históricas');
+ assert(historicalAudit.issues.filter(x=>x.section==='S15').length===4,'PF02: faltan cuatro evaluaciones históricas');
+ assert(JSON.stringify(pf02Historical)===historicalBefore,'PF02: diagnóstico alteró registros históricos');
  const synthetic={project:{project_id:'pf02-fixture'},derived:{
    objectives:{items:[{id:'O1'}]},
    results:[{id:'R1'}],
