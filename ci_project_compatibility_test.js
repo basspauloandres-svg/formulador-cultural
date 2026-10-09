@@ -56,8 +56,10 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(appSource.includes('function queueSectionSync(')&&appSource.includes('sectionSyncQueues'),'S06 no serializa sincronizaciones de la misma sección');
  assert(causalSource.includes("markLocalUpdate('S06'")&&causalSource.includes("oninput=()=>{const v=state.variables"),'S06 no persiste notas conceptuales durante la escritura');
  assert(simpleCausalSource.includes("markLocalUpdate('S06'")&&simpleCausalSource.includes("t.oninput=()=>saveNote"),'S06 no persiste justificaciones guiadas durante la escritura');
+ const exportCompletionSource=fs.readFileSync('export_completion.js','utf8');
+ assert(exportCompletionSource.includes('fcGetActivitiesSnapshot')&&exportCompletionSource.includes('fcGetScheduleSnapshot')&&exportCompletionSource.includes('fcGetBudgetSnapshot')&&exportCompletionSource.includes('fcGetRiskSnapshot'),'Excel vuelve a usar getters reconciliadores en S11-S15');
  const deliverySource=fs.readFileSync('deliverables.js','utf8');
- assert(deliverySource.includes('const cardH=Math.max(74,50+maxLines*15)'),'Los árboles SVG no adaptan su altura al texto');
+ assert(deliverySource.includes('const cardH=Math.max(74,50+maxLines*15)'),'Los árboles SVG no adaptan su altura al texto');assert(deliverySource.includes('fcGetActivitiesSnapshot')&&deliverySource.includes('fcGetScheduleSnapshot')&&deliverySource.includes('fcGetBudgetSnapshot')&&deliverySource.includes('fcGetRiskSnapshot'),'PDF/DOCX vuelven a usar getters reconciliadores');
  assert(!deliverySource.includes('ls.slice(0,3)'),'El SVG todavía recorta los textos a tres líneas');
  const synthesisSource=fs.readFileSync('synthesis.js','utf8');
  assert(synthesisSource.includes('cs.map(sentence).join')&&synthesisSource.includes('es.map(sentence).join'),'S08 no normaliza la puntuación de causas y efectos');
@@ -311,7 +313,24 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(typeof w.fcExportCompleteWorkbook==='function','No está disponible la exportación técnica Excel');
  assert(typeof w.fcExportProjectDOCX==='function'&&typeof w.fcExportProjectPDF==='function','No están disponibles las exportaciones documentales');
  assert(typeof w.fcProjectDocumentPayload==='function','No existe el payload profesional de documentos');
+ for(const fn of ['fcGetAlternativesSnapshot','fcGetResultsSnapshot','fcGetActivitiesSnapshot','fcGetIndicatorsSnapshot','fcGetScheduleSnapshot','fcGetBudgetSnapshot','fcGetRiskSnapshot'])assert(typeof w[fn]==='function','Falta snapshot inmutable '+fn);
+ const exportBefore={
+   alternatives:JSON.stringify(w.fcGetAlternativesSnapshot()),
+   results:JSON.stringify(w.fcGetResultsSnapshot()),
+   activities:JSON.stringify(w.fcGetActivitiesSnapshot()),
+   indicators:JSON.stringify(w.fcGetIndicatorsSnapshot()),
+   schedule:JSON.stringify(w.fcGetScheduleSnapshot()),
+   budget:JSON.stringify(w.fcGetBudgetSnapshot()),
+   risks:JSON.stringify(w.fcGetRiskSnapshot())
+ };
  const payload=w.fcProjectDocumentPayload();assert(payload&&payload.title&&Array.isArray(payload.indicators)&&Array.isArray(payload.schedule),'El payload profesional no conserva la estructura vigente');
+ assert(payload.results.length===w.fcGetResultsSnapshot().filter(x=>x.confirmed).length,'El payload documental no coincide con los resultados guardados');
+ assert(payload.activities.length===w.fcGetActivitiesSnapshot().filter(x=>x.confirmed).length,'El payload documental no coincide con las actividades guardadas');
+ assert(payload.schedule.length===w.fcGetScheduleSnapshot().length,'El payload documental no coincide con el cronograma guardado');
+ assert(payload.budget.length===w.fcGetBudgetSnapshot().length,'El payload documental no coincide con el presupuesto guardado');
+ assert(payload.risks.length===w.fcGetRiskSnapshot().length,'El payload documental no coincide con los riesgos guardados');
+ const exportAfter={alternatives:JSON.stringify(w.fcGetAlternativesSnapshot()),results:JSON.stringify(w.fcGetResultsSnapshot()),activities:JSON.stringify(w.fcGetActivitiesSnapshot()),indicators:JSON.stringify(w.fcGetIndicatorsSnapshot()),schedule:JSON.stringify(w.fcGetScheduleSnapshot()),budget:JSON.stringify(w.fcGetBudgetSnapshot()),risks:JSON.stringify(w.fcGetRiskSnapshot())};
+ assert(JSON.stringify(exportBefore)===JSON.stringify(exportAfter),'Construir el payload de exportación modificó S10-S15');
  assert(typeof w.fcGetDocumentGeneratorStatus==='function','No se puede consultar el estado del generador profesional');
 
  if(errors.length)throw errors[0];
