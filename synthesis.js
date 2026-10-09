@@ -79,8 +79,8 @@ function longDescription(){
  parts.push(looksLikeSolution(c)?`La formulación actual del problema central («${sentence(c)}») todavía parece expresar una solución o necesidad y requiere revisión antes de continuar.`:`El problema central definido es: ${sentence(c)}.`);
  parts.push(`La población relacionada es ${sentence(p)} y el territorio registrado corresponde a ${sentence(t)}.`);
  parts.push(ev.length?`La evidencia verificada disponible incluye: ${ev.join('; ')}.`:'La evidencia que respalda esta formulación permanece [POR VERIFICAR].');
- parts.push(cs.length?`Las causas directas identificadas son: ${cs.join('; ')}.`:'Las causas directas permanecen [POR VERIFICAR].');
- parts.push(es.length?`Los efectos directos identificados son: ${es.join('; ')}.`:'Los efectos directos permanecen [POR VERIFICAR].');
+ parts.push(cs.length?`Las causas directas identificadas son: ${cs.map(sentence).join('; ')}.`:'Las causas directas permanecen [POR VERIFICAR].');
+ parts.push(es.length?`Los efectos directos identificados son: ${es.map(sentence).join('; ')}.`:'Los efectos directos permanecen [POR VERIFICAR].');
  return parts.join(' ')
 }
 function checks(text){const out=[];if(!text)out.push(['warn','Falta una formulación para revisar.']);if(text&&looksLikeSolution(text)&&!String(text).startsWith('[POR VERIFICAR]'))out.push(['warn','La formulación parece expresar una necesidad, acción o solución. Revisa cuál es la situación negativa observable que existe antes de esa respuesta.']);if(text.length>220)out.push(['warn','La formulación es extensa; considera concentrarla en una sola situación principal.']);if(!population())out.push(['warn','La población está [POR VERIFICAR].']);if(!territory())out.push(['warn','El territorio está [POR VERIFICAR].']);if(!verifiedEvidence().length)out.push(['warn','S04 no contiene evidencia estructurada con estado “Verificada”.']);if(!out.length)out.push(['ok','La formulación supera las reglas básicas. La suficiencia metodológica y de evidencia requiere revisión humana.']);return out}
