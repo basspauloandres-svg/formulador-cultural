@@ -50,6 +50,17 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  const coherenceSource=fs.readFileSync('coherence_engine.js','utf8');
  assert(coherenceSource.includes("x.selected!==false"),'La coherencia sigue tratando propuestas no seleccionadas como indicadores obligatorios');
 
+ const causalSource=fs.readFileSync('causal_validation.js','utf8');
+ const simpleCausalSource=fs.readFileSync('simple_causal_ui.js','utf8');
+ const appSource=fs.readFileSync('app.js','utf8');
+ assert(appSource.includes('function queueSectionSync(')&&appSource.includes('sectionSyncQueues'),'S06 no serializa sincronizaciones de la misma sección');
+ assert(causalSource.includes("markLocalUpdate('S06'")&&causalSource.includes("oninput=()=>{const v=state.variables"),'S06 no persiste notas conceptuales durante la escritura');
+ assert(simpleCausalSource.includes("markLocalUpdate('S06'")&&simpleCausalSource.includes("t.oninput=()=>saveNote"),'S06 no persiste justificaciones guiadas durante la escritura');
+ const deliverySource=fs.readFileSync('deliverables.js','utf8');
+ assert(deliverySource.includes('const cardH=Math.max(74,50+maxLines*15)'),'Los árboles SVG no adaptan su altura al texto');
+ assert(!deliverySource.includes('ls.slice(0,3)'),'El SVG todavía recorta los textos a tres líneas');
+ const synthesisSource=fs.readFileSync('synthesis.js','utf8');
+ assert(synthesisSource.includes('cs.map(sentence).join')&&synthesisSource.includes('es.map(sentence).join'),'S08 no normaliza la puntuación de causas y efectos');
  const planningSource=fs.readFileSync('planning.js','utf8');
  assert(planningSource.includes("scheduleActivityLabel(x,16)")&&planningSource.includes("activitySynthesisFromResult"),'S13 vuelve a mostrar la actividad completa en lugar de una síntesis operativa');
  const completionGuidanceSource=fs.readFileSync('completion.js','utf8');
@@ -118,6 +129,15 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(storedS08.S08?.enunciado==='Problema central confirmado para prueba integral.','S08 no guardó el enunciado confirmado');
  assert(storedS08.S08?.synthesis_state?.confirmed===true,'S08 no quedó confirmada');
  assert(w.localStorage.getItem('fc_active')==='S09'||w.document.querySelector('#counter')?.textContent.startsWith('S09'),'S08 no avanzó a S09');
+ // Regresión PF02-F08: elementos fuente con punto final no deben producir ".." en la descripción.
+ storedS08.S07.tree_state.nodes.find(x=>x.zone==='direct_cause').text='Causa con punto final.';
+ storedS08.S07.tree_state.nodes.find(x=>x.zone==='direct_effect').text='Efecto con punto final.';
+ w.localStorage.setItem('formulador-cultural-prototipo-v1',JSON.stringify(storedS08));
+ await w.fcNavigate('S08');await wait(80);
+ const genS08=w.document.querySelector('#genProposal');assert(genS08,'S08 no muestra Generar propuesta');genS08.click();await wait(30);
+ const descS08=w.document.querySelector('#longProblem')?.value||'';
+ assert(!descS08.includes('final..'),'S08 conserva puntuación duplicada en causas o efectos');
+
 
  await w.fcNavigate('S09');await wait(100);
  let stored=JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1'));
@@ -278,6 +298,13 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(reviewSnapshot.indicatorPending.length===sharedValidation.indicatorPending.filter(x=>x.definitionPending||x.technicalPending).length,'S16 y coherencia discrepan sobre los indicadores pendientes');
  await w.fcNavigate('S16');await wait(80);
  assert(typeof w.fcTreeSvg==='function'&&/^<svg/.test(w.fcTreeSvg('problem')),'No se pudo generar SVG del árbol de problemas');
+ const longObjective='Objetivo central con una formulación suficientemente extensa para comprobar que el diagrama independiente conserva también las palabras finales sin recortarlas';
+ const objectiveState=JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1'));
+ const centralObjective=objectiveState.S09?.objectives_state?.items?.find(x=>x.zone==='central');
+ if(centralObjective){centralObjective.text=longObjective;centralObjective.confirmed=true;w.localStorage.setItem('formulador-cultural-prototipo-v1',JSON.stringify(objectiveState));w.draft.S09=objectiveState.S09}
+ const objectiveSvg=w.fcTreeSvg('objective');
+ assert(objectiveSvg.includes('sin recortarlas'),'El SVG de objetivos todavía omite el final de textos largos');
+
  assert(typeof w.fcProjectReportHTML==='function'&&/Proyecto de prueba/.test(w.fcProjectReportHTML()),'No se pudo construir el documento final HTML');
  assert(/Formulador Cultural · Desarrollo por Paulo Olarte/.test(w.fcProjectReportHTML()),'El documento HTML no conserva la huella de autoría');
  const reportHtml=w.fcProjectReportHTML();
