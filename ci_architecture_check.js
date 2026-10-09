@@ -66,3 +66,14 @@ for(const token of ['fcGetProjectSnapshot','fcGetProjectSnapshotHash','project_s
 if(!coherence.includes('fcGetProjectSnapshot'))fail('Coherencia no prioriza el snapshot canónico');
 if(!review.includes('fcGetProjectSnapshot'))fail('S16 no prioriza el snapshot canónico');
 if(!workflow.includes('project_snapshot.js'))fail('CI no valida project_snapshot.js');
+
+
+// PF02-F09: impedir regresión hacia reconciliaciones destructivas sin autorización.
+const pfCompletion=read('completion.js');
+const pfPlanning=read('planning.js');
+const pfResults=read('results_layer.js');
+if(!pfCompletion.includes('requiresReview:existing.length>0'))fail('PF02-F09: S10 reemplaza alternativas existentes sin revisión');
+if(!pfCompletion.includes("reviewReason:'resultado_no_disponible'"))fail('PF02-F09: S11 descarta actividades desvinculadas');
+if(!pfPlanning.includes("reviewReason:'actividad_no_disponible'"))fail('PF02-F09: S14 elimina rubros históricos');
+if(!pfPlanning.includes("reviewReason:'dependencia_no_disponible'"))fail('PF02-F09: S15 elimina riesgos desvinculados');
+if(!pfResults.includes('if(!src.length&&Array.isArray(s.items)&&s.items.length)return s'))fail('PF02-F09: S11 elimina resultados cuando faltan objetivos');
