@@ -18,8 +18,9 @@ function write(s){
   try{
     if(typeof draft!=='undefined'){
       draft.S06=draft.S06||{};
-      draft.S06.causal_validation=s;
+      draft.S06.causal_validation=JSON.parse(JSON.stringify(s));
       localStorage.setItem(storeKey,JSON.stringify(draft));
+      if(typeof markLocalUpdate==='function')markLocalUpdate('S06',s.updatedAt);
     }
   }catch{}
 }
@@ -64,7 +65,7 @@ function saveNote(key,value){
   if(!p)return;
   p.note=String(value||'').trim();
   write(s);
-  if(typeof session!=='undefined'&&session&&typeof syncSection==='function')syncSection('S06').catch(()=>{});
+  if(typeof session!=='undefined'&&session){const fn=window.fcQueueSectionSync||syncSection;if(typeof fn==='function')fn('S06').catch(()=>{});}
 }
 function render(){
   const root=$('#simpleCausalFlow');if(!root)return;
@@ -89,7 +90,7 @@ function render(){
     '<button type="button" id="scContinue" class="sc-continue">Continuar al árbol</button>';
   root.querySelectorAll('[data-answer]').forEach(b=>b.onclick=()=>saveDecision(b.dataset.answer,b.dataset.value));
   root.querySelectorAll('[data-suggest]').forEach(b=>b.onclick=()=>saveDecision(b.dataset.suggest,b.dataset.value));
-  root.querySelectorAll('[data-note]').forEach(t=>t.onchange=()=>saveNote(t.dataset.note,t.value));
+  root.querySelectorAll('[data-note]').forEach(t=>t.oninput=()=>saveNote(t.dataset.note,t.value));
   $('#scPrev')&&($('#scPrev').onclick=()=>{cursor=Math.max(0,cursor-1);render()});
   $('#scNext')&&($('#scNext').onclick=()=>{cursor=Math.min(pairs.length-1,cursor+1);render()});
   $('#scContinue')&&($('#scContinue').onclick=()=>{write(normalize(read()));if(typeof window.fcNavigate==='function')window.fcNavigate('S07')});
