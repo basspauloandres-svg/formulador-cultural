@@ -312,6 +312,14 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  const confirmedObjective=currentObjectives.find(x=>x.confirmed);if(confirmedObjective)assert(w.fcProjectReportHTML().includes(confirmedObjective.text),'El documento final no usa el objetivo estructurado vigente');
  assert(typeof w.fcExportCompleteWorkbook==='function','No está disponible la exportación técnica Excel');
  assert(!exportCompletionSource.includes('await window.fcPersistCurrent()'),'Excel no debe guardar implícitamente al exportar');
+ assert(!exportCompletionSource.includes('await ensureProject()'),'Excel no debe crear proyectos al consultar evidencias');
+ const persistedBeforeExcel=JSON.stringify(JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1')||'{}'));
+ const savedSheets=[];
+ w.XLSX.writeFile=(book,name)=>savedSheets.push({book,name});
+ await w.fcExportCompleteWorkbook();
+ assert(savedSheets.length===1&&savedSheets[0].name.endsWith('.xlsx'),'La exportación Excel no entregó archivo');
+ assert(JSON.stringify(JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1')||'{}'))===persistedBeforeExcel,'Excel alteró el estado del proyecto');
+
  assert(typeof w.fcExportProjectDOCX==='function'&&typeof w.fcExportProjectPDF==='function','No están disponibles las exportaciones documentales');
  assert(typeof w.fcProjectDocumentPayload==='function','No existe el payload profesional de documentos');
  assert(typeof w.fcGetProjectSnapshot==='function','No existe el snapshot canónico del proyecto');
