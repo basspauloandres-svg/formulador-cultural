@@ -316,6 +316,13 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(typeof w.fcGetProjectSnapshot==='function','No existe el snapshot canónico del proyecto');
  assert(typeof w.fcGetProjectSnapshotHash==='function','No existe hash funcional del snapshot canónico');
  assert(typeof w.fcAuditProjectSnapshot==='function','Falta auditoría de integridad referencial de solo lectura');
+ assert(typeof w.fcGetProjectIntegrityReport==='function','S16 carece de auditoría de integridad');
+ await w.fcNavigate('S16');await wait(50);
+ assert(w.document.querySelector('#projectIntegrityAudit'),'S16 no muestra auditoría de integridad');
+ const beforeIntegrity=JSON.stringify(JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1')||'{}'));
+ w.fcGetProjectIntegrityReport();
+ assert(JSON.stringify(JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1')||'{}'))===beforeIntegrity,'Auditoría S16 mutó estado');
+
  const synthetic={project:{project_id:'pf02-fixture'},derived:{
    objectives:{items:[{id:'O1'}]},
    results:[{id:'R1'}],
