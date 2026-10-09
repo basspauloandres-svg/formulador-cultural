@@ -1,0 +1,16 @@
+name: PF02 reference audit
+on:
+  push:
+    branches:
+      - audit/pf02-f09-v89-acceptance-20261009
+  workflow_dispatch:
+jobs:
+  references:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify PF02 orphan references detection
+        run: node tests/test_pf02_reference_audit.js
