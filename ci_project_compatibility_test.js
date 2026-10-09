@@ -321,6 +321,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(w.document.querySelector('#projectIntegrityAudit'),'S16 no muestra auditoría de integridad');
  assert(fs.readFileSync('review_dashboard.js','utf8').includes('s.ready&&integrity.ok'),'S16 permite declarar listo un proyecto con referencias huérfanas');
  assert(fs.readFileSync('review_dashboard.js','utf8').includes('ready:!!s.ready&&integrityOk'),'S16 persiste aprobado pese a referencias huérfanas');
+ assert(fs.readFileSync('review_dashboard.js','utf8').includes("(readyForPresentation?'Guardar revisión final':'Guardar revisión con pendientes')"),'S16 muestra botón final aunque tiene vínculos huérfanos');
  const beforeIntegrity=JSON.stringify(JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1')||'{}'));
  w.fcGetProjectIntegrityReport();
  assert(JSON.stringify(JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1')||'{}'))===beforeIntegrity,'Auditoría S16 mutó estado');
