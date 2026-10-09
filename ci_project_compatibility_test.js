@@ -315,6 +315,24 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(typeof w.fcProjectDocumentPayload==='function','No existe el payload profesional de documentos');
  assert(typeof w.fcGetProjectSnapshot==='function','No existe el snapshot canónico del proyecto');
  assert(typeof w.fcGetProjectSnapshotHash==='function','No existe hash funcional del snapshot canónico');
+ assert(typeof w.fcAuditProjectSnapshot==='function','Falta auditoría de integridad referencial de solo lectura');
+ const synthetic={project:{project_id:'pf02-fixture'},derived:{
+   objectives:{items:[{id:'O1'}]},
+   results:[{id:'R1'}],
+   activities:[{id:'ACT-NEW',resultId:'R1',objectiveId:'O1'}],
+   schedule:[{id:'SCH1',activityId:'ACT-OLD'}],
+   budget:[{id:'B1',activityId:'ACT-OLD'}],
+   budget_state:{activityStatus:{'ACT-OLD':'cost'}},
+   risks:[],
+   risk_state:{assessments:{'activity:ACT-OLD':'pending','result:R1':'pending'}}
+ }};
+ const fixtureBefore=JSON.stringify(synthetic);
+ const audit=w.fcAuditProjectSnapshot(synthetic);
+ assert(audit.schema==='project_integrity_report_v1','Reporte de integridad con esquema incorrecto');
+ assert(audit.ok===false&&audit.issues.filter(x=>x.section==='S14').length===2,'La auditoría omitió vínculos presupuestales huérfanos');
+ assert(audit.issues.some(x=>x.section==='S13')&&audit.issues.some(x=>x.section==='S15'),'La auditoría omitió vínculos históricos');
+ assert(JSON.stringify(synthetic)===fixtureBefore,'La auditoría alteró el estado de prueba');
+ assert(Object.isFrozen(audit)&&Object.isFrozen(audit.issues),'La auditoría debe entregar un resultado inmutable');
  const projectStateBefore=JSON.stringify(JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1')||'{}'));
  const projectSnapshotBefore=w.fcGetProjectSnapshot();
  const projectHashBefore=w.fcGetProjectSnapshotHash();
