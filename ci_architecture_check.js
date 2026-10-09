@@ -56,3 +56,13 @@ const exportCompletionPf02=read('export_completion.js');
 const deliverablesPf02=read('deliverables.js');
 for(const token of ['fcGetActivitiesSnapshot','fcGetScheduleSnapshot','fcGetBudgetSnapshot','fcGetRiskSnapshot']){if(!exportCompletionPf02.includes(token)||!deliverablesPf02.includes(token))fail('PF02-F09: exportación no usa snapshot inmutable '+token)}
 if(!read('app.js').includes('Recargar desde nube'))fail('No existe recuperación explícita del proyecto desde nube');
+
+
+const projectSnapshot=read('project_snapshot.js');
+if(!html.includes('project_snapshot.js'))fail('El snapshot canónico no está cargado en index.html');
+for(const token of ['fcGetProjectSnapshot','fcGetProjectSnapshotHash','project_snapshot_v1']){
+ if(!projectSnapshot.includes(token))fail('Falta contrato de snapshot canónico: '+token)
+}
+if(!coherence.includes('fcGetProjectSnapshot'))fail('Coherencia no prioriza el snapshot canónico');
+if(!review.includes('fcGetProjectSnapshot'))fail('S16 no prioriza el snapshot canónico');
+if(!workflow.includes('project_snapshot.js'))fail('CI no valida project_snapshot.js');

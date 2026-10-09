@@ -1,18 +1,19 @@
 (()=>{
 const $=s=>document.querySelector(s);const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 function arr(v){return Array.isArray(v)?v:[]}
-function tree(){try{return draft?.S07?.tree_state||JSON.parse(localStorage.getItem('formulador-cultural-problem-tree-v1')||'{}')}catch{return {}}}
-function objectives(){try{return draft?.S09?.objectives_state||JSON.parse(localStorage.getItem('formulador-cultural-objectives-v1')||'{}')}catch{return {}}}
-function alternatives(){try{return window.fcGetAlternativesSnapshot?.()||window.fcGetAlternatives?.()||[]}catch{return []}}
-function results(){try{return window.fcGetResultsSnapshot?.()||window.fcGetResults?.()||[]}catch{return []}}
-function activities(){try{return window.fcGetActivitiesSnapshot?.()||window.fcGetActivities?.()||[]}catch{return []}}
-function indicators(){try{return (window.fcGetIndicatorsSnapshot?.()||window.fcGetIndicators?.()||[]).filter(x=>!x.stale&&(x.selected!==false||x.confirmed))}catch{return []}}
-function schedule(){try{return window.fcGetScheduleSnapshot?.()||window.fcGetSchedule?.()||[]}catch{return []}}
-function budget(){try{return window.fcGetBudgetSnapshot?.()||window.fcGetBudget?.()||[]}catch{return []}}
-function budgetState(){try{return window.fcGetBudgetStateSnapshot?.()||window.fcGetBudgetState?.()||{}}catch{return {}}}
-function risks(){try{return window.fcGetRiskSnapshot?.()||window.fcGetRisks?.()||[]}catch{return []}}
-function riskState(){try{return window.fcGetRiskStateSnapshot?.()||window.fcGetRiskState?.()||{}}catch{return {}}}
-function evidence(){const d=draft?.S04||{};return [d.evidencia_disponible,d.fuentes].filter(x=>String(x||'').trim()).length}
+function projectSnapshot(){try{return window.fcGetProjectSnapshot?.()||null}catch{return null}}
+function tree(){const s=projectSnapshot();if(s)return s.derived?.tree||s.sections?.S07?.tree_state||{};try{return draft?.S07?.tree_state||JSON.parse(localStorage.getItem('formulador-cultural-problem-tree-v1')||'{}')}catch{return {}}}
+function objectives(){const s=projectSnapshot();if(s)return s.derived?.objectives||s.sections?.S09?.objectives_state||{};try{return draft?.S09?.objectives_state||JSON.parse(localStorage.getItem('formulador-cultural-objectives-v1')||'{}')}catch{return {}}}
+function alternatives(){const s=projectSnapshot();if(s)return s.derived?.alternatives||[];try{return window.fcGetAlternativesSnapshot?.()||window.fcGetAlternatives?.()||[]}catch{return []}}
+function results(){const s=projectSnapshot();if(s)return s.derived?.results||[];try{return window.fcGetResultsSnapshot?.()||window.fcGetResults?.()||[]}catch{return []}}
+function activities(){const s=projectSnapshot();if(s)return s.derived?.activities||[];try{return window.fcGetActivitiesSnapshot?.()||window.fcGetActivities?.()||[]}catch{return []}}
+function indicators(){const s=projectSnapshot();const xs=s?s.derived?.indicators:window.fcGetIndicatorsSnapshot?.()||window.fcGetIndicators?.()||[];try{return (xs||[]).filter(x=>!x.stale&&(x.selected!==false||x.confirmed))}catch{return []}}
+function schedule(){const s=projectSnapshot();if(s)return s.derived?.schedule||[];try{return window.fcGetScheduleSnapshot?.()||window.fcGetSchedule?.()||[]}catch{return []}}
+function budget(){const s=projectSnapshot();if(s)return s.derived?.budget||[];try{return window.fcGetBudgetSnapshot?.()||window.fcGetBudget?.()||[]}catch{return []}}
+function budgetState(){const s=projectSnapshot();if(s)return s.derived?.budget_state||{};try{return window.fcGetBudgetStateSnapshot?.()||window.fcGetBudgetState?.()||{}}catch{return {}}}
+function risks(){const s=projectSnapshot();if(s)return s.derived?.risks||[];try{return window.fcGetRiskSnapshot?.()||window.fcGetRisks?.()||[]}catch{return []}}
+function riskState(){const s=projectSnapshot();if(s)return s.derived?.risk_state||{};try{return window.fcGetRiskStateSnapshot?.()||window.fcGetRiskState?.()||{}}catch{return {}}}
+function evidence(){const s=projectSnapshot(),d=s?.sections?.S04||draft?.S04||{};return [d.evidencia_disponible,d.fuentes].filter(x=>String(x||'').trim()).length}
 function pendingValue(v){return !String(v||'').trim()||/\[POR (VERIFICAR|REVISAR|DEFINIR)\]/i.test(String(v||''))}
 function currentValidationSnapshot(){
  const res=results().filter(x=>x.confirmed),acts=activities().filter(x=>x.confirmed),inds=indicators(),sch=schedule(),bud=budget(),rsk=risks();
