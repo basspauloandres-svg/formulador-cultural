@@ -58,6 +58,7 @@ jobs:
             workflow.js \
             completion.js \
             results_layer.js \
+            project_snapshot.js \
             coherence_engine.js \
             export_completion.js \
             completion_bridge.js \
@@ -107,6 +108,7 @@ jobs:
             workflow.js \
             completion.js \
             results_layer.js \
+            project_snapshot.js \
             coherence_engine.js \
             export_completion.js \
             completion_bridge.js \
