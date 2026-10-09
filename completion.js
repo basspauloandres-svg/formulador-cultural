@@ -40,10 +40,18 @@ function ensureS10(){
  }
  if(!s.items||s.sourceSignature!==sig){
    const proposals=makeAlternatives(),existing=Array.isArray(s.items)?s.items:[];
-   const oldIds=new Set(existing.map(x=>x.id));
-   // Retener decisiones anteriores. Una dependencia modificada exige revisión humana.
-   const additions=proposals.filter(x=>!oldIds.has(x.id));
-   s={...s,sourceSignature:sig,items:[...existing,...additions],requiresReview:existing.length>0,updatedAt:null};write('S10',s)
+   // La identidad de la alternativa depende de los objetivos vinculados, no de su posición.
+   const sourceKey=x=>(x.sourceIds||[]).slice().sort().join('|');
+   const existingKeys=new Set(existing.map(sourceKey)),usedIds=new Set(existing.map(x=>x.id));
+   let nextId=1;
+   const additions=proposals.filter(x=>!existingKeys.has(sourceKey(x))).map(x=>{
+     while(usedIds.has('A'+nextId))nextId++;
+     const id='A'+nextId++;usedIds.add(id);
+     return {...x,id,selected:false,confirmed:false}
+   });
+   const activeKeys=new Set(proposals.map(sourceKey));
+   const retained=existing.map(x=>activeKeys.has(sourceKey(x))?x:{...x,requiresReview:true,reviewReason:'objetivo_no_disponible'});
+   s={...s,sourceSignature:sig,items:[...retained,...additions],requiresReview:retained.some(x=>x.requiresReview),updatedAt:null};write('S10',s)
  }
  return s
 }
@@ -187,7 +195,7 @@ function ensureS12(){
    }
    const removed=old.filter(o=>!used.has(o)).map(o=>({...o,confirmed:false,stale:true,status:'desactualizado',verificationStatus:'REQUIERE_REVISIÓN'}));
    items.forEach(normalizeIndicatorState);
-   s={...s,sourceSignature:sig,items,staleItems:[...(s.staleItems||[]),...removed].slice(-100),updatedAt:null};write('S12',s)
+   s={...s,sourceSignature:sig,items,staleItems:[...(s.staleItems||[]),...removed],updatedAt:null};write('S12',s)
  }
  let normalized=false;(s.items||[]).forEach(x=>{if(x.selected===undefined){x.selected=!!x.confirmed||x.linkedType!=='Actividad'||x.indicatorFamily==='cumplimiento';normalized=true}const d=x.selected?(x.confirmed?'DEFINIDO':'PENDIENTE'):'NO_SELECCIONADO',t=indicatorQuality(x).ok?'COMPLETA':'PENDIENTE';if(x.definitionStatus!==d||x.technicalStatus!==t){x.definitionStatus=d;x.technicalStatus=t;normalized=true}});
  if(normalized)write('S12',s);
