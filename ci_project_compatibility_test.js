@@ -320,6 +320,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  await w.fcNavigate('S16');await wait(50);
  assert(w.document.querySelector('#projectIntegrityAudit'),'S16 no muestra auditoría de integridad');
  assert(fs.readFileSync('review_dashboard.js','utf8').includes('s.ready&&integrity.ok'),'S16 permite declarar listo un proyecto con referencias huérfanas');
+ assert(fs.readFileSync('review_dashboard.js','utf8').includes('ready:!!s.ready&&integrityOk'),'S16 persiste aprobado pese a referencias huérfanas');
  const beforeIntegrity=JSON.stringify(JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1')||'{}'));
  w.fcGetProjectIntegrityReport();
  assert(JSON.stringify(JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1')||'{}'))===beforeIntegrity,'Auditoría S16 mutó estado');
