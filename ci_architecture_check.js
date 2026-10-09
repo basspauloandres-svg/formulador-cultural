@@ -72,7 +72,7 @@ if(!workflow.includes('project_snapshot.js'))fail('CI no valida project_snapshot
 const pfCompletion=read('completion.js');
 const pfPlanning=read('planning.js');
 const pfResults=read('results_layer.js');
-if(!pfCompletion.includes('requiresReview:existing.length>0'))fail('PF02-F09: S10 reemplaza alternativas existentes sin revisión');
+if(!pfCompletion.includes('reviewReason:\'objetivo_no_disponible\''))fail('PF02-F09: S10 reemplaza alternativas existentes sin revisión');
 if(!pfCompletion.includes("reviewReason:'resultado_no_disponible'"))fail('PF02-F09: S11 descarta actividades desvinculadas');
 if(!pfPlanning.includes("reviewReason:'actividad_no_disponible'"))fail('PF02-F09: S14 elimina rubros históricos');
 if(!pfPlanning.includes("reviewReason:'dependencia_no_disponible'"))fail('PF02-F09: S15 elimina riesgos desvinculados');
