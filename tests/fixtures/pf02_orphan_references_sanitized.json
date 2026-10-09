@@ -1,0 +1,43 @@
+{
+  "sections": {
+    "S11": {
+      "results_state": {
+        "items": []
+      },
+      "completion_state": {
+        "items": [
+          {
+            "id": "ACT1-0277",
+            "confirmed": false
+          }
+        ]
+      }
+    },
+    "S13": {
+      "schedule_state": {
+        "items": []
+      }
+    },
+    "S14": {
+      "budget_state": {
+        "items": [],
+        "activityStatus": {
+          "ACT-R1-1": "inkind",
+          "ACT-R1-2": "cost",
+          "ACT-R1-3": "cost"
+        }
+      }
+    },
+    "S15": {
+      "risk_state": {
+        "items": [],
+        "assessments": {
+          "result:R1": "pending",
+          "activity:ACT-R1-1": "pending",
+          "activity:ACT-R1-2": "pending",
+          "activity:ACT-R1-3": "pending"
+        }
+      }
+    }
+  }
+}
