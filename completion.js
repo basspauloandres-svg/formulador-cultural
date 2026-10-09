@@ -35,7 +35,7 @@ function writingProposals(x){
 function ensureS10(){
  let s=read('S10'),means=confirmedMeans(),sig=means.map(x=>`${x.id}:${x.text}`).join('|');
  if(!means.length){
-   if(Array.isArray(s.items)&&s.items.length){s={...s,items:[],sourceSignature:'',archivedItems:[...(s.archivedItems||[]),...s.items.map(x=>({...x,archived:true,archiveReason:'sin_objetivo_especifico_confirmado',archivedAt:new Date().toISOString()}))].slice(-250),updatedAt:new Date().toISOString()};write('S10',s)}
+   // La falta temporal de dependencias no autoriza borrar alternativas registradas.
    return s
  }
  if(!s.items||s.sourceSignature!==sig){
@@ -58,6 +58,8 @@ function activityProposals(){
 function ensureS11(){
  let s=read('S11'),alt=selectedAlternative(),res=confirmedResults().filter(r=>alt?.sourceIds?.includes(r.objectiveId));
  const sig=alt?`s11-migration-v2|${alt.id}:${(alt.sourceIds||[]).join(',')}|${res.map(r=>r.id+':'+r.text).join('|')}`:'';
+ // Dependencias vacías o pendientes requieren revisión explícita, no reconciliación destructiva.
+ if((!alt||!res.length)&&Array.isArray(s.items)&&s.items.length)return s;
  if(!s.items||s.sourceSignature!==sig){
    const old=s.items||[],validResultIds=new Set(res.map(r=>r.id)),items=[];
    for(const r of res){
@@ -157,6 +159,7 @@ function indicatorSources(){
 }
 function ensureS12(){
  let s=read('S12');const src=indicatorSources(),sig='s12-context-v3|'+src.map(x=>`${x.type}:${x.source.id}:${x.source.text}`).join('|');
+ if(!src.length&&Array.isArray(s.items)&&s.items.length)return s;
  if(!s.items||s.sourceSignature!==sig){
    const old=s.items||[],used=new Set(),items=[];let seq=0;
    for(const x of src){
