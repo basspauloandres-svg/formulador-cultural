@@ -39,7 +39,11 @@ function ensureS10(){
    return s
  }
  if(!s.items||s.sourceSignature!==sig){
-   s={...s,sourceSignature:sig,items:makeAlternatives(),updatedAt:null};write('S10',s)
+   const proposals=makeAlternatives(),existing=Array.isArray(s.items)?s.items:[];
+   const oldIds=new Set(existing.map(x=>x.id));
+   // Retener decisiones anteriores. Una dependencia modificada exige revisión humana.
+   const additions=proposals.filter(x=>!oldIds.has(x.id));
+   s={...s,sourceSignature:sig,items:[...existing,...additions],requiresReview:existing.length>0,updatedAt:null};write('S10',s)
  }
  return s
 }
@@ -77,6 +81,7 @@ function ensureS11(){
      }else items.push(...activityProposals().filter(x=>x.resultId===r.id))
    }
    for(const x of old){
+     if(!items.some(y=>y.id===x.id)&&x.resultId&&!validResultIds.has(x.resultId))items.push({...x,requiresReview:true,reviewReason:'resultado_no_disponible'});
      if(x.status==='risk_response'&&x.resultId&&validResultIds.has(x.resultId)&&!items.some(y=>y.id===x.id))items.push({...x,activityId:x.activityId||x.id})
      else if(!x.resultId&&!x.objectiveId&&!items.some(y=>y.id===x.id))items.push({...x,activityId:x.activityId||x.id,status:x.status||'manual_sin_vinculo',confirmed:false})
    }
