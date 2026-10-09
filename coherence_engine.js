@@ -3,15 +3,15 @@ const $=s=>document.querySelector(s);const esc=v=>String(v??'').replaceAll('&','
 function arr(v){return Array.isArray(v)?v:[]}
 function tree(){try{return draft?.S07?.tree_state||JSON.parse(localStorage.getItem('formulador-cultural-problem-tree-v1')||'{}')}catch{return {}}}
 function objectives(){try{return draft?.S09?.objectives_state||JSON.parse(localStorage.getItem('formulador-cultural-objectives-v1')||'{}')}catch{return {}}}
-function alternatives(){try{return window.fcGetAlternatives?.()||[]}catch{return []}}
-function results(){try{return window.fcGetResults?.()||[]}catch{return []}}
-function activities(){try{return window.fcGetActivities?.()||[]}catch{return []}}
-function indicators(){try{return (window.fcGetIndicators?.()||[]).filter(x=>!x.stale&&(x.selected!==false||x.confirmed))}catch{return []}}
-function schedule(){try{return window.fcGetSchedule?.()||[]}catch{return []}}
-function budget(){try{return window.fcGetBudget?.()||[]}catch{return []}}
-function budgetState(){try{return window.fcGetBudgetState?.()||{}}catch{return {}}}
-function risks(){try{return window.fcGetRisks?.()||[]}catch{return []}}
-function riskState(){try{return window.fcGetRiskState?.()||{}}catch{return {}}}
+function alternatives(){try{return window.fcGetAlternativesSnapshot?.()||window.fcGetAlternatives?.()||[]}catch{return []}}
+function results(){try{return window.fcGetResultsSnapshot?.()||window.fcGetResults?.()||[]}catch{return []}}
+function activities(){try{return window.fcGetActivitiesSnapshot?.()||window.fcGetActivities?.()||[]}catch{return []}}
+function indicators(){try{return (window.fcGetIndicatorsSnapshot?.()||window.fcGetIndicators?.()||[]).filter(x=>!x.stale&&(x.selected!==false||x.confirmed))}catch{return []}}
+function schedule(){try{return window.fcGetScheduleSnapshot?.()||window.fcGetSchedule?.()||[]}catch{return []}}
+function budget(){try{return window.fcGetBudgetSnapshot?.()||window.fcGetBudget?.()||[]}catch{return []}}
+function budgetState(){try{return window.fcGetBudgetStateSnapshot?.()||window.fcGetBudgetState?.()||{}}catch{return {}}}
+function risks(){try{return window.fcGetRiskSnapshot?.()||window.fcGetRisks?.()||[]}catch{return []}}
+function riskState(){try{return window.fcGetRiskStateSnapshot?.()||window.fcGetRiskState?.()||{}}catch{return {}}}
 function evidence(){const d=draft?.S04||{};return [d.evidencia_disponible,d.fuentes].filter(x=>String(x||'').trim()).length}
 function pendingValue(v){return !String(v||'').trim()||/\[POR (VERIFICAR|REVISAR|DEFINIR)\]/i.test(String(v||''))}
 function currentValidationSnapshot(){
