@@ -34,7 +34,7 @@ const chain=()=>{const o={select:()=>o,order:()=>o,limit:()=>Promise.resolve({da
 w.supabase={createClient:()=>({auth:{getSession:()=>Promise.resolve({data:{session:null}}),onAuthStateChange:()=>{},signInWithPassword:()=>Promise.resolve({error:null}),signUp:()=>Promise.resolve({data:{},error:null}),signInWithOtp:()=>Promise.resolve({error:null}),updateUser:()=>Promise.resolve({error:null}),signOut:()=>Promise.resolve()},from:()=>chain()})};
 w.XLSX={utils:{book_new:()=>({}),json_to_sheet:()=>({}),aoa_to_sheet:()=>({}),book_append_sheet:()=>{}},writeFile:()=>{}};
 
-const scripts=['preboot.js','app.js','sections_extension.js','guidance.js','evidence.js','s05_preflight.js','vester.js','causal_validation.js','decision_guidance.js','simple_causal_ui.js','tree_validation_bridge.js','tree.js','synthesis.js','visualization.js','s07_front.js','simple_tree_ui.js','semantic_writing.js','data_cleanup.js','objectives.js','workflow.js','completion.js','planning.js','results_layer.js','coherence_engine.js','export_completion.js','deliverables.js','visual_exports_ui.js','review_dashboard.js','completion_bridge.js','guided_experience.js'];
+const scripts=['preboot.js','app.js','sections_extension.js','guidance.js','evidence.js','s05_preflight.js','vester.js','causal_validation.js','decision_guidance.js','simple_causal_ui.js','tree_validation_bridge.js','tree.js','synthesis.js','visualization.js','s07_front.js','simple_tree_ui.js','semantic_writing.js','data_cleanup.js','objectives.js','workflow.js','completion.js','planning.js','results_layer.js','project_snapshot.js','coherence_engine.js','export_completion.js','deliverables.js','visual_exports_ui.js','review_dashboard.js','completion_bridge.js','guided_experience.js'];
 for(const file of scripts){const s=w.document.createElement('script');s.textContent=fs.readFileSync(file,'utf8');w.document.body.appendChild(s)}
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
@@ -313,6 +313,21 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(typeof w.fcExportCompleteWorkbook==='function','No está disponible la exportación técnica Excel');
  assert(typeof w.fcExportProjectDOCX==='function'&&typeof w.fcExportProjectPDF==='function','No están disponibles las exportaciones documentales');
  assert(typeof w.fcProjectDocumentPayload==='function','No existe el payload profesional de documentos');
+ assert(typeof w.fcGetProjectSnapshot==='function','No existe el snapshot canónico del proyecto');
+ assert(typeof w.fcGetProjectSnapshotHash==='function','No existe hash funcional del snapshot canónico');
+ const projectStateBefore=JSON.stringify(JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1')||'{}'));
+ const projectSnapshotBefore=w.fcGetProjectSnapshot();
+ const projectHashBefore=w.fcGetProjectSnapshotHash();
+ assert(projectSnapshotBefore?.schema==='project_snapshot_v1','El snapshot canónico no declara project_snapshot_v1');
+ for(let i=1;i<=16;i++){const code='S'+String(i).padStart(2,'0');assert(projectSnapshotBefore.sections&&projectSnapshotBefore.sections[code]!==undefined,'El snapshot canónico no incluye '+code)}
+ assert(Array.isArray(projectSnapshotBefore.derived.activities)&&Array.isArray(projectSnapshotBefore.derived.indicators),'El snapshot canónico no expone S11-S12 estructurados');
+ const coherenceFromSnapshot=w.fcGetCoherenceReport?.();
+ const reviewFromSnapshot=w.fcGetReviewSnapshot?.();
+ assert(coherenceFromSnapshot&&Array.isArray(coherenceFromSnapshot.checks),'Coherencia no puede leer el snapshot canónico');
+ assert(reviewFromSnapshot&&Array.isArray(reviewFromSnapshot.acts),'S16 no puede leer el snapshot canónico');
+ assert(w.fcGetProjectSnapshotHash()===projectHashBefore,'Leer coherencia o S16 modificó el snapshot canónico');
+ assert(JSON.stringify(JSON.parse(w.localStorage.getItem('formulador-cultural-prototipo-v1')||'{}'))===projectStateBefore,'Leer snapshot/coherencia/S16 modificó el estado persistido');
+
  for(const fn of ['fcGetAlternativesSnapshot','fcGetResultsSnapshot','fcGetActivitiesSnapshot','fcGetIndicatorsSnapshot','fcGetScheduleSnapshot','fcGetBudgetSnapshot','fcGetRiskSnapshot'])assert(typeof w[fn]==='function','Falta snapshot inmutable '+fn);
  const exportBefore={
    alternatives:JSON.stringify(w.fcGetAlternativesSnapshot()),
@@ -323,6 +338,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
    budget:JSON.stringify(w.fcGetBudgetSnapshot()),
    risks:JSON.stringify(w.fcGetRiskSnapshot())
  };
+ const hashBeforeDocument=w.fcGetProjectSnapshotHash();
  const payload=w.fcProjectDocumentPayload();assert(payload&&payload.title&&Array.isArray(payload.indicators)&&Array.isArray(payload.schedule),'El payload profesional no conserva la estructura vigente');
  assert(payload.results.length===w.fcGetResultsSnapshot().filter(x=>x.confirmed).length,'El payload documental no coincide con los resultados guardados');
  assert(payload.activities.length===w.fcGetActivitiesSnapshot().filter(x=>x.confirmed).length,'El payload documental no coincide con las actividades guardadas');
@@ -330,6 +346,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(payload.budget.length===w.fcGetBudgetSnapshot().length,'El payload documental no coincide con el presupuesto guardado');
  assert(payload.risks.length===w.fcGetRiskSnapshot().length,'El payload documental no coincide con los riesgos guardados');
  const exportAfter={alternatives:JSON.stringify(w.fcGetAlternativesSnapshot()),results:JSON.stringify(w.fcGetResultsSnapshot()),activities:JSON.stringify(w.fcGetActivitiesSnapshot()),indicators:JSON.stringify(w.fcGetIndicatorsSnapshot()),schedule:JSON.stringify(w.fcGetScheduleSnapshot()),budget:JSON.stringify(w.fcGetBudgetSnapshot()),risks:JSON.stringify(w.fcGetRiskSnapshot())};
+ assert(w.fcGetProjectSnapshotHash()===hashBeforeDocument,'Construir el payload documental modificó el snapshot canónico');
  assert(JSON.stringify(exportBefore)===JSON.stringify(exportAfter),'Construir el payload de exportación modificó S10-S15');
  assert(typeof w.fcGetDocumentGeneratorStatus==='function','No se puede consultar el estado del generador profesional');
 
