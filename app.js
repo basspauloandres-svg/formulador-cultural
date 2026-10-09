@@ -19,7 +19,7 @@ const syncMetaKey='formulador-cultural-sync-meta-v1';
 const cloudProjectKey='formulador-cultural-cloud-project-v1';
 const draft=JSON.parse(localStorage.getItem(storeKey)||'{}');
 const syncMeta=JSON.parse(localStorage.getItem(syncMetaKey)||'{}');
-let dirty=false,session=null,cloudProject=null,loginCooldownTimer=null;
+let dirty=false,session=null,cloudProject=null,loginCooldownTimer=null;const sectionSyncQueues={};
 const q=s=>document.querySelector(s);
 
 function guide(label){return [`¿Qué información concreta corresponde a «${label}»?`,`¿Qué datos están confirmados?`,`¿Qué falta por verificar?`]}
@@ -62,6 +62,13 @@ async function ensureProject(){
   if(created.error)throw created.error;
   cloudProject=created.data;localStorage.setItem(cloudProjectKey,cloudProject.id);return cloudProject
 }
+function queueSectionSync(code=active){
+  const prior=sectionSyncQueues[code]||Promise.resolve();
+  const next=prior.catch(()=>{}).then(()=>syncSection(code));
+  sectionSyncQueues[code]=next.finally(()=>{if(sectionSyncQueues[code]===next)sectionSyncQueues[code]=null});
+  return next
+}
+window.fcQueueSectionSync=queueSectionSync;
 async function syncSection(code=active){if(!session||!sb)return false;if(code===active)collect();const project=await ensureProject();const now=new Date().toISOString();const payload={project_id:project.id,code,data:draft[code]||{},updated_at:now};const {error}=await sb.from('sections').upsert(payload,{onConflict:'project_id,code'});if(error)throw error;const m=metaFor(code);m.lastSyncedAt=now;m.cloudUpdatedAt=now;if(!m.localUpdatedAt)m.localUpdatedAt=nestedUpdatedAt(code)||now;saveSyncMeta();const title=draft.S01?.nombre_del_proyecto?.trim();if(title&&title!==project.title){await sb.from('projects').update({title,updated_at:now}).eq('id',project.id);project.title=title}return true}
 async function save(){saveLocal();if(!session){setStatus(`Borrador de ${active} guardado localmente. Inicia sesión para sincronizar.`);return}try{await syncSection(active);setStatus(`${active} guardada y sincronizada en la nube.`,true)}catch(e){console.error(e);setStatus(`Guardado local correcto. La sincronización falló: ${e.message||'error desconocido'}`)}}
 async function loadCloud(){if(!session||!sb)return;try{const project=await ensureProject();renderAuth();const {data,error}=await sb.from('sections').select('code,data,updated_at').eq('project_id',project.id);if(error)throw error;let keptLocal=0,loadedCloud=0,legacyProtected=0;for(const row of data||[]){const code=row.code,local=draft[code]||{},remote=row.data||{},m=metaFor(code),remoteTs=Date.parse(row.updated_at||0)||0,localIso=effectiveLocalUpdatedAt(code),localTs=Date.parse(localIso||0)||0,lastSyncTs=Date.parse(m.lastSyncedAt||0)||0;const localHas=meaningful(local);const remoteHas=meaningful(remote);const hasHistory=!!(m.localUpdatedAt||m.lastSyncedAt||m.cloudUpdatedAt);if(!localHas&&remoteHas){draft[code]=remote;m.localUpdatedAt=row.updated_at||new Date().toISOString();m.lastSyncedAt=row.updated_at||null;m.cloudUpdatedAt=row.updated_at||null;loadedCloud+=1;continue}if(localHas&&!hasHistory){draft[code]=mergeLegacy(remote,local);const now=new Date().toISOString();m.localUpdatedAt=now;m.cloudUpdatedAt=row.updated_at||null;legacyProtected+=1;continue}const localChanged=localTs>lastSyncTs;const remoteKnownTs=Date.parse(m.cloudUpdatedAt||0)||0;const cloudChanged=remoteTs>remoteKnownTs;if(localChanged&&cloudChanged){if(localTs>=remoteTs){keptLocal+=1}else{draft[code]={...local,...remote};m.localUpdatedAt=row.updated_at||new Date().toISOString();m.lastSyncedAt=row.updated_at||null;loadedCloud+=1}}else if(localChanged){keptLocal+=1}else{draft[code]={...local,...remote};m.localUpdatedAt=row.updated_at||m.localUpdatedAt||new Date().toISOString();m.lastSyncedAt=row.updated_at||m.lastSyncedAt||null;loadedCloud+=1}m.cloudUpdatedAt=row.updated_at||m.cloudUpdatedAt||null}localStorage.setItem(storeKey,JSON.stringify(draft));saveSyncMeta();render();const notes=[];if(loadedCloud)notes.push(`${loadedCloud} sección(es) actualizadas desde la nube`);if(keptLocal)notes.push(`${keptLocal} sección(es) locales más recientes conservadas`);if(legacyProtected)notes.push(`${legacyProtected} sección(es) de pruebas anteriores protegidas`);setStatus(`Proyecto «${project.title}» reconciliado. ${notes.join(' · ')||'Sin cambios.'}`,true)}catch(e){console.error(e);setStatus(`No fue posible cargar la nube: ${e.message||'error desconocido'}`)}}
