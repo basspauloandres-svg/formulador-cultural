@@ -1,14 +1,32 @@
 (()=>{
 const q=s=>document.querySelector(s);
 let navigating=false;
+// Las consultas y la navegación simple no deben ejecutar upserts a Supabase.
+// Capturar interacciones del usuario; los módulos que editan mediante código
+// pueden señalar explícitamente cambios mediante fcMarkSectionDirty().
+const dirtySections=new Set();
+window.fcMarkSectionDirty=code=>dirtySections.add(code||active);
+document.addEventListener('input',e=>{
+  if(e.target?.closest?.('#panel'))dirtySections.add(active);
+},true);
+document.addEventListener('change',e=>{
+  if(e.target?.closest?.('#panel'))dirtySections.add(active);
+},true);
+document.addEventListener('click',e=>{
+  const b=e.target?.closest?.('#panel button');
+  if(b&&!b.matches('[data-k], #prev, #next, #mPrev, #mNext'))dirtySections.add(active);
+},true);
 
 async function persistCurrent(){
+  // No capturar ni persistir el DOM si el usuario no cambió esta sección.
+  if(!dirtySections.has(active))return true;
   try{
     if(typeof saveLocal==='function')saveLocal();
     if(typeof session!=='undefined'&&session&&typeof syncSection==='function'){
       await syncSection(active);
       if(typeof setStatus==='function')setStatus(`${active} guardada y sincronizada antes de continuar.`,true);
     }
+    dirtySections.delete(active);
     return true;
   }catch(e){
     console.error('Persistencia antes de navegar',e);
