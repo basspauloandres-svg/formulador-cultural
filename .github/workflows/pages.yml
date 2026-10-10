@@ -100,6 +100,8 @@ jobs:
         run: node ci_pending_diagnostics_test.js
       - name: Auditar relaciones de causas y objetivos
         run: node ci_historical_orphans_test.js
+      - name: Validar origen de objetivo general
+        run: node ci_central_objective_identity_test.js
       - name: Verificar archivos públicos esenciales
         run: |
           test -f index.html
