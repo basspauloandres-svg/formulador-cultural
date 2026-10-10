@@ -96,6 +96,8 @@ jobs:
         run: node ci_cloud_noop_sync_check.js
       - name: Verificar regresiones de aislamiento crítico
         run: node ci_critical_isolation_contract.js
+      - name: Verificar indicadores pendientes y diagnósticos
+        run: node ci_pending_diagnostics_test.js
       - name: Verificar archivos públicos esenciales
         run: |
           test -f index.html
