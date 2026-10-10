@@ -1,0 +1,1 @@
+const assert=require('assert'),fs=require('fs');const s=fs.readFileSync('review_dashboard.js','utf8');assert(/const absenceCount=missing\+progress\+/.test(s),'Debe contar secciones faltantes y en progreso');assert(s.includes('window.fcGetProjectIntegrityReport?.().issues?.length||0'),'Debe contar referencias inválidas');console.log('S16 absence count contract OK');
