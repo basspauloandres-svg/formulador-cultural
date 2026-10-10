@@ -90,6 +90,8 @@ jobs:
         run: node ci_multiproject_isolation_test.js
       - name: Probar navegación sin sincronización involuntaria
         run: node ci_navigation_noop_test.js
+      - name: Verificar lectura sin escrituras en resultados S11
+        run: node ci_results_mount_readonly_test.js
       - name: Verificar archivos públicos esenciales
         run: |
           test -f index.html
