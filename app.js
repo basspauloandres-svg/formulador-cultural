@@ -98,7 +98,8 @@ async function switchCloudProject(projectId){
   const found=await sb.from('projects').select('*').eq('id',projectId).single();
   if(found.error)throw found.error;
   clearLocalProjectState();
-  window.fcResetProjectModules?.();
+  window.fcResetObjectives?.();
+  window.fcResetEvidenceProject?.();
   cloudProject=found.data;
   localStorage.setItem(cloudProjectKey,cloudProject.id);
   renderAuth();
