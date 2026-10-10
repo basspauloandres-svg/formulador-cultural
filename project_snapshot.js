@@ -101,6 +101,8 @@ function integrityReport(snapshot){
   const ids=v=>new Set(list(v).map(x=>String(x?.id||'')));
   const results=ids(d.results),activities=ids(d.activities);
   const objectives=ids(d.objectives?.items);
+  const causes=new Set(list(d.causal_validation?.variables).map(x=>String(x?.id||'')));
+  for(const n of list(d.tree?.nodes))if(n.zone==='direct_cause'||n.zone==='indirect_cause')causes.add(String(n.id||''));
   const add=(section,kind,id,ref)=>problems.push({section,kind,id:String(id||''),reference:String(ref||''),status:'POR_VERIFICAR'});
   for(const a of list(d.activities)){
     if(a.resultId&&!results.has(String(a.resultId)))add('S11','RESULTADO_AUSENTE',a.id,a.resultId);
@@ -119,6 +121,8 @@ function integrityReport(snapshot){
     const [kind,id]=key.split(':');
     if(kind==='activity'&&!activities.has(id))add('S15','EVALUACION_ACTIVIDAD_HUERFANA',key,value);
     if(kind==='result'&&!results.has(id))add('S15','EVALUACION_RESULTADO_HUERFANA',key,value);
+    if(kind==='cause'&&!causes.has(id))add('S15','EVALUACION_CAUSA_HUERFANA',key,value);
+    if(kind==='objective'&&!objectives.has(id))add('S15','EVALUACION_OBJETIVO_HUERFANA',key,value);
   }
   return deepFreeze({schema:'project_integrity_report_v1',project_id:s.project?.project_id||null,snapshot_hash:hash(s),ok:problems.length===0,issues:problems});
 }
