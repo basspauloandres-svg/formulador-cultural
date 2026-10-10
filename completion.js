@@ -82,7 +82,7 @@ function ensureS11(){
        for(let i=0;i<existing.length;i++){
          const x=existing[i],fresh=freshForResult[i]||freshForResult[0],placeholder=window.fcWriting?.isPlaceholder?.(x.text),generatedSource=!x.source||['histórico','compatibilidad','propuesta_sistema','sistema'].includes(x.source),needsSynthesis=!!window.fcWriting?.activityNeedsSynthesis?.(x.text,r.text);
          const synthesized=generatedSource&&needsSynthesis?window.fcWriting?.activitySynthesisFromResult?.(r.text):'';
-         const replacement=placeholder&&fresh?.text?fresh.text:(synthesized||x.text);
+         const replacement=x.confirmed?x.text:(placeholder&&fresh?.text?fresh.text:(synthesized||x.text));
          const repaired=String(replacement||'')!==String(x.text||'');
          items.push({...x,id:x.id||x.activityId,activityId:x.activityId||x.id,objectiveId:r.objectiveId,objectiveText:r.objectiveText||x.objectiveText||'',causeId:x.causeId||obj.id||r.objectiveId,resultId:r.id,resultText:r.text,text:replacement,confirmed:placeholder?false:!!x.confirmed,source:repaired?'propuesta_sistema':(x.source||'histórico'),provenance:repaired?'sintesis_actividad_heredada':(x.provenance||'compatibilidad'),updatedAt:repaired?new Date().toISOString():(x.updatedAt||null)})
        }
