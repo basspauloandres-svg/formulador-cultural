@@ -88,6 +88,8 @@ jobs:
         run: node ci_project_compatibility_test.js
       - name: Verificar aislamiento sintético entre proyectos
         run: node ci_multiproject_isolation_test.js
+      - name: Probar navegación sin sincronización involuntaria
+        run: node ci_navigation_noop_test.js
       - name: Verificar archivos públicos esenciales
         run: |
           test -f index.html
