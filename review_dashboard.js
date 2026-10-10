@@ -28,7 +28,7 @@ function snapshot(){
  const incompleteIndicators=indicatorPending.filter(x=>!x.missing.includes('Definición del indicador')).length;
  const orphanResultItems=(current.orphanResults||[]).map(r=>({id:r.id,text:r.text,objectiveText:r.objectiveText||''}));
  const orphanResults=orphanResultItems.length;
- const absenceCount=undefinedIndicators+incompleteIndicators+orphanResults+(current.orphanActivities||[]).length+(current.schedulePending||[]).length+(current.budgetPending||[]).length+(current.highRiskPending||[]).length;
+ const absenceCount=missing+progress+undefinedIndicators+incompleteIndicators+orphanResults+(current.orphanActivities||[]).length+(current.schedulePending||[]).length+(current.budgetPending||[]).length+(current.highRiskPending||[]).length+(window.fcGetProjectIntegrityReport?.().issues?.length||0);
  const coherenceIssues=(coh.checks||[]).filter(x=>['REQUIERE AJUSTE','INSUFFICIENT_EVIDENCE'].includes(x.status));
  const coherenceOk=coherenceIssues.length===0;
  const ready=complete===codes.length&&absenceCount===0&&coherenceOk;
