@@ -25,7 +25,8 @@ function scheduleState(){
   const srcMap=new Map(src.map(a=>[a.id,a])),ordered=[];
   for(const prev of oldItems){const a=srcMap.get(prev.activityId);if(a){ordered.push(a);srcMap.delete(prev.activityId)}}
   for(const a of src)if(srcMap.has(a.id)){ordered.push(a);srcMap.delete(a.id)}
-  s={sourceSignature:sig,items:ordered.map((a,i)=>{const prev=old.get(a.id);return prev?{...prev,activityId:a.id,activityText:a.text,activityResultText:a.resultText||prev.activityResultText||'',activityContext:a.context||prev.activityContext||{}}:{id:'SCH'+(i+1),activityId:a.id,activityText:a.text,activityResultText:a.resultText||'',activityContext:a.context||{},startDate:'',duration:1,durationUnit:'days',endDate:'',dependencyIds:[],responsible:'[POR VERIFICAR]',frequency:'Una vez',confirmed:false}}),updatedAt:null};
+  const orphaned=oldItems.filter(prev=>!src.some(a=>a.id===prev.activityId)).map(prev=>({...prev,requiresReview:true}));
+  s={sourceSignature:sig,items:[...ordered.map((a,i)=>{const prev=old.get(a.id);return prev?{...prev,activityId:a.id,activityText:a.text,activityResultText:a.resultText||prev.activityResultText||'',activityContext:a.context||prev.activityContext||{}}:{id:'SCH'+(i+1),activityId:a.id,activityText:a.text,activityResultText:a.resultText||'',activityContext:a.context||{},startDate:'',duration:1,durationUnit:'days',endDate:'',dependencyIds:[],responsible:'[POR VERIFICAR]',frequency:'Una vez',confirmed:false}}),...orphaned],updatedAt:null};
   write('S13','schedule_state',s)
  }
  return s
