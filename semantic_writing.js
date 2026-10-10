@@ -345,7 +345,7 @@ function indicatorGuidance(source,type,family,context={}){
  return {level:labels[candidate?.indicatorFamily]||'Indicador de ejecución',purpose:'Mide una dimensión concreta de la actividad real “'+t+'”. Este dato no demuestra por sí solo el cambio del proyecto.',question:'¿Cómo comprobaremos que “'+t+'” ocurrió como estaba previsto?',formulaHint:'El sistema propone una fórmula solo cuando puede derivarla de los datos ya registrados.',unitHint:'Usa una unidad pertinente a esta actividad.',suggestions:battery.map(x=>x.indicator),formulaExamples:battery.map(x=>x.formula).filter(x=>!/^\[POR/.test(x)),context:{activityText:t,resultText:result,objectiveText:objective,population,territory}}
 }
 function indicatorQuality(x){
- const missing=v=>!String(v||'').trim()||/^\s*\[POR (VERIFICAR|REVISAR|DEFINIR)\]/i.test(String(v||''));
+ const missing=v=>!String(v||'').trim()||/^\s*\[POR\s+(VERIFICAR|REVISAR|DEFINIR)\b/i.test(String(v||''));
  const issues=[];
  if(missing(x.indicator))issues.push('Falta definir qué se medirá.');
  if(missing(x.formula))issues.push('Falta explicar cómo se calculará o evaluará.');
@@ -362,6 +362,6 @@ function indicatorQuality(x){
  return {ok:issues.length===0,issues}
 }
 
-function isPlaceholder(v){return /^\s*\[POR (REVISAR|VERIFICAR|DEFINIR)\]/i.test(String(v||''))}
+function isPlaceholder(v){return /^\s*\[POR\s+(REVISAR|VERIFICAR|DEFINIR)\b/i.test(String(v||''))}
 window.fcWriting={clean,compactPresentationText,resultWritingReview,objectiveProposals,objectiveWritingReview,looksLikeActivity,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activityWritingReview,activitySynthesisFromResult,activityNeedsSynthesis,activityObjectFromResult,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorFieldAssist,indicatorFieldGuide,indicatorQuality,isPlaceholder};
 })();
