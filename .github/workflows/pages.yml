@@ -86,6 +86,8 @@ jobs:
         run: node ci_button_contract_check.js
       - name: Ejecutar prueba de compatibilidad del proyecto
         run: node ci_project_compatibility_test.js
+      - name: Verificar aislamiento sintético entre proyectos
+        run: node ci_multiproject_isolation_test.js
       - name: Verificar archivos públicos esenciales
         run: |
           test -f index.html
