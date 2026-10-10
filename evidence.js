@@ -1,6 +1,7 @@
 (()=>{
 const client=typeof sb!=='undefined'?sb:null;
 let evidenceSession=null,evidenceProject=null,rendering=false,evidenceCache=[];
+window.fcResetEvidenceProject=()=>{evidenceProject=null;evidenceCache=[];rendering=false};
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const kindLabel={institutional:'Documento institucional',research:'Investigación/publicación',administrative:'Registro administrativo',observation:'Observación directa',interview:'Entrevista o testimonio',web:'Fuente web',other:'Otro'};
