@@ -102,6 +102,8 @@ jobs:
         run: node ci_historical_orphans_test.js
       - name: Validar origen de objetivo general
         run: node ci_central_objective_identity_test.js
+      - name: Verificar pendientes reales de S16
+        run: node ci_s16_absence_count_test.js
       - name: Verificar archivos públicos esenciales
         run: |
           test -f index.html
