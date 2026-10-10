@@ -362,6 +362,6 @@ function indicatorQuality(x){
  return {ok:issues.length===0,issues}
 }
 
-function isPlaceholder(v){return /^\s*\[POR (REVISAR|VERIFICAR|DEFINIR)\]/i.test(String(v||''))}
+function isPlaceholder(v){return /^\s*\[POR\s+(REVISAR|VERIFICAR|DEFINIR)\b/i.test(String(v||''))}
 window.fcWriting={clean,compactPresentationText,resultWritingReview,objectiveProposals,objectiveWritingReview,looksLikeActivity,strategyProposals,resultProposal,activityProposals,activityGuidance,activityFromPlainLanguage,activityWritingReview,activitySynthesisFromResult,activityNeedsSynthesis,activityObjectFromResult,activitySufficiency,extractQuantity,indicatorBattery,indicatorProposal,indicatorGuidance,indicatorFieldAssist,indicatorFieldGuide,indicatorQuality,isPlaceholder};
 })();
