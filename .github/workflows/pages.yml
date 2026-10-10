@@ -94,6 +94,8 @@ jobs:
         run: node ci_results_mount_readonly_test.js
       - name: Verificar sincronización central sin cambios
         run: node ci_cloud_noop_sync_check.js
+      - name: Verificar regresiones de aislamiento crítico
+        run: node ci_critical_isolation_contract.js
       - name: Verificar archivos públicos esenciales
         run: |
           test -f index.html

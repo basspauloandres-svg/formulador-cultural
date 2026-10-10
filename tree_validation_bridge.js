@@ -22,5 +22,5 @@ function enforce(){const counter=document.querySelector('#counter');if(!counter?
 
 const bridgeStyle=document.createElement('style');bridgeStyle.textContent='.causal-bridge-vars{display:grid;gap:8px;margin:10px 0;padding:0;list-style:none}.causal-bridge-vars li{display:grid;gap:3px;border:1px solid #d9e5de;background:#fff;border-radius:11px;padding:9px 10px}.causal-bridge-vars li span{color:#607067;font-size:.82rem}';document.head.appendChild(bridgeStyle);
 window.fcSyncCausalValidationToTree=sync;
-sync();new MutationObserver(enforce).observe(document.body,{subtree:true,childList:true,characterData:true});enforce();
+/* Do not derive/write a tree at boot or during passive navigation. */new MutationObserver(enforce).observe(document.body,{subtree:true,childList:true,characterData:true});enforce();
 })();

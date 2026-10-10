@@ -93,6 +93,7 @@ function bindItems(){
  $('#objectiveNext')&&($('#objectiveNext').onclick=()=>{cursor=Math.min(state.items.length-1,cursor+1);render()})
 }
 function mount(){const counter=$('#counter'),fields=$('#fields');if(!counter||!fields||!counter.textContent.startsWith('S09'))return;if($('#objectivesWizard'))return;load();refreshFromTree(false);fields.innerHTML='<section id="objectivesWizard" class="objectives-wizard"><span class="objectives-mode">Árbol de objetivos</span><h3>Definir qué queremos cambiar</h3><p>Revisaremos una situación por vez. La herramienta te explica qué tipo de cambio debes redactar y te propone opciones que puedes editar.</p><div id="objectivesBody"></div></section>';render()}
-window.fcGetObjectives=()=>{try{if(state?.items?.length)return state.items;const d=draft?.S09?.objectives_state?.items;if(Array.isArray(d))return d;return JSON.parse(localStorage.getItem('formulador-cultural-objectives-v1')||'{}').items||[]}catch{return[]}};
+window.fcResetObjectives=()=>{state={items:[],sourceSignature:'',updatedAt:null};cursor=0};
+window.fcGetObjectives=()=>{try{const persisted=draft?.S09?.objectives_state?.items;if(Array.isArray(persisted))return persisted;if(state?.items?.length)return state.items;const d=draft?.S09?.objectives_state?.items;if(Array.isArray(d))return d;return JSON.parse(localStorage.getItem('formulador-cultural-objectives-v1')||'{}').items||[]}catch{return[]}};
 const obs=new MutationObserver(mount);obs.observe(document.body,{subtree:true,childList:true});mount();
 })();
