@@ -57,6 +57,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  assert(causalSource.includes("markLocalUpdate('S06'")&&causalSource.includes("oninput=()=>{const v=state.variables"),'S06 no persiste notas conceptuales durante la escritura');
  assert(simpleCausalSource.includes("markLocalUpdate('S06'")&&simpleCausalSource.includes("t.oninput=()=>saveNote"),'S06 no persiste justificaciones guiadas durante la escritura');
  const exportCompletionSource=fs.readFileSync('export_completion.js','utf8');
+ assert(fs.readFileSync('completion.js','utf8').includes('const replacement=x.confirmed?x.text:'),'La reconciliación S11 puede sustituir una actividad confirmada');
  assert(fs.readFileSync('planning.js','utf8').includes('...orphaned],updatedAt:null'), 'S13 descarta cronogramas históricos con actividades huérfanas');
  assert(exportCompletionSource.includes('fcGetActivitiesSnapshot')&&exportCompletionSource.includes('fcGetScheduleSnapshot')&&exportCompletionSource.includes('fcGetBudgetSnapshot')&&exportCompletionSource.includes('fcGetRiskSnapshot'),'Excel vuelve a usar getters reconciliadores en S11-S15');
  const deliverySource=fs.readFileSync('deliverables.js','utf8');
