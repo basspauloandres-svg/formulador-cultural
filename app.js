@@ -43,16 +43,16 @@ function startLoginCooldown(seconds=60){const btn=q('#loginBtn');if(loginCooldow
 async function ensureProject(){
   if(!session||!sb)return null;
   if(cloudProject)return cloudProject;
+  const remembered=localStorage.getItem(cloudProjectKey);
+  if(remembered){
+    const found=await sb.from('projects').select('*').eq('id',remembered).maybeSingle();
+    if(!found.error&&found.data){cloudProject=found.data;return cloudProject}
+  }
   const recentSection=await sb.from('sections').select('project_id,updated_at').order('updated_at',{ascending:false}).limit(1);
   if(!recentSection.error&&recentSection.data?.length){
     const pid=recentSection.data[0].project_id;
     const found=await sb.from('projects').select('*').eq('id',pid).single();
     if(!found.error&&found.data){cloudProject=found.data;localStorage.setItem(cloudProjectKey,pid);return cloudProject}
-  }
-  const remembered=localStorage.getItem(cloudProjectKey);
-  if(remembered){
-    const found=await sb.from('projects').select('*').eq('id',remembered).maybeSingle();
-    if(!found.error&&found.data){cloudProject=found.data;return cloudProject}
   }
   const {data,error}=await sb.from('projects').select('*').order('updated_at',{ascending:false}).limit(1);
   if(error)throw error;
@@ -98,6 +98,7 @@ async function switchCloudProject(projectId){
   const found=await sb.from('projects').select('*').eq('id',projectId).single();
   if(found.error)throw found.error;
   clearLocalProjectState();
+  window.fcResetProjectModules?.();
   cloudProject=found.data;
   localStorage.setItem(cloudProjectKey,cloudProject.id);
   renderAuth();
