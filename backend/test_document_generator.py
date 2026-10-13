@@ -309,3 +309,19 @@ def test_document_layout_and_integrity_appendices():
         assert root.findall(".//w:tblHeader", ns), "Las cabeceras deben repetirse"
     pdf = generate_pdf(payload)
     assert pdf.startswith(b"%PDF")
+
+
+def test_historical_alternative_versions_preserved_in_generated_documents():
+    payload = sample_payload()
+    payload["historical_alternatives"] = [
+        {"id": "A1", "text": "Alternativa primera version", "archiveReason": "origen_anterior", "archivedAt": "2026-10-08", "sourceIds": ["p1"], "note": "Nota original"},
+        {"id": "A1", "text": "Alternativa segunda version", "archiveReason": "sin_objetivo_especifico_confirmado", "archivedAt": "2026-10-09", "sourceIds": ["p11qo4h5"], "note": "PF02-NOTA-ALTERNATIVA"},
+    ]
+    docx = generate_docx(payload)
+    with ZipFile(BytesIO(docx)) as z:
+        xml = z.read("word/document.xml").decode("utf-8")
+        for value in ("Alternativa primera version", "Alternativa segunda version",
+                      "sin_objetivo_especifico_confirmado", "p11qo4h5", "PF02-NOTA-ALTERNATIVA"):
+            assert value in xml
+    pdf = generate_pdf(payload)
+    assert pdf.startswith(b"%PDF")
