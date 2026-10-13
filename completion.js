@@ -2,6 +2,25 @@
 const $=s=>document.querySelector(s);const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const KEYS={S10:'formulador-cultural-alternatives-v1',S11:'formulador-cultural-activities-v1',S12:'formulador-cultural-indicators-v1'};const cursors={S10:0,S11:0,S12:0};const indicatorSteps={};let focusedResultId='';
 function read(code){try{return draft?.[code]?.completion_state||JSON.parse(localStorage.getItem(KEYS[code])||'{}')}catch{return {}}}
+function historicalAlternativesFrom(state){
+ const src=state&&typeof state==='object'?state:{};
+ const archived=Array.isArray(src.archivedItems)?src.archivedItems:[];
+ const stale=Array.isArray(src.staleItems)?src.staleItems:[];
+ const marked=(Array.isArray(src.items)?src.items:[]).filter(a=>a&&(a.requiresReview||a.stale||a.archived));
+ const seen=new Set(),result=[];
+ for(const [origin,items] of [['archivedItems',archived],['staleItems',stale],['items_requires_review',marked]]){
+  for(const record of items){
+   if(!record||typeof record!=='object')continue;
+   const key=JSON.stringify(record);
+   if(seen.has(key))continue;
+   seen.add(key);
+   result.push({...record,historicalOrigin:origin});
+  }
+ }
+ return result;
+}
+window.fcHistoricalAlternativesFrom=historicalAlternativesFrom;
+window.fcGetHistoricalAlternatives=()=>historicalAlternativesFrom(draft?.S10?.completion_state);
 function write(code,state){state.updatedAt=new Date().toISOString();localStorage.setItem(KEYS[code],JSON.stringify(state));if(typeof draft!=='undefined'){draft[code]=draft[code]||{};draft[code].completion_state=state;localStorage.setItem(storeKey,JSON.stringify(draft))}}
 function continueView(target,fallback){
  const run=()=>{const el=(typeof target==='string'?document.querySelector(target):target)||(fallback?(typeof fallback==='string'?document.querySelector(fallback):fallback):null);if(!el)return;try{el.scrollIntoView({behavior:'smooth',block:'center',inline:'nearest'})}catch{el.scrollIntoView()}};
