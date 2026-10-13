@@ -108,6 +108,8 @@ jobs:
         run: node ci_qa2_s10_s12_test.js
       - name: QA2 export integrity contracts
         run: node ci_qa2_export_integrity_test.js
+      - name: QA3 H01 históricos archivados
+        run: node ci_qa3_archived_alternatives_test.js
       - name: Verificar archivos públicos esenciales
         run: |
           test -f index.html
