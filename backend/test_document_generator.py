@@ -292,3 +292,20 @@ def test_pending_diagnostic_is_present_in_docx_and_pdf():
         assert "REQUIERE AJUSTE" in xml
     pdf = generate_pdf(payload)
     assert b"%PDF" in pdf[:8]
+
+
+def test_document_layout_and_integrity_appendices():
+    payload = sample_payload()
+    payload["integrity_issues"] = [{"section": "S15", "kind": "EVALUACION_CAUSA_HUERFANA", "id": "cause:p14d50h", "reference": "cause:p14d50h"}]
+    payload["historical_alternatives"] = [{"id": "A1", "text": "Alternativa archivada"}]
+    docx = generate_docx(payload)
+    with ZipFile(BytesIO(docx)) as z:
+        root = ET.fromstring(z.read("word/document.xml"))
+        ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+        text = "".join((t.text or "") for t in root.findall(".//w:t", ns))
+        assert "EVALUACION_CAUSA_HUERFANA" in text
+        assert "Alternativa archivada" in text
+        assert root.findall(".//w:trPr/w:cantSplit", ns), "Las filas no deben dividirse entre páginas"
+        assert root.findall(".//w:tblHeader", ns), "Las cabeceras deben repetirse"
+    pdf = generate_pdf(payload)
+    assert pdf.startswith(b"%PDF")
