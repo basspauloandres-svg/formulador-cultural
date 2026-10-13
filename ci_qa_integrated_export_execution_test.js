@@ -4,7 +4,7 @@ const original={A:{S01:{nombre_del_proyecto:'BANDA'},S10:{completion_state:{item
 const excelCaptures=[];
 const window={fcGetProjectIntegrityReport:()=>({ok:false,issues:Array.from({length:8},(_,i)=>({section:'S15',kind:'REFERENCE_HUERFANA',id:'orphan-'+i,reference:'r-'+i}))})};
 const xlsx={utils:{book_new:()=>({sheets:{}}),json_to_sheet:rows=>({rows}),aoa_to_sheet:rows=>({rows}),book_append_sheet:(wb,sheet,name)=>wb.sheets[name]=sheet},writeFile:(wb,name)=>excelCaptures.push({name,wb})};
-const ctx={window,draft:original.A,XLSX:xlsx,localStorage:{getItem:()=>null,setItem:()=>{}},console,alert:()=>{}};
+const ctx={window,sections:{},draft:original.A,XLSX:xlsx,localStorage:{getItem:()=>null,setItem:()=>{}},console,alert:()=>{}};
 vm.createContext(ctx);
 const completion=read('completion.js'),start=completion.indexOf('function historicalAlternativesFrom('),end=completion.indexOf('function write(',start);
 assert(start>=0&&end>start);vm.runInContext(completion.slice(start,end),ctx);
