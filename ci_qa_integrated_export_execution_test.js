@@ -1,0 +1,13 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const read=p=>fs.readFileSync(p,'utf8');
+const original={A:{S01:{nombre_del_proyecto:'BANDA'},S10:{completion_state:{items:[{id:'A1',text:'Activa A'}],archivedItems:Array.from({length:6},(_,i)=>({id:'A'+(i%3+1),text:'Histórico A '+i,archivedAt:'2026-10-09',sourceIds:['o'+i],note:'nota '+i}))}}},B:{S01:{nombre_del_proyecto:'PF02'},S10:{completion_state:{items:[],archivedItems:[{id:'A1',text:'Ciclo presencial semanal de formación musical comunitaria',archiveReason:'sin_objetivo_especifico_confirmado',sourceIds:['p11qo4h5'],note:'PF02-NOTA-ALTERNATIVA'}]}}}};
+const excelCaptures=[];
+const window={fcGetProjectIntegrityReport:()=>({ok:false,issues:Array.from({length:8},(_,i)=>({section:'S15',kind:'REFERENCE_HUERFANA',id:'orphan-'+i,reference:'r-'+i}))})};
+const xlsx={utils:{book_new:()=>({sheets:{}}),json_to_sheet:rows=>({rows}),aoa_to_sheet:rows=>({rows}),book_append_sheet:(wb,sheet,name)=>wb.sheets[name]=sheet},writeFile:(wb,name)=>excelCaptures.push({name,wb})};
+const ctx={window,draft:original.A,XLSX:xlsx,localStorage:{getItem:()=>null,setItem:()=>{}},console,alert:()=>{}};
+vm.createContext(ctx);
+const completion=read('completion.js'),start=completion.indexOf('function historicalAlternativesFrom('),end=completion.indexOf('function write(',start);
+assert(start>=0&&end>start);vm.runInContext(completion.slice(start,end),ctx);
+vm.runInContext(read('export_completion.js'),ctx);
+vm.runInContext(read('deliverables.js'),ctx);
+(async()=>{for(const key of ['A','B']){ctx.draft=original[key];const before=JSON.stringify(original);await ctx.window.fcExportCompleteWorkbook();const {wb,name}=excelCaptures.at(-1);const hist=wb.sheets['22_Alternativas_hist']?.rows||[];const integrity=wb.sheets['21_Integridad']?.rows||[];const payload=ctx.window.fcProjectDocumentPayload();assert.equal(hist.length,key==='A'?6:1,key+' XLSX historics');assert.equal(payload.historical_alternatives.length,hist.length,key+' payload historics');assert.equal(integrity.length,8);assert.equal(payload.integrity_issues.length,8);if(key==='B'){assert(hist[0].Nota==='PF02-NOTA-ALTERNATIVA');assert.equal(hist[0].Motivo,'sin_objetivo_especifico_confirmado');assert.equal(payload.historical_alternatives[0].sourceIds[0],'p11qo4h5');}assert.equal(JSON.stringify(original),before,'Exportaciones no modifican estados');console.log('PASS',key,name,'historicos',hist.length,'integridad',integrity.length)}})().catch(e=>{console.error(e);process.exitCode=1});
