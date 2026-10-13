@@ -206,7 +206,7 @@ function renderS10(){
  const host=$('#fields');if(!host)return;const gate=window.fcS09TransitionStatus?.(),confirmedSpecific=confirmedMeans(),registeredSpecific=registeredSpecificObjectives();
  if((gate&&!gate.ok)||!confirmedSpecific.length){
    const objectiveList=registeredSpecific.length?'<div class="writing-source"><small>Objetivos específicos registrados:</small>'+registeredSpecific.map(o=>'<p>• '+esc(cleanSourceText(o.text))+(o.confirmed?'':' <b>[POR VERIFICAR]</b>')+'</p>').join('')+'</div>':'<p>No hay objetivos específicos registrados todavía.</p>';
-   host.innerHTML='<section id="completionS10" class="completion-wrap didactic-flow"><div class="completion-note"><strong>Antes de definir una alternativa, necesitamos un objetivo específico confirmado.</strong><p>La alternativa se construye a partir de los objetivos reales del proyecto. El sistema no generará una estrategia genérica mientras ese vínculo no esté confirmado.</p>'+objectiveList+'<button type="button" id="backToS09">Revisar y confirmar S09 · objetivos</button></div></section>';$('#backToS09')?.addEventListener('click',()=>window.fcNavigate?.('S09'));return}
+   host.innerHTML='<section id="completionS10" class="completion-wrap didactic-flow"><div class="completion-note"><strong>'+(confirmedSpecific.length?'El origen de los objetivos cambió y requiere revisión en S09.':'Antes de definir una alternativa, necesitamos un objetivo específico confirmado.')+'</strong><p>'+(gate&&!gate.ok?(gate.issues||[]).map(i=>esc(i.message||i)).join(' '):'')+'</p><p>La alternativa se construye a partir de los objetivos reales del proyecto. El sistema no generará una estrategia genérica mientras ese vínculo no esté confirmado.</p>'+objectiveList+'<button type="button" id="backToS09">Revisar y confirmar S09 · objetivos</button></div></section>';$('#backToS09')?.addEventListener('click',()=>window.fcNavigate?.('S09'));return}
  const s=ensureS10(),xs=s.items||[];cursors.S10=Math.min(cursors.S10,Math.max(0,xs.length-1));const x=xs[cursors.S10];
  host.innerHTML=`<section id="completionS10" class="completion-wrap didactic-flow">
  <div class="didactic-intro"><strong>Elegir el camino de trabajo</strong><p>Revisa una opción cada vez. La herramienta te muestra de dónde viene; tú decides si sirve para tu proyecto.</p></div>
@@ -319,7 +319,7 @@ function indicatorHelp(x){
 }
 function indicatorQuality(x){return window.fcWriting?.indicatorQuality?window.fcWriting.indicatorQuality(x):{ok:false,issues:['Completa los datos del indicador.']}}
 function indicatorMissingFields(x){
- const miss=v=>!String(v||'').trim()||/^\s*\[POR (VERIFICAR|REVISAR|DEFINIR)\]/i.test(String(v||''));
+ const miss=v=>!String(v||'').trim()||/^\s*\[POR\s+(VERIFICAR|REVISAR|DEFINIR)\b/i.test(String(v||''));
  const defs=[
   ['formula','Fórmula o criterio','¿Cómo se obtiene este dato a partir del indicador?'],
   ['unidad','Unidad de medida','¿En qué unidad debe expresarse el resultado del indicador?'],
