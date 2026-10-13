@@ -144,6 +144,8 @@ def normalized_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "objective_tree": rows(payload.get("objective_tree")),
         "vester": payload.get("vester") if isinstance(payload.get("vester"), dict) else {},
         "coherence": payload.get("coherence") if isinstance(payload.get("coherence"), dict) else {},
+        "integrity_issues": rows(payload.get("integrity_issues")),
+        "historical_alternatives": rows(payload.get("historical_alternatives")),
     }
 
 
@@ -700,6 +702,8 @@ def generate_docx(payload: dict[str, Any]) -> bytes:
             ("14. Riesgos y respuestas", lambda: _docx_table(doc, ["Origen", "Riesgo", "Probabilidad", "Impacto", "Nivel", "Prevención", "Contingencia", "Responsable"], [[r.get("linkedObjectType"), r.get("event"), r.get("probability"), r.get("impact"), r.get("riskLevel"), r.get("preventiveResponse"), r.get("contingencyResponse"), r.get("owner")] for r in p["risks"]])),
             ("15. Coherencia y trazabilidad", lambda: _docx_coherence_section(doc, p["coherence"])),
             ("16. Fuentes y anexos", lambda: _docx_source_entries(doc, p["sources"])),
+            ("17. Advertencias de integridad", lambda: _docx_table(doc, ["Sección", "Tipo", "ID", "Referencia"], [[i.get("section"),i.get("kind"),i.get("id"),i.get("reference")] for i in p["integrity_issues"]]) if p["integrity_issues"] else _docx_body_paragraph(doc, "No se detectaron relaciones huérfanas.")),
+            ("18. Alternativas históricas", lambda: _docx_table(doc, ["ID", "Descripción", "Estado"], [[i.get("id"),i.get("text") or i.get("title"),"Archivada o requiere revisión"] for i in p["historical_alternatives"]]) if p["historical_alternatives"] else _docx_body_paragraph(doc, "Sin alternativas históricas.")),
         ]
 
         for title, builder in sections:
@@ -949,6 +953,16 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
         story.append(_pdf_table(["Origen","Riesgo","Prob.","Impacto","Nivel","Prevención","Contingencia","Responsable"], [[r.get("linkedObjectType"),r.get("event"),r.get("probability"),r.get("impact"),r.get("riskLevel"),r.get("preventiveResponse"),r.get("contingencyResponse"),r.get("owner")] for r in p["risks"]], [18*mm,34*mm,14*mm,14*mm,14*mm,30*mm,30*mm,20*mm]))
         add_h1("15. Coherencia y trazabilidad"); _pdf_coherence_section(story, p["coherence"], styles)
         add_h1("16. Fuentes y anexos"); _pdf_source_entries(story, p["sources"], styles)
+        add_h1("17. Advertencias de integridad")
+        if p["integrity_issues"]:
+            story.append(_pdf_table(["Sección", "Tipo", "ID", "Referencia"], [[i.get("section"),i.get("kind"),i.get("id"),i.get("reference")] for i in p["integrity_issues"]], [22*mm, 49*mm, 38*mm, 56*mm]))
+        else:
+            add_body("No se detectaron relaciones huérfanas.")
+        add_h1("18. Alternativas históricas")
+        if p["historical_alternatives"]:
+            story.append(_pdf_table(["ID", "Descripción", "Estado"], [[i.get("id"),i.get("text") or i.get("title"),"Archivada o requiere revisión"] for i in p["historical_alternatives"]], [24*mm, 99*mm, 42*mm]))
+        else:
+            add_body("Sin alternativas históricas.")
 
         doc.build(story)
     return out.getvalue()
