@@ -132,6 +132,8 @@ function professionalDocumentPayload(){
   problem_tree:problemNodes(),
   objective_tree:obj,
   vester:{rows:v.rows,meanInfluence:v.meanInfluence,meanDependence:v.meanDependence},
+  integrity_issues:window.fcGetProjectIntegrityReport?.().issues||[],
+  historical_alternatives:(draft?.S10?.completion_state?.items||[]).filter(a=>a.requiresReview||a.stale||a.archived),
   document_status:documentReady?'Proyecto listo para presentar':'Proyecto en revisión',
   coherence:{score:coherence.score||0,checks:coherence.checks||[],summary:documentReady?'La revisión interna no reporta rupturas bloqueantes en la cadena principal.':'El proyecto conserva pendientes o relaciones todavía no evaluables; revise los controles siguientes antes de presentar.'}
  }
