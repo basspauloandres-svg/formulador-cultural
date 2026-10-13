@@ -310,6 +310,9 @@ def _docx_table(doc: Document, headers: list[str], body: list[list[Any]], widths
         _set_cell_margins(cell)
     for row in body:
         cells = table.add_row().cells
+        tr_pr = table.rows[-1]._tr.get_or_add_trPr()
+        cant_split = OxmlElement('w:cantSplit')
+        tr_pr.append(cant_split)
         for i, value in enumerate(row):
             cells[i].text = clean(value)
             cells[i].vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
@@ -738,7 +741,7 @@ def _pdf_styles():
     ))
     styles.add(ParagraphStyle(
         name="FC_Body", parent=styles["BodyText"], fontName="Helvetica",
-        fontSize=9.5, leading=15.0, alignment=TA_JUSTIFY, spaceAfter=8
+        fontSize=9.5, leading=14.2, alignment=TA_LEFT, spaceAfter=7
     ))
     styles.add(ParagraphStyle(
         name="FC_Table", parent=styles["BodyText"], fontName="Helvetica",
