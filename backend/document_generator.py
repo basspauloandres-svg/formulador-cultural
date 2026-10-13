@@ -706,7 +706,7 @@ def generate_docx(payload: dict[str, Any]) -> bytes:
             ("15. Coherencia y trazabilidad", lambda: _docx_coherence_section(doc, p["coherence"])),
             ("16. Fuentes y anexos", lambda: _docx_source_entries(doc, p["sources"])),
             ("17. Advertencias de integridad", lambda: _docx_table(doc, ["Sección", "Tipo", "ID", "Referencia"], [[i.get("section"),i.get("kind"),i.get("id"),i.get("reference")] for i in p["integrity_issues"]]) if p["integrity_issues"] else _docx_body_paragraph(doc, "No se detectaron relaciones huérfanas.")),
-            ("18. Alternativas históricas", lambda: _docx_table(doc, ["ID", "Descripción", "Estado"], [[i.get("id"),i.get("text") or i.get("title"),"Archivada o requiere revisión"] for i in p["historical_alternatives"]]) if p["historical_alternatives"] else _docx_body_paragraph(doc, "Sin alternativas históricas.")),
+            ("18. Alternativas históricas", lambda: _docx_table(doc, ["ID", "Descripción", "Estado"], [[i.get("id"),i.get("text") or i.get("title"), "; ".join(filter(None, [str(i.get("historicalOrigin") or "Histórico"), str(i.get("archiveReason") or ""), str(i.get("archivedAt") or ""), "Origen: "+", ".join(map(str, i.get("sourceIds") or [])) if i.get("sourceIds") else "", "Nota: "+str(i.get("note")) if i.get("note") else ""]))] for i in p["historical_alternatives"]]) if p["historical_alternatives"] else _docx_body_paragraph(doc, "Sin alternativas históricas.")),
         ]
 
         for title, builder in sections:
@@ -963,7 +963,7 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
             add_body("No se detectaron relaciones huérfanas.")
         add_h1("18. Alternativas históricas")
         if p["historical_alternatives"]:
-            story.append(_pdf_table(["ID", "Descripción", "Estado"], [[i.get("id"),i.get("text") or i.get("title"),"Archivada o requiere revisión"] for i in p["historical_alternatives"]], [24*mm, 99*mm, 42*mm]))
+            story.append(_pdf_table(["ID", "Descripción", "Estado"], [[i.get("id"),i.get("text") or i.get("title"), "; ".join(filter(None, [str(i.get("historicalOrigin") or "Histórico"), str(i.get("archiveReason") or ""), str(i.get("archivedAt") or ""), "Origen: "+", ".join(map(str, i.get("sourceIds") or [])) if i.get("sourceIds") else "", "Nota: "+str(i.get("note")) if i.get("note") else ""]))] for i in p["historical_alternatives"]], [24*mm, 99*mm, 42*mm]))
         else:
             add_body("Sin alternativas históricas.")
 
