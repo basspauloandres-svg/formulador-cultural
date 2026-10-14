@@ -1,6 +1,6 @@
 from __future__ import annotations
 from uuid import UUID
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from io import BytesIO
@@ -24,6 +24,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 repo = InMemoryProjectRepository()
+
+def reject_unverified_memory_api() -> None:
+    """Disable legacy project routes until real token-based authorization exists.
+
+    X-User-Id is caller-controlled and cannot establish identity. Production
+    projects use Supabase directly; document exports remain available.
+    """
+    raise HTTPException(status_code=410, detail="Legacy project API disabled: verified authentication required")
 
 class ProjectCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
@@ -49,18 +57,18 @@ def current_user(x_user_id: str | None) -> UUID:
 def health() -> dict:
     return {"status": "ok", "phase": 2, "persistence": "memory"}
 
-@app.post("/projects")
+@app.post("/projects", dependencies=[Depends(reject_unverified_memory_api)])
 def create_project(payload: ProjectCreate, x_user_id: str | None = Header(default=None)) -> dict:
     user_id = current_user(x_user_id)
     project = repo.create(Project(user_id=user_id, title=payload.title))
     return serialize(project)
 
-@app.get("/projects")
+@app.get("/projects", dependencies=[Depends(reject_unverified_memory_api)])
 def list_projects(x_user_id: str | None = Header(default=None)) -> list[dict]:
     user_id = current_user(x_user_id)
     return [serialize(p) for p in repo.list_for_user(user_id)]
 
-@app.get("/projects/{project_id}")
+@app.get("/projects/{project_id}", dependencies=[Depends(reject_unverified_memory_api)])
 def get_project(project_id: UUID, x_user_id: str | None = Header(default=None)) -> dict:
     user_id = current_user(x_user_id)
     project = repo.get(user_id, project_id)
@@ -68,7 +76,7 @@ def get_project(project_id: UUID, x_user_id: str | None = Header(default=None)) 
         raise HTTPException(404, "Proyecto no encontrado")
     return serialize(project)
 
-@app.put("/projects/{project_id}/sections/{section_code}")
+@app.put("/projects/{project_id}/sections/{section_code}", dependencies=[Depends(reject_unverified_memory_api)])
 def update_section(project_id: UUID, section_code: str, payload: SectionUpdate, x_user_id: str | None = Header(default=None)) -> dict:
     user_id = current_user(x_user_id)
     project = repo.get(user_id, project_id)
