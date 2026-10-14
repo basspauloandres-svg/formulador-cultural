@@ -1,5 +1,9 @@
 """Regression: caller-controlled X-User-Id must never authorize project access."""
 from uuid import uuid4
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from fastapi.testclient import TestClient
 from main import app
