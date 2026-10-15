@@ -40,7 +40,8 @@ async function navigateTo(code,{scroll=true}={}){
   if(code===active)return true;
   navigating=true;
   try{
-    await persistCurrent();
+    // Un error de sincronización debe conservar la sección activa y su estado pendiente.
+    if(!(await persistCurrent()))return false;
     active=code;
     if(typeof render==='function')render();
     if(scroll)q('#panel')?.scrollIntoView({behavior:'smooth',block:'start'});
