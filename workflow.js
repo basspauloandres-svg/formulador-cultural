@@ -23,7 +23,8 @@ async function persistCurrent(){
   try{
     if(typeof saveLocal==='function')saveLocal();
     if(typeof session!=='undefined'&&session&&typeof syncSection==='function'){
-      await syncSection(active);
+      const synced=await syncSection(active);
+      if(synced===false)throw new Error('La sincronización no se completó');
       if(typeof setStatus==='function')setStatus(`${active} guardada y sincronizada antes de continuar.`,true);
     }
     dirtySections.delete(active);
