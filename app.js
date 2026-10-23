@@ -46,7 +46,10 @@ async function ensureProject(){
   const remembered=localStorage.getItem(cloudProjectKey);
   if(remembered){
     const found=await sb.from('projects').select('*').eq('id',remembered).maybeSingle();
-    if(!found.error&&found.data){cloudProject=found.data;return cloudProject}
+    // An interrupted lookup must not redirect pending edits to another project.
+    if(found.error)throw found.error;
+    if(!found.data)throw new Error('El proyecto seleccionado no está disponible. Selecciona explícitamente otro proyecto antes de guardar.');
+    cloudProject=found.data;return cloudProject;
   }
   const recentSection=await sb.from('sections').select('project_id,updated_at').order('updated_at',{ascending:false}).limit(1);
   if(!recentSection.error&&recentSection.data?.length){
