@@ -1,7 +1,7 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
 const source=fs.readFileSync('app.js','utf8');
-const ensureSource=source.slice(source.indexOf('async function ensureProject(){'),source.indexOf('\nfunction queueSectionSync'));
-const syncSource=source.slice(source.indexOf('async function syncSection('),source.indexOf('\nasync function save()'));
+// Execute the actual coordinator and adapter together, rather than isolated function text.
+const persistenceSource=source.slice(source.indexOf('function captureProjectContext(){'),source.indexOf('\nasync function save()'));
 
 function fixture({remembered='qa-a',firstError=null,missing=false}={}){
  const storage=new Map(remembered?[['selected-project',remembered]]:[]),calls=[],writes=[];
@@ -26,10 +26,10 @@ function fixture({remembered='qa-a',firstError=null,missing=false}={}){
   }
   return api;
  }};
- const context={session:{user:{id:'owner'}},cloudProject:null,sb,cloudProjectKey:'selected-project',
+ const context={window:{},projectContextVersion:0,projectLookup:null,sectionSyncQueues:{},dirty:false,session:{user:{id:'owner'}},cloudProject:null,sb,cloudProjectKey:'selected-project',
   localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},
   active:'S01',draft:{S01:{responsable:'pending QA A edit'}},collect(){},metaFor:()=>({}),nestedUpdatedAt:()=>null,saveSyncMeta(){}};
- vm.createContext(context);vm.runInContext(ensureSource+'\n'+syncSource,context);
+ vm.createContext(context);vm.runInContext(persistenceSource,context);
  return {context,calls,writes,storage};
 }
 

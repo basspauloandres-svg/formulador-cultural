@@ -94,6 +94,8 @@ jobs:
         run: node ci_navigation_persist_failure_test.js
       - name: Conservar proyecto seleccionado durante falla y recuperación
         run: node ci_selected_project_recovery_test.js
+      - name: Aislar operaciones demoradas de persistencia y recuperación S01-S16
+        run: node ci_persistence_context_test.js
       - name: Verificar lectura sin escrituras en resultados S11
         run: node ci_results_mount_readonly_test.js
       - name: Verificar sincronización central sin cambios
