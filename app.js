@@ -19,7 +19,7 @@ const syncMetaKey='formulador-cultural-sync-meta-v1';
 const cloudProjectKey='formulador-cultural-cloud-project-v1';
 const draft=JSON.parse(localStorage.getItem(storeKey)||'{}');
 const syncMeta=JSON.parse(localStorage.getItem(syncMetaKey)||'{}');
-let dirty=false,session=null,cloudProject=null,loginCooldownTimer=null;const sectionSyncQueues={};
+let dirty=false,session=null,cloudProject=null,loginCooldownTimer=null,projectContextVersion=0,projectLookup=null;const sectionSyncQueues={};
 const q=s=>document.querySelector(s);
 
 function guide(label){return [`¿Qué información concreta corresponde a «${label}»?`,`¿Qué datos están confirmados?`,`¿Qué falta por verificar?`]}
@@ -40,41 +40,214 @@ function authValues(){return {email:q('#email')?.value.trim()||'',password:q('#p
 function validateCredentials(){const {email,password}=authValues();if(!email){q('#authHelp').textContent='Escribe un correo válido.';return null}if(password.length<8){q('#authHelp').textContent='La contraseña debe tener al menos 8 caracteres.';return null}return {email,password}}
 function startLoginCooldown(seconds=60){const btn=q('#loginBtn');if(loginCooldownTimer)clearInterval(loginCooldownTimer);let remaining=seconds;btn.disabled=true;btn.textContent=`Espera ${remaining} s`;loginCooldownTimer=setInterval(()=>{remaining-=1;if(remaining<=0){clearInterval(loginCooldownTimer);loginCooldownTimer=null;btn.disabled=false;btn.textContent='Enviar enlace de acceso';return}btn.textContent=`Espera ${remaining} s`},1000)}
 
+// Scope every asynchronous operation to the account and project that started it.
+function captureProjectContext(){
+  return {version:projectContextVersion,userId:session?.user?.id||null,
+    projectId:cloudProject?.id||localStorage.getItem(cloudProjectKey)||null};
+}
+function assertProjectContext(context){
+  const current=captureProjectContext();
+  if(context.version!==current.version||context.userId!==current.userId||
+    (context.projectId&&context.projectId!==current.projectId)){
+    throw new Error('El proyecto o la sesión cambió durante la operación. Vuelve a guardar el proyecto activo.');
+  }
+}
+function sectionDataSnapshot(code){return JSON.parse(JSON.stringify(draft[code]||{}))}
+function localProjectFingerprint(){return canonicalSectionData({draft,syncMeta})}
+function canonicalSectionData(value){
+  if(value===null||typeof value!=='object')return JSON.stringify(value);
+  if(Array.isArray(value))return '['+value.map(canonicalSectionData).join(',')+']';
+  return '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+canonicalSectionData(value[k])).join(',')+'}';
+}
+
 async function ensureProject(){
   if(!session||!sb)return null;
+  const context=captureProjectContext();
   if(cloudProject)return cloudProject;
+  const key=JSON.stringify(context);
+  if(projectLookup?.key===key)return projectLookup.promise;
+  const promise=resolveCloudProject(context);
+  projectLookup={key,promise};
+  const cleanup=()=>{if(projectLookup?.promise===promise)projectLookup=null};
+  promise.then(cleanup,cleanup);
+  return promise;
+}
+async function resolveCloudProject(context){
   const remembered=localStorage.getItem(cloudProjectKey);
   if(remembered){
     const found=await sb.from('projects').select('*').eq('id',remembered).maybeSingle();
+    assertProjectContext(context);
     // An interrupted lookup must not redirect pending edits to another project.
     if(found.error)throw found.error;
     if(!found.data)throw new Error('El proyecto seleccionado no está disponible. Selecciona explícitamente otro proyecto antes de guardar.');
     cloudProject=found.data;return cloudProject;
   }
   const recentSection=await sb.from('sections').select('project_id,updated_at').order('updated_at',{ascending:false}).limit(1);
+  assertProjectContext(context);
   if(!recentSection.error&&recentSection.data?.length){
     const pid=recentSection.data[0].project_id;
     const found=await sb.from('projects').select('*').eq('id',pid).single();
+    assertProjectContext(context);
     if(!found.error&&found.data){cloudProject=found.data;localStorage.setItem(cloudProjectKey,pid);return cloudProject}
   }
   const {data,error}=await sb.from('projects').select('*').order('updated_at',{ascending:false}).limit(1);
+  assertProjectContext(context);
   if(error)throw error;
   if(data?.length){cloudProject=data[0];localStorage.setItem(cloudProjectKey,cloudProject.id);return cloudProject}
   const title=draft.S01?.nombre_del_proyecto?.trim()||'Proyecto cultural';
   const created=await sb.from('projects').insert({title}).select().single();
+  assertProjectContext(context);
   if(created.error)throw created.error;
   cloudProject=created.data;localStorage.setItem(cloudProjectKey,cloudProject.id);return cloudProject
 }
 function queueSectionSync(code=active){
-  const prior=sectionSyncQueues[code]||Promise.resolve();
-  const next=prior.catch(()=>{}).then(()=>syncSection(code));
-  sectionSyncQueues[code]=next.finally(()=>{if(sectionSyncQueues[code]===next)sectionSyncQueues[code]=null});
-  return next
+  // All callers use the same queue, including modules that call syncSection directly.
+  return syncSection(code);
 }
 window.fcQueueSectionSync=queueSectionSync;
-async function syncSection(code=active){if(!session||!sb)return false;if(code===active)collect();const project=await ensureProject();const candidate=draft[code]||{};const canonical=v=>{if(v===null||typeof v!=='object')return JSON.stringify(v);if(Array.isArray(v))return '['+v.map(canonical).join(',')+']';return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'};const existing=await sb.from('sections').select('data').eq('project_id',project.id).eq('code',code).maybeSingle();if(existing.error)throw existing.error;if(existing.data&&canonical(existing.data.data||{})===canonical(candidate))return true;const now=new Date().toISOString();const payload={project_id:project.id,code,data:candidate,updated_at:now};const {error}=await sb.from('sections').upsert(payload,{onConflict:'project_id,code'});if(error)throw error;const m=metaFor(code);m.lastSyncedAt=now;m.cloudUpdatedAt=now;if(!m.localUpdatedAt)m.localUpdatedAt=nestedUpdatedAt(code)||now;saveSyncMeta();const title=draft.S01?.nombre_del_proyecto?.trim();if(title&&title!==project.title){await sb.from('projects').update({title,updated_at:now}).eq('id',project.id);project.title=title}return true}
-async function save(){saveLocal();if(!session){setStatus(`Borrador de ${active} guardado localmente. Inicia sesión para sincronizar.`);return}try{await syncSection(active);setStatus(`${active} guardada y sincronizada en la nube.`,true)}catch(e){console.error(e);setStatus(`Guardado local correcto. La sincronización falló: ${e.message||'error desconocido'}`)}}
-async function loadCloud(){if(!session||!sb)return;try{const project=await ensureProject();renderAuth();const {data,error}=await sb.from('sections').select('code,data,updated_at').eq('project_id',project.id);if(error)throw error;let keptLocal=0,loadedCloud=0,legacyProtected=0;for(const row of data||[]){const code=row.code,local=draft[code]||{},remote=row.data||{},m=metaFor(code),remoteTs=Date.parse(row.updated_at||0)||0,localIso=effectiveLocalUpdatedAt(code),localTs=Date.parse(localIso||0)||0,lastSyncTs=Date.parse(m.lastSyncedAt||0)||0;const localHas=meaningful(local);const remoteHas=meaningful(remote);const hasHistory=!!(m.localUpdatedAt||m.lastSyncedAt||m.cloudUpdatedAt);if(!localHas&&remoteHas){draft[code]=remote;m.localUpdatedAt=row.updated_at||new Date().toISOString();m.lastSyncedAt=row.updated_at||null;m.cloudUpdatedAt=row.updated_at||null;loadedCloud+=1;continue}if(localHas&&!hasHistory){draft[code]=mergeLegacy(remote,local);const now=new Date().toISOString();m.localUpdatedAt=now;m.cloudUpdatedAt=row.updated_at||null;legacyProtected+=1;continue}const localChanged=localTs>lastSyncTs;const remoteKnownTs=Date.parse(m.cloudUpdatedAt||0)||0;const cloudChanged=remoteTs>remoteKnownTs;if(localChanged&&cloudChanged){if(localTs>=remoteTs){keptLocal+=1}else{draft[code]={...local,...remote};m.localUpdatedAt=row.updated_at||new Date().toISOString();m.lastSyncedAt=row.updated_at||null;loadedCloud+=1}}else if(localChanged){keptLocal+=1}else{draft[code]={...local,...remote};m.localUpdatedAt=row.updated_at||m.localUpdatedAt||new Date().toISOString();m.lastSyncedAt=row.updated_at||m.lastSyncedAt||null;loadedCloud+=1}m.cloudUpdatedAt=row.updated_at||m.cloudUpdatedAt||null}localStorage.setItem(storeKey,JSON.stringify(draft));saveSyncMeta();render();const notes=[];if(loadedCloud)notes.push(`${loadedCloud} sección(es) actualizadas desde la nube`);if(keptLocal)notes.push(`${keptLocal} sección(es) locales más recientes conservadas`);if(legacyProtected)notes.push(`${legacyProtected} sección(es) de pruebas anteriores protegidas`);setStatus(`Proyecto «${project.title}» reconciliado. ${notes.join(' · ')||'Sin cambios.'}`,true)}catch(e){console.error(e);setStatus(`No fue posible cargar la nube: ${e.message||'error desconocido'}`)}}
+async function syncSection(code=active){
+  if(!session||!sb)return false;
+  if(code===active)collect();
+  const context=captureProjectContext();
+  const request={context,code,data:sectionDataSnapshot(code),title:draft.S01?.nombre_del_proyecto?.trim()};
+  const project=await ensureProject();assertProjectContext(context);
+  if(!project)throw new Error('No hay una sesión disponible para sincronizar.');
+  request.project=project;
+  request.context={...context,projectId:project.id};
+  // Use the resolved identity, even during first use or a reload of the same project.
+  const key=JSON.stringify([context.userId,project.id,code]);
+  const prior=sectionSyncQueues[key]||Promise.resolve();
+  const next=prior.catch(()=>{}).then(()=>writeSectionSnapshot(request));
+  sectionSyncQueues[key]=next;
+  // Handle rejection on the cleanup branch too; do not create an unhandled finally promise.
+  const cleanup=()=>{if(sectionSyncQueues[key]===next)delete sectionSyncQueues[key]};
+  next.then(cleanup,cleanup);
+  return next;
+}
+async function writeSectionSnapshot(request){
+  const {context,project,code,data:candidate,title}=request;
+  assertProjectContext(context);
+  const existing=await sb.from('sections').select('data').eq('project_id',project.id).eq('code',code).maybeSingle();
+  assertProjectContext(context);
+  if(existing.error)throw existing.error;
+  const canonical=canonicalSectionData;
+  const unchanged=existing.data&&canonical(existing.data.data||{})===canonical(candidate);
+  assertSectionSnapshotCurrent(code,candidate);
+  const now=new Date().toISOString();
+  if(!unchanged){
+    const payload={project_id:project.id,code,data:candidate,updated_at:now};
+    const {error}=await sb.from('sections').upsert(payload,{onConflict:'project_id,code'});
+    assertProjectContext(context);
+    if(error)throw error;
+    assertSectionSnapshotCurrent(code,candidate);
+    const m=metaFor(code);
+    m.lastSyncedAt=now;m.cloudUpdatedAt=now;
+    if(!m.localUpdatedAt)m.localUpdatedAt=nestedUpdatedAt(code)||now;
+    saveSyncMeta();
+  }
+  // The project label is derived only from S01, never from a late save of another section.
+  if(code==='S01'&&title&&title!==project.title){
+    const renamed=await sb.from('projects').update({title,updated_at:now}).eq('id',project.id);
+    assertProjectContext(context);
+    if(renamed.error)throw renamed.error;
+    project.title=title;
+  }
+  assertSectionSnapshotCurrent(code,candidate);
+  return true;
+}
+function assertSectionSnapshotCurrent(code,candidate){
+  if((code===active&&dirty)||canonicalSectionData(draft[code]||{})!==canonicalSectionData(candidate)){
+    throw new Error('Hay cambios nuevos pendientes. Vuelve a guardar para sincronizarlos.');
+  }
+}
+async function save(){
+  const code=active;
+  saveLocal();
+  if(!session){setStatus(`Borrador de ${code} guardado localmente. Inicia sesión para sincronizar.`);return false}
+  try{
+    if((await syncSection(code))===false)throw new Error('La sincronización no se completó.');
+    setStatus(`${code} guardada y sincronizada en la nube.`,true);return true;
+  }catch(e){console.error(e);setStatus(`Guardado local correcto. La sincronización falló: ${e.message||'error desconocido'}`);return false}
+}
+async function syncProject(){
+  saveLocal();
+  if(!session||!sb){setStatus('Borrador guardado localmente. Inicia sesión para sincronizar.');return false}
+  const context=captureProjectContext();
+  try{
+    for(const code of order){
+      assertProjectContext(context);
+      if(draft[code]&&(await syncSection(code))===false)throw new Error('La sincronización no se completó.');
+    }
+    assertProjectContext(context);setStatus('Proyecto completo sincronizado en la nube.',true);return true;
+  }catch(e){
+    try{assertProjectContext(context);setStatus(`Sincronización incompleta: ${e.message||'error desconocido'}`)}catch{}
+    return false;
+  }
+}
+async function readCloudSections(project){
+  const {data,error}=await sb.from('sections').select('code,data,updated_at').eq('project_id',project.id);
+  if(error)throw error;
+  return data||[];
+}
+function assertLocalDraftUnchanged(expected){
+  if(dirty||localProjectFingerprint()!==expected){
+    throw new Error('Hay cambios locales nuevos. Guárdalos antes de volver a cargar o cambiar de proyecto.');
+  }
+}
+function reconcileCloudRows(rows){
+  let keptLocal=0,loadedCloud=0,legacyProtected=0;
+  for(const row of rows){
+    const code=row.code,local=draft[code]||{},remote=row.data||{},m=metaFor(code);
+    const remoteTs=Date.parse(row.updated_at||0)||0,localIso=effectiveLocalUpdatedAt(code);
+    const localTs=Date.parse(localIso||0)||0,lastSyncTs=Date.parse(m.lastSyncedAt||0)||0;
+    const localHas=meaningful(local),remoteHas=meaningful(remote);
+    const hasHistory=!!(m.localUpdatedAt||m.lastSyncedAt||m.cloudUpdatedAt);
+    if(!localHas&&remoteHas){
+      draft[code]=remote;m.localUpdatedAt=row.updated_at||new Date().toISOString();
+      m.lastSyncedAt=row.updated_at||null;m.cloudUpdatedAt=row.updated_at||null;loadedCloud+=1;continue;
+    }
+    if(localHas&&!hasHistory){
+      draft[code]=mergeLegacy(remote,local);m.localUpdatedAt=new Date().toISOString();
+      m.cloudUpdatedAt=row.updated_at||null;legacyProtected+=1;continue;
+    }
+    const localChanged=localTs>lastSyncTs,remoteKnownTs=Date.parse(m.cloudUpdatedAt||0)||0;
+    const cloudChanged=remoteTs>remoteKnownTs;
+    if(localChanged&&cloudChanged){
+      if(localTs>=remoteTs){keptLocal+=1}else{
+        draft[code]={...local,...remote};m.localUpdatedAt=row.updated_at||new Date().toISOString();
+        m.lastSyncedAt=row.updated_at||null;loadedCloud+=1;
+      }
+    }else if(localChanged){keptLocal+=1}else{
+      draft[code]={...local,...remote};m.localUpdatedAt=row.updated_at||m.localUpdatedAt||new Date().toISOString();
+      m.lastSyncedAt=row.updated_at||m.lastSyncedAt||null;loadedCloud+=1;
+    }
+    m.cloudUpdatedAt=row.updated_at||m.cloudUpdatedAt||null;
+  }
+  localStorage.setItem(storeKey,JSON.stringify(draft));saveSyncMeta();
+  return {keptLocal,loadedCloud,legacyProtected};
+}
+async function loadCloud(){
+  if(!session||!sb)return false;
+  const context=captureProjectContext(),expected=localProjectFingerprint();
+  try{
+    const project=await ensureProject();assertProjectContext(context);
+    const rows=await readCloudSections(project);assertProjectContext(context);
+    assertLocalDraftUnchanged(expected);
+    const {keptLocal,loadedCloud,legacyProtected}=reconcileCloudRows(rows);
+    renderAuth();render();
+    const notes=[];
+    if(loadedCloud)notes.push(`${loadedCloud} sección(es) actualizadas desde la nube`);
+    if(keptLocal)notes.push(`${keptLocal} sección(es) locales más recientes conservadas`);
+    if(legacyProtected)notes.push(`${legacyProtected} sección(es) de pruebas anteriores protegidas`);
+    setStatus(`Proyecto «${project.title}» reconciliado. ${notes.join(' · ')||'Sin cambios.'}`,true);
+    return true;
+  }catch(e){
+    console.error(e);
+    // An old request must not replace the status or data of the new project.
+    try{assertProjectContext(context);setStatus(`No fue posible cargar la nube: ${e.message||'error desconocido'}`)}catch{}
+    return false;
+  }
+}
 
 function renderAuth(){const out=q('#authSignedOut'),inside=q('#authSignedIn');if(session){out.classList.add('hidden');inside.classList.remove('hidden');q('#userLabel').textContent=session.user.email||'Sesión activa';q('#authHelp').textContent=cloudProject?`Proyecto activo: ${cloudProject.title}`:'Sesión activa. Recuperando tu proyecto…';queueMicrotask(()=>renderProjectControls())}else{inside.classList.add('hidden');out.classList.remove('hidden');q('#projectManager')?.remove();if(!/límite|contraseña|correo|cuenta|credenciales|registrado/i.test(q('#authHelp').textContent))q('#authHelp').textContent='Puedes entrar con correo y contraseña. El enlace por correo queda como alternativa.'}}
 
@@ -86,6 +259,9 @@ async function listCloudProjects(){
   return data||[];
 }
 function clearLocalProjectState(){
+  projectContextVersion+=1;
+  dirty=false;
+  window.fcResetWorkflowState?.();
   for(const key of Object.keys(draft))delete draft[key];
   for(const key of Object.keys(syncMeta))delete syncMeta[key];
   localStorage.setItem(storeKey,JSON.stringify(draft));
@@ -96,17 +272,37 @@ function clearLocalProjectState(){
   }
   active='S01';localStorage.setItem('fc_active',active);
 }
+async function waitForProjectWrites(context){
+  const pending=Object.entries(sectionSyncQueues).filter(([key])=>{
+    const [userId,projectId]=JSON.parse(key);
+    return userId===context.userId&&projectId===context.projectId;
+  }).map(([,promise])=>promise);
+  await Promise.all(pending);
+  assertProjectContext(context);
+}
 async function switchCloudProject(projectId){
   if(!session||!sb||!projectId)return;
+  if(projectId!==captureProjectContext().projectId&&typeof window.fcPersistCurrent==='function'){
+    if(!(await window.fcPersistCurrent()))throw new Error('Guarda los cambios pendientes antes de cambiar de proyecto.');
+  }
+  const context=captureProjectContext();
+  await waitForProjectWrites(context);
+  const expected=localProjectFingerprint();
   const found=await sb.from('projects').select('*').eq('id',projectId).single();
+  assertProjectContext(context);
   if(found.error)throw found.error;
+  if(!found.data)throw new Error('El proyecto seleccionado no está disponible.');
+  // Fetch the complete target before discarding any local state of the current project.
+  const rows=await readCloudSections(found.data);
+  assertProjectContext(context);assertLocalDraftUnchanged(expected);
   clearLocalProjectState();
   window.fcResetObjectives?.();
   window.fcResetEvidenceProject?.();
   cloudProject=found.data;
   localStorage.setItem(cloudProjectKey,cloudProject.id);
-  renderAuth();
-  await loadCloud();
+  reconcileCloudRows(rows);
+  renderAuth();render();
+  return true;
 }
 async function createCloudProject(){
   if(!session||!sb)return;
@@ -114,7 +310,14 @@ async function createCloudProject(){
   if(title===null)return;
   const name=title.trim();
   if(!name){q('#authHelp').textContent='Escribe un nombre para crear el proyecto.';return}
+  if(typeof window.fcPersistCurrent==='function'&&!(await window.fcPersistCurrent())){
+    throw new Error('Guarda los cambios pendientes antes de crear otro proyecto.');
+  }
+  const context=captureProjectContext();
+  await waitForProjectWrites(context);
+  const expected=localProjectFingerprint();
   const created=await sb.from('projects').insert({title:name}).select().single();
+  assertProjectContext(context);assertLocalDraftUnchanged(expected);
   if(created.error)throw created.error;
   clearLocalProjectState();
   cloudProject=created.data;
@@ -137,7 +340,7 @@ async function renderProjectControls(){
     const projects=await listCloudProjects(),select=q('#projectSelect');
     select.innerHTML=projects.map(p=>'<option value="'+esc(p.id)+'" '+(cloudProject?.id===p.id?'selected':'')+'>'+esc(p.title)+'</option>').join('');
     if(!projects.length)select.innerHTML='<option value="">Sin proyectos</option>';
-    select.onchange=async()=>{if(!select.value||select.value===cloudProject?.id)return;try{await switchCloudProject(select.value);await renderProjectControls()}catch(e){console.error(e);q('#authHelp').textContent='No fue posible cambiar de proyecto: '+(e.message||'error desconocido')}};
+    select.onchange=async()=>{if(!select.value||select.value===cloudProject?.id)return;try{await switchCloudProject(select.value);await renderProjectControls()}catch(e){console.error(e);select.value=cloudProject?.id||'';q('#authHelp').textContent='No fue posible cambiar de proyecto: '+(e.message||'error desconocido')}};
   }catch(e){console.error(e);host.insertAdjacentHTML('beforeend','<span>No fue posible cargar la lista de proyectos.</span>')}
 }
 window.fcListCloudProjects=listCloudProjects;
@@ -149,8 +352,14 @@ async function signupWithPassword(){const creds=validateCredentials();if(!creds)
 async function setPassword(){const next=prompt('Escribe una nueva contraseña de al menos 8 caracteres:');if(next===null)return;if(next.length<8){q('#authHelp').textContent='La contraseña debe tener al menos 8 caracteres.';return}const {error}=await sb.auth.updateUser({password:next});q('#authHelp').textContent=error?`No fue posible actualizar la contraseña: ${error.message}`:'Contraseña actualizada. En adelante puedes entrar sin solicitar un enlace por correo.'}
 async function sendMagicLink(){const email=q('#email').value.trim();if(!email){q('#authHelp').textContent='Escribe un correo válido.';return}q('#loginBtn').disabled=true;q('#authHelp').textContent='Enviando enlace de acceso…';const redirectTo=location.origin+location.pathname;const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:redirectTo}});if(error){const rateLimited=/rate limit|too many/i.test(error.message||'');if(rateLimited){q('#authHelp').textContent='Se alcanzó temporalmente el límite de correos. Usa contraseña si ya la definiste o espera antes de solicitar otro enlace.';startLoginCooldown(60)}else{q('#loginBtn').disabled=false;q('#authHelp').textContent=`No se pudo enviar: ${error.message}`}return}q('#authHelp').textContent='Enlace enviado. Revisa tu correo y evita solicitar otro mientras llega este mensaje.';startLoginCooldown(60)}
 
-async function initAuth(){if(!sb){q('#authHelp').textContent='Conexión de nube no disponible.';return}const {data}=await sb.auth.getSession();session=data.session;renderAuth();if(session)await loadCloud();sb.auth.onAuthStateChange(async(_event,newSession)=>{session=newSession;cloudProject=null;renderAuth();if(session)await loadCloud()})}
+function setAuthSession(newSession){
+  if((session?.user?.id||null)!==(newSession?.user?.id||null)){
+    projectContextVersion+=1;cloudProject=null;
+  }
+  session=newSession;
+}
+async function initAuth(){if(!sb){q('#authHelp').textContent='Conexión de nube no disponible.';return}const {data}=await sb.auth.getSession();setAuthSession(data.session);renderAuth();if(session)await loadCloud();sb.auth.onAuthStateChange(async(_event,newSession)=>{setAuthSession(newSession);renderAuth();if(session)await loadCloud()})}
 function render(){document.body.classList.add('guided-mode');const s=sections[active],idx=order.indexOf(active);localStorage.setItem('fc_active',active);q('#counter').textContent=`${active} · ${idx+1} de ${order.length}`;q('#title').textContent=s.title;q('#question').textContent=s.question;q('#meaning').textContent=s.meaning;q('#progressBar').style.width=`${((idx+1)/order.length)*100}%`;q('#nav').innerHTML=order.map(k=>`<button data-k="${k}" class="${k===active?'active':''}">${k} · ${shortTitle(sections[k].title)}</button>`).join('');q('#nav .active')?.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{collect();active=b.dataset.k;render();q('#panel').scrollIntoView({behavior:'smooth',block:'start'})});const d=draft[active]||{};q('#fields').innerHTML=s.fields.map(([id,label,req])=>`<div class="field"><label for="${id}">${label} ${req?'<span class="required">· requerido</span>':''}</label><div class="help">Registre información pertinente y mantenga explícitos los vacíos.</div><details class="guide"><summary>Preguntas orientadoras</summary><ul class="questions">${guide(label).map(x=>`<li>${x}</li>`).join('')}</ul></details><textarea id="${id}" data-field="${id}" placeholder="Escriba aquí o use [POR VERIFICAR] cuando corresponda.">${esc(d[id]||'')}</textarea></div>`).join('');document.querySelectorAll('[data-field]').forEach(el=>{el.addEventListener('input',()=>{dirty=true;setSaved(false)});el.addEventListener('blur',()=>{if(dirty)saveLocal()})});['#prev','#mPrev'].forEach(sel=>q(sel).disabled=idx===0);['#next','#mNext'].forEach(sel=>q(sel).disabled=idx===order.length-1);setSaved(true,false)}
 function move(delta){collect();const idx=Math.max(0,Math.min(order.length-1,order.indexOf(active)+delta));active=order[idx];render();q('#panel').scrollIntoView({behavior:'smooth',block:'start'})}
 
-q('#save').onclick=save;q('#mSave').onclick=save;q('#next').onclick=()=>move(1);q('#mNext').onclick=()=>move(1);q('#prev').onclick=()=>move(-1);q('#mPrev').onclick=()=>move(-1);q('#clear').onclick=()=>{if(confirm(`¿Limpiar los campos de ${active}?`)){draft[active]={};markLocalUpdate(active);localStorage.setItem(storeKey,JSON.stringify(draft));render()}};q('#loginBtn').onclick=sendMagicLink;q('#passwordLoginBtn').onclick=passwordLogin;q('#signupBtn').onclick=signupWithPassword;q('#setPasswordBtn').onclick=setPassword;q('#logoutBtn').onclick=async()=>{await sb.auth.signOut();session=null;cloudProject=null;renderAuth();setStatus('Sesión cerrada. El borrador local permanece en este navegador.')};q('#syncBtn').onclick=async()=>{try{saveLocal();for(const code of order){if(draft[code])await syncSection(code)}setStatus('Proyecto completo sincronizado en la nube.',true)}catch(e){setStatus(`Sincronización incompleta: ${e.message||'error desconocido'}`)}};window.addEventListener('beforeunload',()=>{if(dirty)saveLocal()});render();initAuth();
+q('#save').onclick=save;q('#mSave').onclick=save;q('#next').onclick=()=>move(1);q('#mNext').onclick=()=>move(1);q('#prev').onclick=()=>move(-1);q('#mPrev').onclick=()=>move(-1);q('#clear').onclick=()=>{if(confirm(`¿Limpiar los campos de ${active}?`)){draft[active]={};markLocalUpdate(active);localStorage.setItem(storeKey,JSON.stringify(draft));render()}};q('#loginBtn').onclick=sendMagicLink;q('#passwordLoginBtn').onclick=passwordLogin;q('#signupBtn').onclick=signupWithPassword;q('#setPasswordBtn').onclick=setPassword;q('#logoutBtn').onclick=async()=>{await sb.auth.signOut();setAuthSession(null);renderAuth();setStatus('Sesión cerrada. El borrador local permanece en este navegador.')};q('#syncBtn').onclick=syncProject;window.addEventListener('beforeunload',()=>{if(dirty)saveLocal()});render();initAuth();
