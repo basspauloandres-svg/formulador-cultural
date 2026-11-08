@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 test('E2E-01: carga pública y recorrido S01–S16 de solo lectura', async ({ page }) => {
   const mutations = [];
   page.on('request', request => {
-    if (/rmaevwlxcuqimxdzxdmq\\.supabase\\.co/.test(request.url()) &&
+    if (request.url().includes('rmaevwlxcuqimxdzxdmq.supabase.co') &&
         !['GET', 'HEAD', 'OPTIONS'].includes(request.method())) {
       mutations.push(request.method() + ' ' + request.url().split('?')[0]);
     }
