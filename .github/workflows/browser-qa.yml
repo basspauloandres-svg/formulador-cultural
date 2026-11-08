@@ -1,0 +1,44 @@
+name: QA navegador - Issue 93
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  navegador-publico:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Obtener candidato
+        uses: actions/checkout@v4
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar Playwright (versión fija)
+        run: npm install --no-save --no-package-lock --ignore-scripts @playwright/test@1.56.1
+      - name: Instalar navegador Chromium
+        run: npx playwright install chromium --with-deps
+      - name: Servir el frontend candidato (sin credenciales)
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/formulador-e2e-server.log 2>&1 &
+          echo $! > /tmp/formulador-e2e-server.pid
+          curl --retry 10 --retry-connrefused --retry-delay 1 --fail --silent --output /dev/null http://127.0.0.1:8765/
+      - name: Probar carga, navegación y controles públicos S01-S16
+        run: npx playwright test --config=playwright.config.cjs
+      - name: Convertir resultados en matriz CSV
+        if: always()
+        run: node e2e/report-csv.cjs
+      - name: Guardar JSON CSV HTML y trazas (sin Word)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: navegador-issue93-${{ github.run_id }}
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: warn
+          retention-days: 30
