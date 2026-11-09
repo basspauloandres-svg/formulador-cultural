@@ -22,7 +22,12 @@ function watchWrites(page) {
 test('AUTH-01: Prueba 3 autenticada, lectura S01–S16 y recuperación sin escrituras', async ({ page }) => {
   test.skip(!email || !password, 'INSUFFICIENT_EVIDENCE: faltan secretos QA; no se intentó autenticación');
   const writes = watchWrites(page);
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  // La ruta '/' apunta a la raíz del dominio, NO al subdirectorio de GitHub Pages.
+  // La cadena vacía conserva el pathname del baseURL (/formulador-cultural/).
+  await page.goto('', { waitUntil: 'domcontentloaded' });
+  expect(new URL(page.url()).pathname).toBe('/formulador-cultural/');
+  await expect(page.locator('#authCard')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#email')).toBeVisible({ timeout: 15000 });
   await page.locator('#email').fill(email);
   await page.locator('#password').fill(password);
   await page.locator('#passwordLoginBtn').click();
