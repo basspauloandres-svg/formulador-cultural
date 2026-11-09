@@ -1,0 +1,37 @@
+name: QA autenticado solo lectura - Issue 93
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  auditoria-autenticada:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      FC_QA_EMAIL: ${{ secrets.FC_QA_EMAIL }}
+      FC_QA_PASSWORD: ${{ secrets.FC_QA_PASSWORD }}
+      FC_QA_PROJECT_ID: ${{ vars.FC_QA_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar Playwright
+        run: npm install --no-save --no-package-lock --ignore-scripts @playwright/test@1.56.1
+      - name: Instalar Chromium
+        run: npx playwright install chromium --with-deps
+      - name: Recorrer Prueba 3 sin editar datos
+        run: npx playwright test --config=playwright-auth.config.cjs
+      - name: Convertir resultados en CSV
+        if: always()
+        run: node e2e/report-csv.cjs
+      - name: Conservar resultados sin Word
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-readonly-${{ github.run_id }}
+          path: |
+            test-results/matrix.csv
+          retention-days: 30
+          if-no-files-found: warn
