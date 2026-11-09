@@ -25,6 +25,8 @@ jobs:
           node --check e2e/authenticated-readonly.spec.cjs
           node --check playwright-auth.config.cjs
           node --check e2e/report-csv.cjs
+          node --check e2e/authenticated-persistence.spec.cjs
+          node --check playwright-persistence.config.cjs
       - name: Instalar navegador Chromium
         run: npx playwright install chromium --with-deps
       - name: Servir el frontend candidato (sin credenciales)
