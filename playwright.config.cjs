@@ -1,7 +1,7 @@
 const { defineConfig } = require('@playwright/test');
 module.exports = defineConfig({
   testDir: './e2e',
-  testMatch: '**/read-only.spec.cjs',
+  testMatch: ['**/read-only.spec.cjs', '**/functional-readonly.spec.cjs'],
   timeout: 45000,
   globalTimeout: 150000,
   expect: { timeout: 10000 },
