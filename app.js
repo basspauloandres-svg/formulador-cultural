@@ -122,8 +122,11 @@ async function createCloudProject(){
   draft.S01={nombre_del_proyecto:name};
   markLocalUpdate('S01');
   localStorage.setItem(storeKey,JSON.stringify(draft));
-  await syncSection('S01');
+  // Sincronizar solo después de pintar el formulario de la copia nueva.
+  // syncSection('S01') llama collect(): con la pantalla antigua podría leer
+  // campos del proyecto anterior y sobrescribir la identificación QA.
   renderAuth();render();
+  await syncSection('S01');
   setStatus('Proyecto nuevo creado y separado del proyecto anterior.',true);
 }
 async function renderProjectControls(){
