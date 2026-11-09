@@ -20,6 +20,11 @@ jobs:
           node-version: '22'
       - name: Instalar Playwright (versión fija)
         run: npm install --no-save --no-package-lock --ignore-scripts @playwright/test@1.56.1
+      - name: Verificar sintaxis de pruebas autenticadas sin credenciales
+        run: |
+          node --check e2e/authenticated-readonly.spec.cjs
+          node --check playwright-auth.config.cjs
+          node --check e2e/report-csv.cjs
       - name: Instalar navegador Chromium
         run: npx playwright install chromium --with-deps
       - name: Servir el frontend candidato (sin credenciales)
