@@ -7,7 +7,7 @@ permissions:
 
 jobs:
   persistencia-qa:
-    if: github.ref == 'refs/heads/main'
+    if: false # PAUSADO: QA de 2026-11-09 escribió S02 en proyecto ajeno; requiere aislamiento fail-closed
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
