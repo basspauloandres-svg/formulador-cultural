@@ -23,6 +23,7 @@ test('AUTH-PERSIST-01: guardar y recuperar S02 en proyecto QA independiente', as
   test.skip(!email || !password, 'INSUFFICIENT_EVIDENCE: faltan credenciales QA');
   const violations = [];
   const writes = [];
+  const sectionTargets = [];
   let qaId = null;
 
   page.on('request', request => {
@@ -40,7 +41,7 @@ test('AUTH-PERSIST-01: guardar y recuperar S02 en proyecto QA independiente', as
     if (projectIds.includes(originalId) || filter === 'eq.' + originalId) violations.push('MUTACION_PROYECTO_ORIGINAL');
     if (table === 'projects' && request.method() === 'POST' &&
         !rows.every(row => typeof row?.title === 'string' && row.title === qaTitle)) violations.push('CREACION_NO_QA');
-    if (table === 'sections' && projectIds.some(id => id !== qaId && id !== originalId)) violations.push('SECCION_OTRO_PROYECTO');
+    if (table === 'sections') sectionTargets.push(...projectIds);
     if (table === 'evidence') violations.push('MUTACION_EVIDENCIA');
     writes.push(table + ':' + request.method());
   });
@@ -77,7 +78,9 @@ test('AUTH-PERSIST-01: guardar y recuperar S02 en proyecto QA independiente', as
   await expect(page.locator('#status')).toContainText('sincronizada en la nube', { timeout: 20000 });
 
   // Contexto nuevo: sin localStorage previo, obliga a recuperar la sección desde la nube.
-  const freshContext = await browser.newContext();
+  const freshContext = await browser.newContext({
+    baseURL: process.env.FC_E2E_URL || 'https://basspauloandres-svg.github.io/formulador-cultural/'
+  });
   try {
     const fresh = await freshContext.newPage();
     await login(fresh);
@@ -94,6 +97,8 @@ test('AUTH-PERSIST-01: guardar y recuperar S02 en proyecto QA independiente', as
     await freshContext.close();
   }
 
+  expect(sectionTargets.length).toBeGreaterThanOrEqual(2);
+  expect(sectionTargets.every(id => id === qaId), 'Las secciones deben escribirse solo en copia QA').toBe(true);
   expect(violations, 'Prohibida toda escritura sobre Prueba 3 y otras entidades').toEqual([]);
   expect(writes).toContain('projects:POST');
   expect(writes).toContain('sections:POST');
