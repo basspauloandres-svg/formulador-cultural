@@ -6,7 +6,9 @@ if (fs.existsSync(input)) {
   function visit(suite) {
     for (const spec of suite.specs || []) for (const test of spec.tests || []) {
       const last = test.results?.at(-1) || {};
-      rows.push([spec.title.split(':')[0],spec.title,test.status || 'INSUFFICIENT_EVIDENCE',last.duration || 0,last.error?.message || '',process.env.GITHUB_SHA || 'local']);
+      const state = {expected:'PASS',unexpected:'FAIL',skipped:'INSUFFICIENT_EVIDENCE',flaky:'PASS_WITH_RETRY'}[test.status] || 'INSUFFICIENT_EVIDENCE';
+      const isAuth = spec.title.startsWith('AUTH-');
+      rows.push([spec.title.split(':')[0],spec.title,state,last.duration || 0,isAuth ? (state==='FAIL'?'Error autenticado; consultar ejecución sin exponer contenido':'') : (last.error?.message || ''),process.env.GITHUB_SHA || 'local']);
     }
     (suite.suites || []).forEach(visit);
   }
