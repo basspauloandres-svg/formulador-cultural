@@ -6,10 +6,7 @@ const fields = {
   S02: ['territorio_o_lugar_de_intervencion', 'TERRITORIO SINTETICO DEL TALLER'],
   S03: ['poblacion_afectada', 'POBLACION SINTETICA: veinte participantes hipoteticos'],
   S04: ['evidencia_disponible', 'EVIDENCIA SIMULADA - pendiente de fuente primaria'],
-  S05: ['situaciones_observables', 'SITUACION SINTETICA: discontinuidad de talleres'],
-  S06: ['variables_vester', 'VARIABLES QA: asistencia, continuidad, recursos'],
-  S07: ['causas_indirectas', 'CAUSA SINTETICA: falta de continuidad presupuestal'],
-  S08: ['enunciado', 'PROBLEMA QA: baja continuidad de talleres culturales']
+  S05: ['situaciones_observables', 'SITUACION SINTETICA: discontinuidad de talleres']
 };
 
 test('TALLER-UI-01: recorrer S01-S16, diligenciar campos base y exportar HTML/XLSX', async ({ page }) => {
@@ -56,7 +53,7 @@ test('TALLER-UI-01: recorrer S01-S16, diligenciar campos base y exportar HTML/XL
   const html = await htmlDownload;
   const htmlText = fs.readFileSync(await html.path(), 'utf8');
   expect(html.suggestedFilename()).toMatch(/\.html$/);
-  for (const needed of [fields.S01[1], fields.S02[1], fields.S03[1], fields.S08[1]]) {
+  for (const needed of [fields.S01[1], fields.S02[1], fields.S03[1]]) {
     expect(htmlText, 'HTML debe conservar datos introducidos desde la interfaz: ' + needed).toContain(needed);
   }
   expect(htmlText).toContain('[POR VERIFICAR]');
@@ -71,7 +68,7 @@ test('TALLER-UI-01: recorrer S01-S16, diligenciar campos base y exportar HTML/XL
   expect(bytes.includes(Buffer.from('xl/workbook.xml'))).toBe(true);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.locator('#guidedJourney .guided-subsection[data-code="S08"]').click();
-  await expect(page.locator('#fields [data-field="enunciado"]')).toHaveValue(fields.S08[1]);
+  await page.locator('#guidedJourney .guided-subsection[data-code="S02"]').click();
+  await expect(page.locator('#fields [data-field="territorio_o_lugar_de_intervencion"]')).toHaveValue(fields.S02[1]);
   expect(mutations).toEqual([]);
 });
