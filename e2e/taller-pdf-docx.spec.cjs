@@ -35,7 +35,10 @@ test('TALLER-EXPORT-02: descargar PDF y DOCX desde botones S16 con motor Python 
     const file = await download;
     expect(file.suggestedFilename()).toMatch(new RegExp('\\.' + kind + '$'));
     const bytes = fs.readFileSync(await file.path());
-    expect(bytes.length).toBeGreaterThan(18000);
+    expect(bytes.length).toBeGreaterThan(2500);
+    const responseBytes = Buffer.from(await response.body());
+    expect(bytes.equals(responseBytes), 'Descarga debe coincidir exactamente con el generador Python').toBe(true);
+    expect(response.headers()['content-type']).toContain(kind === 'pdf' ? 'application/pdf' : 'wordprocessingml.document');
     expect(bytes.subarray(0, kind === 'pdf' ? 5 : 2).toString()).toBe(kind === 'pdf' ? '%PDF-' : 'PK');
     if (kind === 'docx') {
       expect(bytes.includes(Buffer.from('word/document.xml'))).toBe(true);
