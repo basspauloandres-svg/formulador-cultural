@@ -28,5 +28,18 @@ vm.runInContext(fs.readFileSync('workflow.js','utf8'),context);
  assert.strictEqual(renders,1);
  assert.strictEqual(await window.fcPersistCurrent(),true);
  assert.strictEqual(attempts,3,'No sincronizar otra vez datos guardados');
+ // A successful response for an older edit must not acknowledge a new input.
+ context.active='S01';
+ events.input[0]({target:{closest:x=>x==='#panel'?{}:null}});
+ let release;
+ context.syncSection=()=>new Promise(resolve=>{release=resolve});
+ const pending=window.fcNavigate('S02',{scroll:false});
+ events.input[0]({target:{closest:x=>x==='#panel'?{}:null}});
+ release(true);
+ assert.strictEqual(await pending,false,'Mantener una edición nueva pendiente durante la espera');
+ assert.strictEqual(context.active,'S01');
+ context.syncSection=async()=>true;
+ assert.strictEqual(await window.fcNavigate('S02',{scroll:false}),true,'Permitir guardar la revisión más reciente');
+ assert.strictEqual(context.active,'S02');
  console.log('Navigation persistence failure regression OK');
 })().catch(e=>{console.error(e);process.exit(1)});

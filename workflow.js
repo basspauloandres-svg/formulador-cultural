@@ -4,30 +4,36 @@ let navigating=false;
 // Las consultas y la navegación simple no deben ejecutar upserts a Supabase.
 // Capturar interacciones del usuario; los módulos que editan mediante código
 // pueden señalar explícitamente cambios mediante fcMarkSectionDirty().
-const dirtySections=new Set();
-window.fcMarkSectionDirty=code=>dirtySections.add(code||active);
+const dirtySections=new Map();
+let editRevision=0;
+const markDirty=code=>dirtySections.set(code||active,++editRevision);
+window.fcMarkSectionDirty=markDirty;
+window.fcResetWorkflowState=()=>{dirtySections.clear();editRevision+=1};
 document.addEventListener('input',e=>{
-  if(e.target?.closest?.('#panel'))dirtySections.add(active);
+  if(e.target?.closest?.('#panel'))markDirty(active);
 },true);
 document.addEventListener('change',e=>{
-  if(e.target?.closest?.('#panel'))dirtySections.add(active);
+  if(e.target?.closest?.('#panel'))markDirty(active);
 },true);
 document.addEventListener('click',e=>{
   const b=e.target?.closest?.('#panel button');
-  if(b&&!b.matches('[data-k], #prev, #next, #mPrev, #mNext'))dirtySections.add(active);
+  if(b&&!b.matches('[data-k], #prev, #next, #mPrev, #mNext'))markDirty(active);
 },true);
 
 async function persistCurrent(){
   // No capturar ni persistir el DOM si el usuario no cambió esta sección.
   if(!dirtySections.has(active))return true;
+  const code=active,revision=dirtySections.get(code);
   try{
     if(typeof saveLocal==='function')saveLocal();
     if(typeof session!=='undefined'&&session&&typeof syncSection==='function'){
-      const synced=await syncSection(active);
+      const synced=await syncSection(code);
       if(synced===false)throw new Error('La sincronización no se completó');
-      if(typeof setStatus==='function')setStatus(`${active} guardada y sincronizada antes de continuar.`,true);
     }
-    dirtySections.delete(active);
+    // A response only acknowledges the edit revision that started this save.
+    if(active!==code||dirtySections.get(code)!==revision)return false;
+    dirtySections.delete(code);
+    if(typeof session!=='undefined'&&session&&typeof setStatus==='function')setStatus(`${code} guardada y sincronizada antes de continuar.`,true);
     return true;
   }catch(e){
     console.error('Persistencia antes de navegar',e);
