@@ -1,5 +1,8 @@
 from unittest.mock import patch
 import asyncio
+import os
+import sys
+sys.path.insert(0, os.path.dirname(__file__))
 import pytest
 from fastapi import HTTPException
 from assistant_pilot import AssistantRequest, assist, configured, reserve, _times
