@@ -8,12 +8,14 @@ from pydantic import BaseModel, Field
 from domain import Project, VesterRelation, calculate_vester
 from repository_memory import InMemoryProjectRepository
 from document_generator import generate_docx, generate_pdf
+from assistant_pilot import AssistantRequest, assist, configured
 
 app = FastAPI(title="Formulador Cultural API", version="0.3.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://basspauloandres-svg.github.io",
+        "https://www.vtcultural.com",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "http://localhost:5500",
@@ -21,7 +23,7 @@ app.add_middleware(
     ],
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["*"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 repo = InMemoryProjectRepository()
 
@@ -89,6 +91,14 @@ def update_section(project_id: UUID, section_code: str, payload: SectionUpdate, 
         project.sections[section_code].set_value(key, value)
     repo.save(project)
     return {"project_id": str(project.id), "section": section_code, "data": project.sections[section_code].data}
+
+@app.get("/assistant/status")
+def assistant_status() -> dict:
+    return {"section": "S02", "external_ai_available": configured(), "local_guidance": True}
+
+@app.post("/assistant/s02")
+async def assistant_s02(payload: AssistantRequest, authorization: str = Header(default="")) -> dict:
+    return await assist(payload, authorization)
 
 @app.post("/documents/docx")
 def document_docx(payload: dict) -> StreamingResponse:
