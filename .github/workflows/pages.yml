@@ -43,6 +43,7 @@ jobs:
             app.js \
             sections_extension.js \
             guidance.js \
+            assistant_s02.js \
             evidence.js \
             s05_preflight.js \
             vester.js \
