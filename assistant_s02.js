@@ -64,6 +64,7 @@ function cardFor(textarea){
  researchBtn.onclick=async()=>{
    const input=textarea.value.trim();
    if(input.length<10){status.textContent='Primero escribe al menos diez caracteres para orientar la investigación.';return}
+   references.hidden=true;references.replaceChildren();
    researchBtn.disabled=true;status.textContent='Buscando fuentes documentales...';
    try{
      const {data}=await sb.auth.getSession();
