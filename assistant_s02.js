@@ -57,7 +57,7 @@ function cardFor(textarea){
    });
    if(list.children.length)references.appendChild(list);
    else references.appendChild(createText('p','vt-assist-source','No se localizaron documentos en los servicios disponibles. INSUFFICIENT_EVIDENCE.'));
-   if(data.web_requested&&!data.web_enabled)references.appendChild(createText('p','vt-assist-source','La búsqueda web ampliada necesita configurar el proveedor en Render; se consultó únicamente el catálogo público.'));
+   if(data.web_requested&&!data.web_extended_enabled)references.appendChild(createText('p','vt-assist-source','La búsqueda web general ampliada necesita un proveedor adicional; se consultaron el catálogo colombiano y una enciclopedia pública. Esta última es fuente secundaria.'));
    (data.errors||[]).forEach(error=>references.appendChild(createText('p','vt-assist-source',String(error))));
    references.hidden=false;
  }
