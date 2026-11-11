@@ -68,7 +68,7 @@ function cardFor(textarea){
        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+data.session.access_token},
        body:JSON.stringify({section:'S02',field:fieldId,text:input,context:String(draft?.S01?.municipio||'').slice(0,200),action:'redactar'})
      });
-     if(!response.ok){status.textContent=response.status===503?'La IA externa aún no está activada. Puedes utilizar la orientación local.':response.status===429?'Se agotó el límite de consultas. Utiliza la orientación local.':'No fue posible consultar la IA. Utiliza la orientación local.';return}
+     if(!response.ok){let detail='No fue posible consultar la IA. Utiliza la orientación local.';try{const payload=await response.json();if(typeof payload.detail==='string'&&payload.detail.length<250)detail=payload.detail}catch{}status.textContent=detail;return}
      const result=await response.json();
      if(active!=='S02'||textarea.value.trim()!==input||requestId!==actionToken){status.textContent='El texto cambió. La sugerencia anterior no se aplicará.';return}
      present(String(result.suggestion||'').slice(0,1600),'Propuesta de un modelo generativo; no constituye evidencia primaria. Requiere revisión.');
