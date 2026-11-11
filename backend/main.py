@@ -95,7 +95,12 @@ def update_section(project_id: UUID, section_code: str, payload: SectionUpdate, 
 
 @app.get("/assistant/status")
 def assistant_status() -> dict:
-    return {"section": "S02", "external_ai_available": configured(), "local_guidance": True}
+    return {"section": "S02", "external_ai_available": configured(), "local_guidance": True,
+            "research_route_available": any(
+                getattr(route, "path", "") == "/assistant/s02/research"
+                and "POST" in getattr(route, "methods", set())
+                for route in app.routes
+            ), "research_build": "s02-research-route-check-20261111"}
 
 @app.post("/assistant/s02")
 async def assistant_s02(payload: AssistantRequest, authorization: str = Header(default="")) -> dict:
