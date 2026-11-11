@@ -19,7 +19,7 @@ El piloto **no** incorpora todavía biblioteca documental RAG, búsqueda web, ci
 - La clave del modelo se guarda solo en variables privadas del servidor Render; nunca en GitHub Pages.
 - Peticiones generativas: autentificación de JWT de Supabase a través de `/auth/v1/user`.
 - 8 solicitudes/hora por usuario y 160 solicitudes/hora totales, en memoria por proceso. Los topes **no garantizan un cupo global en despliegues con múltiples procesos**: se requerirá un limitador centralizado antes del taller de 80 participantes.
-- Entradas máximas de 1.800 caracteres, contexto 700, salida 230 tokens y tiempo de conexión 18 s.
+- Entradas máximas de 1.800 caracteres, contexto 700, presupuesto de salida 1024 tokens (GPT-OSS, incluye razonamiento) y tiempo de conexión 18 s.
 - Solo origen de VT Cultural y GitHub Pages en CORS.
 - La solicitud generativa envía el texto original y el municipio registrado al proveedor externo; por tanto, evitar nombres, datos personales o información sensible hasta completar una evaluación de privacidad y condiciones del proveedor.
 - El endpoint rechaza una consulta sin `GROQ_API_KEY`, sin sesión o fuera de S02; no existe acceso anónimo al modelo.
@@ -27,7 +27,7 @@ El piloto **no** incorpora todavía biblioteca documental RAG, búsqueda web, ci
 
 ## Activación posterior de Groq
 
-El administrador crea una clave en GroqCloud y la agrega como variable privada `GROQ_API_KEY` en Render, sin incorporarla al repositorio ni compartirla por conversación. `GROQ_MODEL` es opcional; el valor por defecto es `llama-3.1-8b-instant`. La cuota gratis depende de la cuenta y del modelo: no presuponer disponibilidad ni 80 usuarios concurrentes. Se debe revisar la política de procesamiento de datos de Groq antes de usar textos de proyectos reales.
+El administrador configura `GROQ_API_KEY` y `GROQ_MODEL=openai/gpt-oss-20b` como variables privadas de Render. El modelo de respaldo en el código se conserva por compatibilidad y no debe asumirse disponible en producción. La cuota gratis depende de la cuenta y del modelo: no presuponer disponibilidad ni 80 usuarios concurrentes. Se debe revisar la política de procesamiento de datos de Groq antes de usar textos de proyectos reales.
 
 API de referencia: https://console.groq.com/docs/api-reference
 
@@ -42,4 +42,4 @@ API de referencia: https://console.groq.com/docs/api-reference
 - Ante ausencia del servicio generativo, la guía local sigue funcionando.
 - Pruebas de navegador y backend reproducibles sin claves ni cuentas personales.
 
-**Dictamen inicial:** prototipo de evaluación funcional **local**, IA externa preparada pero **no activada**. No equivale a la biblioteca documental ni a un asistente IA completo.
+**Estado al 11-11-2026:** IA externa operativa según prueba reportada por el usuario, con calidad metodológica todavía pendiente de evaluación sistemática. No equivale a una biblioteca documental ni a un asistente IA completo. Véase `docs/EVALUACION_ASISTENTE_S02.md`.
