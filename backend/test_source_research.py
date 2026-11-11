@@ -50,8 +50,8 @@ class Client:
     async def get(self, url, params, headers):
         self.calls.append((url, params))
         if "wikipedia.org" in url:
-            return httpx.Response(200, json={"query": {"search": []}})
-        return httpx.Response(200, json={"results": []})
+            return httpx.Response(200, json={"query": {"search": []}}, request=httpx.Request("GET", url))
+        return httpx.Response(200, json={"results": []}, request=httpx.Request("GET", url))
 
 
 def test_request_requires_session_and_keeps_empty_sources_unverified():
