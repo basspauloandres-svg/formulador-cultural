@@ -49,6 +49,8 @@ class Client:
     async def __aexit__(self, *args): return False
     async def get(self, url, params, headers):
         self.calls.append((url, params))
+        if "wikipedia.org" in url:
+            return httpx.Response(200, json={"query": {"search": []}})
         return httpx.Response(200, json={"results": []})
 
 
@@ -59,8 +61,16 @@ def test_request_requires_session_and_keeps_empty_sources_unverified():
          patch.object(research, "reserve", return_value=True), \
          patch.object(research.httpx, "AsyncClient", side_effect=lambda **kwargs: Client(calls)):
         result = asyncio.run(research.research(request(), "Bearer synthetic"))
-    assert len(calls) == 1
+    assert len(calls) == 2
     assert result["sources"] == []
     assert result["verified_claims"] == []
     assert result["evidence_status"] == "INSUFFICIENT_EVIDENCE"
-    assert not result["web_enabled"]
+    assert result["web_enabled"]
+    assert not result["web_extended_enabled"]
+
+def test_wikipedia_sources_are_secondary_not_verified():
+    data = {"query": {"search": [{"pageid": 1234, "title": "Neira"}]}}
+    item = research.normalize_wikipedia(data)[0]
+    assert item["type"] == "fuente_secundaria"
+    assert item["evidence_status"] == "INSUFFICIENT_EVIDENCE"
+    assert item["url"] == "https://es.wikipedia.org/?curid=1234"
