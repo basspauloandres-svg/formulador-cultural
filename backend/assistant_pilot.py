@@ -112,9 +112,15 @@ async def assist(request: AssistantRequest, bearer: str) -> dict:
                 json=payload,
             )
         if response.status_code == 429:
-            raise HTTPException(429, "Proveedor de IA sin cuota disponible. Usa la orientación local.")
+            raise HTTPException(429, "Groq indica que se alcanzó la cuota del modelo. Utiliza la orientación local.")
+        if response.status_code in (401, 403):
+            raise HTTPException(502, "Groq rechazó las credenciales configuradas en el servidor. Revisa GROQ_API_KEY en Render.")
+        if response.status_code == 400:
+            raise HTTPException(502, "Groq rechazó la solicitud o el modelo configurado. Revisa GROQ_MODEL en Render.")
+        if response.status_code >= 500:
+            raise HTTPException(502, "Groq presenta un error temporal del proveedor. Usa la orientación local.")
         if response.status_code != 200:
-            raise HTTPException(502, "El modelo no está disponible. Usa la orientación local.")
+            raise HTTPException(502, "Groq devolvió un estado no previsto. Usa la orientación local.")
         data = response.json()
         suggestion = data["choices"][0]["message"]["content"].strip()[:1600]
         if not suggestion:
