@@ -35,9 +35,9 @@ def test_rate_limit_is_per_user_and_global():
 
 
 def test_key_whitespace_is_trimmed_without_leaking():
-    with patch.dict("os.environ", {"GROQ_API_KEY": "  test-credential\\n"}):
+    with patch.dict("os.environ", {"GROQ_API_KEY": "  test-credential\n"}):
         assert groq_key() == "test-credential"
         assert configured()
-    with patch.dict("os.environ", {"GROQ_API_KEY": "test\\ncredential"}):
+    with patch.dict("os.environ", {"GROQ_API_KEY": "test\ncredential"}):
         assert groq_key() == ""
         assert not configured()
