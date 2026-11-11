@@ -135,6 +135,14 @@ async def research(req: ResearchRequest, authorization: str) -> dict:
                                         headers={"User-Agent": "VerticeAcademicResearch/0.1"})
             response.raise_for_status()
             findings += normalize_catalog(response.json())
+            if not findings:
+                # La búsqueda temática puede ser demasiado restrictiva para catálogos territoriales.
+                broad_query = " ".join(query.split()[:2])
+                response = await client.get(CATALOG_URL, params={
+                    "domains": "datos.gov.co", "q": broad_query, "limit": 6
+                }, headers={"User-Agent": "VerticeAcademicResearch/0.1"})
+                response.raise_for_status()
+                findings += normalize_catalog(response.json())
         except (httpx.HTTPError, ValueError, TypeError, KeyError):
             errors.append("El catálogo público no respondió.")
         if req.include_web:
