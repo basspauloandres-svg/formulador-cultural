@@ -100,10 +100,11 @@ async def assist(request: AssistantRequest, bearer: str) -> dict:
         "Si la tarea es redactar: devuelve solamente una propuesta editable, sin encabezados. "
         "Si es orientar: formula máximo 3 preguntas concretas; no reescribas."
     )
+    model = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
     payload = {
-        "model": os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant"),
+        "model": model,
         "temperature": 0.2,
-        "max_tokens": 230,
+        "max_completion_tokens": 1024,
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": (
@@ -113,6 +114,9 @@ async def assist(request: AssistantRequest, bearer: str) -> dict:
             )},
         ],
     }
+    if model.startswith("openai/gpt-oss-"):
+        payload["reasoning_effort"] = "low"
+        payload["include_reasoning"] = False
     try:
         async with httpx.AsyncClient(timeout=18) as client:
             response = await client.post(
@@ -133,8 +137,13 @@ async def assist(request: AssistantRequest, bearer: str) -> dict:
             logger.warning("assistant_groq_upstream_unexpected status=%d", response.status_code)
             raise HTTPException(502, "Groq devolvió un estado no previsto. Usa la orientación local.")
         data = response.json()
-        suggestion = data["choices"][0]["message"]["content"].strip()[:1600]
+        choice = data["choices"][0]
+        message = choice["message"]
+        raw_content = message.get("content")
+        suggestion = raw_content.strip()[:1600] if isinstance(raw_content, str) else ""
         if not suggestion:
+            finish_reason = choice.get("finish_reason")
+            logger.warning("assistant_groq_empty_content finish_reason=%s", str(finish_reason)[:32])
             raise ValueError("Respuesta vacía")
     except HTTPException:
         raise
