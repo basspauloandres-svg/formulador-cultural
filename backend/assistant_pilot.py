@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from datetime import datetime, timezone
 import os
+import logging
 from threading import Lock
 
 import httpx
@@ -13,6 +14,7 @@ from pydantic import BaseModel, Field
 SUPABASE_URL = "https://rmaevwlxcuqimxdzxdmq.supabase.co"
 SUPABASE_PUBLIC_KEY = "sb_publishable_YYXIMlsNUfi5RhZfhevMJw_6DovU9RK"
 GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
+logger = logging.getLogger("uvicorn.error")
 WINDOW_SECONDS = 3600
 PER_USER_HOURLY = 8
 MAX_GLOBAL_HOURLY = 160
@@ -127,8 +129,15 @@ async def assist(request: AssistantRequest, bearer: str) -> dict:
             raise ValueError("Respuesta vacía")
     except HTTPException:
         raise
-    except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError):
-        raise HTTPException(502, "No fue posible generar la sugerencia. Usa la orientación local.") from None
+    except httpx.TimeoutException as exc:
+        logger.warning("assistant_groq_failure class=%s stage=upstream_transport", type(exc).__name__)
+        raise HTTPException(504, "Groq no respondió antes del tiempo límite. Usa la orientación local.") from None
+    except httpx.RequestError as exc:
+        logger.warning("assistant_groq_failure class=%s stage=upstream_transport", type(exc).__name__)
+        raise HTTPException(502, "Falló la conexión segura entre Render y Groq. Usa la orientación local.") from None
+    except (ValueError, KeyError, IndexError, TypeError) as exc:
+        logger.warning("assistant_groq_failure class=%s stage=upstream_response", type(exc).__name__)
+        raise HTTPException(502, "Groq devolvió una respuesta no interpretable. Usa la orientación local.") from None
     return {"mode": "generativo", "section": "S02", "action": request.action,
             "suggestion": suggestion, "requires_approval": True,
             "source": "Modelo generativo; no constituye evidencia primaria"}
