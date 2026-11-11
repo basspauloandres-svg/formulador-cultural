@@ -30,8 +30,16 @@ class AssistantRequest(BaseModel):
     action: str = "redactar"
 
 
+def groq_key() -> str:
+    """Normaliza espacios exteriores, nunca expone ni registra el secreto."""
+    key = os.environ.get("GROQ_API_KEY", "").strip()
+    if not key or any(ord(ch) < 33 or ord(ch) > 126 for ch in key):
+        return ""
+    return key
+
+
 def configured() -> bool:
-    return bool(os.environ.get("GROQ_API_KEY", "").strip())
+    return bool(groq_key())
 
 
 def reserve(user_id: str, now: float | None = None) -> bool:
@@ -78,7 +86,7 @@ async def assist(request: AssistantRequest, bearer: str) -> dict:
     } or request.action not in {"redactar", "orientar"}:
         raise HTTPException(422, "Esta evaluación funciona únicamente en S02.")
     if not configured():
-        raise HTTPException(503, "La IA externa aún no está configurada. Utiliza la orientación local.")
+        raise HTTPException(503, "La clave de Groq está vacía o contiene caracteres no válidos. Revisa GROQ_API_KEY en Render.")
     user_id = await verified_user(bearer)
     if not reserve(user_id):
         raise HTTPException(429, "Límite de consultas del piloto alcanzado. Utiliza la orientación local.")
@@ -109,7 +117,7 @@ async def assist(request: AssistantRequest, bearer: str) -> dict:
         async with httpx.AsyncClient(timeout=18) as client:
             response = await client.post(
                 GROQ_ENDPOINT,
-                headers={"Authorization": "Bearer " + os.environ["GROQ_API_KEY"],
+                headers={"Authorization": "Bearer " + groq_key(),
                          "Content-Type": "application/json"},
                 json=payload,
             )
