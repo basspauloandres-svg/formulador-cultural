@@ -61,7 +61,7 @@ def test_request_requires_session_and_keeps_empty_sources_unverified():
          patch.object(research, "reserve_research", return_value=True), \
          patch.object(research.httpx, "AsyncClient", side_effect=lambda **kwargs: Client(calls)):
         result = asyncio.run(research.research(request(), "Bearer synthetic"))
-    assert len(calls) == 2
+    assert len(calls) == 3
     assert result["sources"] == []
     assert result["verified_claims"] == []
     assert result["evidence_status"] == "INSUFFICIENT_EVIDENCE"
@@ -95,3 +95,14 @@ def test_invalid_location_does_not_spend_research_quota():
         asyncio.run(research.research(request(context=""), "Bearer synthetic-token"))
     assert exc.value.status_code == 422
     assert research._research_times == {}
+
+def test_fallback_catalog_query_broadens_without_user_text():
+    calls = []
+    with patch.dict(os.environ, {"BRAVE_SEARCH_API_KEY": ""}), \
+         patch.object(research, "verified_user", new=AsyncMock(return_value="synthetic")), \
+         patch.object(research, "reserve_research", return_value=True), \
+         patch.object(research.httpx, "AsyncClient", side_effect=lambda **kwargs: Client(calls)):
+        asyncio.run(research.research(request(), "Bearer synthetic"))
+    assert calls[0][1]["q"] == "Neira cultura música"
+    assert calls[1][1]["q"] == "Neira cultura"
+    assert not any("agrupaciones" in str(params) for _, params in calls)
