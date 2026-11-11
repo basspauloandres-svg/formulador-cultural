@@ -58,7 +58,7 @@ def test_request_requires_session_and_keeps_empty_sources_unverified():
     calls = []
     with patch.dict(os.environ, {"BRAVE_SEARCH_API_KEY": ""}), \
          patch.object(research, "verified_user", new=AsyncMock(return_value="synthetic")), \
-         patch.object(research, "reserve", return_value=True), \
+         patch.object(research, "reserve_research", return_value=True), \
          patch.object(research.httpx, "AsyncClient", side_effect=lambda **kwargs: Client(calls)):
         result = asyncio.run(research.research(request(), "Bearer synthetic"))
     assert len(calls) == 2
@@ -74,3 +74,24 @@ def test_wikipedia_sources_are_secondary_not_verified():
     assert item["type"] == "fuente_secundaria"
     assert item["evidence_status"] == "INSUFFICIENT_EVIDENCE"
     assert item["url"] == "https://es.wikipedia.org/?curid=1234"
+
+def test_research_quota_is_independent_from_groq_quota():
+    import assistant_pilot as pilot
+    research._research_times.clear()
+    pilot._times.clear()
+    assert all(pilot.reserve("same-user", now=100) for _ in range(8))
+    assert not pilot.reserve("same-user", now=101)
+    assert research.reserve_research("same-user", now=101)
+    assert all(research.reserve_research("same-user", now=101) for _ in range(19))
+    assert not research.reserve_research("same-user", now=101)
+    assert research.reserve_research("same-user", now=3701)
+    research._research_times.clear()
+    pilot._times.clear()
+
+
+def test_invalid_location_does_not_spend_research_quota():
+    research._research_times.clear()
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(research.research(request(context=""), "Bearer synthetic-token"))
+    assert exc.value.status_code == 422
+    assert research._research_times == {}
