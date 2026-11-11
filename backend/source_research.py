@@ -2,16 +2,41 @@
 from __future__ import annotations
 import os
 import re
+from collections import defaultdict, deque
+from datetime import datetime, timezone
+from threading import Lock
 import httpx
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
-from assistant_pilot import verified_user, reserve
+from assistant_pilot import verified_user
 
 CATALOG_URL = "https://api.us.socrata.com/api/catalog/v1"
 BRAVE_URL = "https://api.search.brave.com/res/v1/web/search"
 WIKIPEDIA_URL = "https://es.wikipedia.org/w/api.php"
 ALLOWED_FIELDS = {"territorio_o_lugar_de_intervencion", "caracteristicas_culturales",
                   "principales_dinamicas_sociales", "antecedentes"}
+RESEARCH_WINDOW_SECONDS = 3600
+RESEARCH_PER_USER_HOURLY = 20
+RESEARCH_GLOBAL_HOURLY = 300
+_research_times: dict[str, deque[float]] = defaultdict(deque)
+_research_lock = Lock()
+
+
+def reserve_research(user_id: str, now: float | None = None) -> bool:
+    """Cupo propio de investigación; no consume llamadas al modelo Groq."""
+    timestamp = now if now is not None else datetime.now(timezone.utc).timestamp()
+    with _research_lock:
+        for key in (user_id, "__research_global__"):
+            queue = _research_times[key]
+            while queue and timestamp - queue[0] >= RESEARCH_WINDOW_SECONDS:
+                queue.popleft()
+        if (len(_research_times[user_id]) >= RESEARCH_PER_USER_HOURLY
+                or len(_research_times["__research_global__"]) >= RESEARCH_GLOBAL_HOURLY):
+            return False
+        _research_times[user_id].append(timestamp)
+        _research_times["__research_global__"].append(timestamp)
+        return True
+
 
 
 class ResearchRequest(BaseModel):
@@ -99,10 +124,10 @@ def normalize_brave(data: dict) -> list[dict]:
 async def research(req: ResearchRequest, authorization: str) -> dict:
     if req.section != "S02" or req.field not in ALLOWED_FIELDS:
         raise HTTPException(422, "La investigación documental se encuentra limitada a S02.")
-    user_id = await verified_user(authorization)
-    if not reserve(user_id):
-        raise HTTPException(429, "Límite de consultas alcanzado. Intenta más tarde.")
     query = search_terms(req)
+    user_id = await verified_user(authorization)
+    if not reserve_research(user_id):
+        raise HTTPException(429, "Límite de búsquedas documentales alcanzado. Intenta más tarde. La cuota de IA es independiente.")
     findings, errors = [], []
     async with httpx.AsyncClient(timeout=12, follow_redirects=False) as client:
         try:
@@ -110,6 +135,14 @@ async def research(req: ResearchRequest, authorization: str) -> dict:
                                         headers={"User-Agent": "VerticeAcademicResearch/0.1"})
             response.raise_for_status()
             findings += normalize_catalog(response.json())
+            if not findings:
+                # La búsqueda temática puede ser demasiado restrictiva para catálogos territoriales.
+                broad_query = " ".join(query.split()[:2])
+                response = await client.get(CATALOG_URL, params={
+                    "domains": "datos.gov.co", "q": broad_query, "limit": 6
+                }, headers={"User-Agent": "VerticeAcademicResearch/0.1"})
+                response.raise_for_status()
+                findings += normalize_catalog(response.json())
         except (httpx.HTTPError, ValueError, TypeError, KeyError):
             errors.append("El catálogo público no respondió.")
         if req.include_web:
