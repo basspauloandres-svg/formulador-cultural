@@ -130,6 +130,7 @@ async def assist(request: AssistantRequest, bearer: str) -> dict:
         if response.status_code >= 500:
             raise HTTPException(502, "Groq presenta un error temporal del proveedor. Usa la orientación local.")
         if response.status_code != 200:
+            logger.warning("assistant_groq_upstream_unexpected status=%d", response.status_code)
             raise HTTPException(502, "Groq devolvió un estado no previsto. Usa la orientación local.")
         data = response.json()
         suggestion = data["choices"][0]["message"]["content"].strip()[:1600]
