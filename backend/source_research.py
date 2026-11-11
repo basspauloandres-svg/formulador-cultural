@@ -116,7 +116,7 @@ async def research(req: ResearchRequest, authorization: str) -> dict:
             try:
                 response = await client.get(WIKIPEDIA_URL, params={
                     "action": "query", "list": "search", "format": "json",
-                    "srsearch": query, "srlimit": 4,
+                    "srsearch": " ".join(query.split()[:2]), "srlimit": 4,
                 }, headers={"User-Agent": "VerticeAcademicResearch/0.1 (public research pilot)"})
                 response.raise_for_status()
                 findings += normalize_wikipedia(response.json())
