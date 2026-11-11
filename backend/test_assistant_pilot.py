@@ -5,7 +5,7 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 import pytest
 from fastapi import HTTPException
-from assistant_pilot import AssistantRequest, assist, configured, reserve, _times
+from assistant_pilot import AssistantRequest, assist, configured, groq_key, reserve, _times
 
 def sample():
     return AssistantRequest(section="S02",field="caracteristicas_culturales",
@@ -32,3 +32,12 @@ def test_rate_limit_is_per_user_and_global():
     assert reserve("synthetic-b", now=101)
     assert reserve("synthetic-a", now=3701)
     _times.clear()
+
+
+def test_key_whitespace_is_trimmed_without_leaking():
+    with patch.dict("os.environ", {"GROQ_API_KEY": "  test-credential\\n"}):
+        assert groq_key() == "test-credential"
+        assert configured()
+    with patch.dict("os.environ", {"GROQ_API_KEY": "test\\ncredential"}):
+        assert groq_key() == ""
+        assert not configured()
