@@ -106,3 +106,25 @@ def test_fallback_catalog_query_broadens_without_user_text():
     assert calls[0][1]["q"] == "Neira cultura música"
     assert calls[1][1]["q"] == "Neira cultura"
     assert not any("agrupaciones" in str(params) for _, params in calls)
+
+
+def test_cultural_field_filters_irrelevant_territorial_matches():
+    items = [
+        {"title": "Censo Estudiantil IE de Neira", "summary": "", "evidence_status": "INSUFFICIENT_EVIDENCE"},
+        {"title": "Índice de información clasificada", "summary": "", "evidence_status": "INSUFFICIENT_EVIDENCE"},
+        {"title": "Caracterización de prácticas musicales de Neira", "summary": "", "evidence_status": "INSUFFICIENT_EVIDENCE"},
+    ]
+    chosen, excluded = research.filter_relevant(items, "caracteristicas_culturales")
+    assert len(chosen) == 1
+    assert chosen[0]["title"] == "Caracterización de prácticas musicales de Neira"
+    assert chosen[0]["evidence_status"] == "INSUFFICIENT_EVIDENCE"
+    assert chosen[0]["relevance_status"] == "THEMATIC_CANDIDATE"
+    assert excluded == 2
+
+
+def test_context_field_preserves_territorial_source_without_declaring_evidence():
+    chosen, excluded = research.filter_relevant(
+        [{"title": "Ordenamiento territorial", "summary": ""}],
+        "territorio_o_lugar_de_intervencion")
+    assert len(chosen) == 1
+    assert excluded == 0
