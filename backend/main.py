@@ -9,6 +9,7 @@ from domain import Project, VesterRelation, calculate_vester
 from repository_memory import InMemoryProjectRepository
 from document_generator import generate_docx, generate_pdf
 from assistant_pilot import AssistantRequest, assist, configured
+from source_research import ResearchRequest, research
 
 app = FastAPI(title="Formulador Cultural API", version="0.3.0")
 app.add_middleware(
@@ -99,6 +100,10 @@ def assistant_status() -> dict:
 @app.post("/assistant/s02")
 async def assistant_s02(payload: AssistantRequest, authorization: str = Header(default="")) -> dict:
     return await assist(payload, authorization)
+
+@app.post("/assistant/s02/research")
+async def assistant_s02_research(payload: ResearchRequest, authorization: str = Header(default="")) -> dict:
+    return await research(payload, authorization)
 
 @app.post("/documents/docx")
 def document_docx(payload: dict) -> StreamingResponse:
