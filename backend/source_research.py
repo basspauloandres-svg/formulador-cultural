@@ -9,6 +9,7 @@ from assistant_pilot import verified_user, reserve
 
 CATALOG_URL = "https://api.us.socrata.com/api/catalog/v1"
 BRAVE_URL = "https://api.search.brave.com/res/v1/web/search"
+WIKIPEDIA_URL = "https://es.wikipedia.org/w/api.php"
 ALLOWED_FIELDS = {"territorio_o_lugar_de_intervencion", "caracteristicas_culturales",
                   "principales_dinamicas_sociales", "antecedentes"}
 
@@ -57,6 +58,25 @@ def normalize_catalog(data: dict) -> list[dict]:
     return results
 
 
+def normalize_wikipedia(data: dict) -> list[dict]:
+    results = []
+    for item in (data.get("query") or {}).get("search", [])[:4]:
+        pageid = item.get("pageid")
+        if not isinstance(pageid, int) or pageid <= 0:
+            continue
+        results.append({
+            "id": "wikipedia-" + str(pageid),
+            "title": str(item.get("title") or "Artículo enciclopédico")[:180],
+            "url": f"https://es.wikipedia.org/?curid={pageid}",
+            "publisher": "Wikipedia, enciclopedia colaborativa",
+            "type": "fuente_secundaria",
+            "evidence_status": "INSUFFICIENT_EVIDENCE",
+            "locator": "Fuente secundaria de orientación: contrastar referencias y documento primario",
+            "summary": "",
+        })
+    return results
+
+
 def normalize_brave(data: dict) -> list[dict]:
     results = []
     for index, item in enumerate((data.get("web") or {}).get("results", [])[:5]):
@@ -67,7 +87,7 @@ def normalize_brave(data: dict) -> list[dict]:
             "id": f"web-{index+1}",
             "title": str(item.get("title") or "Resultado web")[:180],
             "url": url,
-            "publisher": str(item.get("profile", {}).get("name") or "Sitio web")[:100],
+            "publisher": str((item.get("profile") or {}).get("name") or "Sitio web")[:100],
             "type": "web_descubrimiento",
             "evidence_status": "INSUFFICIENT_EVIDENCE",
             "locator": "Resultado de búsqueda; comprobar documento primario y pasaje antes de citar",
@@ -92,6 +112,16 @@ async def research(req: ResearchRequest, authorization: str) -> dict:
             findings += normalize_catalog(response.json())
         except (httpx.HTTPError, ValueError, TypeError, KeyError):
             errors.append("El catálogo público no respondió.")
+        if req.include_web:
+            try:
+                response = await client.get(WIKIPEDIA_URL, params={
+                    "action": "query", "list": "search", "format": "json",
+                    "srsearch": query, "srlimit": 4,
+                }, headers={"User-Agent": "VerticeAcademicResearch/0.1 (public research pilot)"})
+                response.raise_for_status()
+                findings += normalize_wikipedia(response.json())
+            except (httpx.HTTPError, ValueError, TypeError, KeyError):
+                errors.append("La consulta enciclopédica pública no respondió.")
         key = os.environ.get("BRAVE_SEARCH_API_KEY", "").strip()
         if req.include_web and key:
             try:
@@ -106,7 +136,8 @@ async def research(req: ResearchRequest, authorization: str) -> dict:
         "section": "S02", "query": query,
         "sources": findings, "verified_claims": [],
         "evidence_status": "INSUFFICIENT_EVIDENCE",
-        "web_enabled": bool(os.environ.get("BRAVE_SEARCH_API_KEY", "").strip()),
+        "web_enabled": req.include_web,
+        "web_extended_enabled": bool(os.environ.get("BRAVE_SEARCH_API_KEY", "").strip()),
         "web_requested": req.include_web, "errors": errors,
         "note": "Fuentes candidatas, no afirmaciones verificadas. Revisa contenido, fecha, alcance y pasaje original antes de incorporar datos."
     }
