@@ -69,7 +69,8 @@ class GuidedRequest(BaseModel):
 def municipality_key(context: str) -> tuple[str, str] | None:
     """Solo coincide con municipios registrados y departamento explícito."""
     value = re.sub(r"[^a-z0-9]+", " ", context.casefold())
-    if re.search(r"\bneira\b", value) and re.search(r"\bcaldas\b", value):
+    if re.search(r"\bneira\b", value) and (
+            re.search(r"\bcaldas\b", value) or value.strip() in ("neira", "municipio de neira")):
         return ("neira", "caldas")
     return None
 
