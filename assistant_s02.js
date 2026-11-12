@@ -24,7 +24,7 @@ function cardFor(textarea){
  const card=document.createElement('section');
  card.className='vt-assist';card.dataset.assistField=fieldId;
  const heading=createText('strong','vt-assist-heading','Asistente de formulación · S02 (evaluación)');
- const explanation=createText('p','vt-assist-note','El texto original permanece intacto hasta que apruebes una propuesta. La orientación local funciona sin IA externa.');
+ const explanation=createText('p','vt-assist-note','El texto original permanece intacto hasta que apruebes. Las propuestas de IA todavía no usan las fuentes encontradas: revísalas por separado.');
  const actions=createText('div','vt-assist-actions','');
  const localBtn=createText('button','','Ayúdame a redactar');localBtn.type='button';localBtn.dataset.assistAction='local';
  const questionsBtn=createText('button','','Oriéntame');questionsBtn.type='button';questionsBtn.dataset.assistAction='questions';
@@ -56,7 +56,10 @@ function cardFor(textarea){
      list.appendChild(li);
    });
    if(list.children.length)references.appendChild(list);
-   else references.appendChild(createText('p','vt-assist-source','No se localizaron documentos en los servicios disponibles. INSUFFICIENT_EVIDENCE.'));
+   else references.appendChild(createText('p','vt-assist-source','No se localizaron documentos temáticamente pertinentes. INSUFFICIENT_EVIDENCE.'));
+   if(Number.isInteger(data.excluded_for_low_relevance)&&data.excluded_for_low_relevance>0){
+     references.appendChild(createText('p','vt-assist-source','Resultados descartados por baja pertinencia temática: '+data.excluded_for_low_relevance+'. Este filtro preliminar puede excluir documentos relevantes con títulos genéricos.'));
+   }
    if(data.web_requested&&!data.web_extended_enabled)references.appendChild(createText('p','vt-assist-source','La búsqueda web general ampliada necesita un proveedor adicional; se consultaron el catálogo colombiano y una enciclopedia pública. Esta última es fuente secundaria.'));
    (data.errors||[]).forEach(error=>references.appendChild(createText('p','vt-assist-source',String(error))));
    references.hidden=false;
