@@ -114,7 +114,16 @@ function cardFor(textarea){
      if(!response.ok){let detail='No fue posible consultar la IA. Utiliza la orientación local.';try{const payload=await response.json();if(typeof payload.detail==='string'&&payload.detail.length<250)detail=payload.detail}catch{}status.textContent=detail;return}
      const result=await response.json();
      if(active!=='S02'||textarea.value.trim()!==input||requestId!==actionToken){status.textContent='El texto cambió. La sugerencia anterior no se aplicará.';return}
-     present(String(result.suggestion||'').slice(0,1600),'Propuesta de un modelo generativo; no constituye evidencia primaria. Requiere revisión.');
+     if(result.blocked_for_evidence){
+       proposal.hidden=true;
+       const flags=Array.isArray(result.review_flags)?result.review_flags:[];
+       status.textContent='La IA formuló posibles relaciones causales sin evidencia. Propuesta retenida. '+flags.map(item=>item.fragment||'').slice(0,2).join(' · ')+' Revisa fuentes y formula las relaciones como hipótesis.';
+       return;
+     }
+     if(typeof result.suggestion!=='string'||!result.suggestion.trim()){
+       proposal.hidden=true;status.textContent='La IA no generó una propuesta válida. Conserva el texto original.';return;
+     }
+     present(result.suggestion.slice(0,1600),'Propuesta de un modelo generativo; no constituye evidencia primaria. Requiere revisión.');
    }catch{status.textContent='No se pudo conectar el modelo. La orientación local sigue disponible.'}
    finally{aiBtn.disabled=false}
  };
