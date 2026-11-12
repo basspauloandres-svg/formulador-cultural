@@ -34,12 +34,16 @@ class ExcerptRequest(BaseModel):
 
 
 def validate_pdf_url(url: str) -> None:
-    parts = urlsplit(url)
-    if (parts.scheme != "https" or parts.hostname not in ALLOWED_PDF_HOSTS
-            or parts.port not in (None, 443)
-            or parts.username or parts.password
-            or parts.query or parts.fragment
-            or not parts.path.casefold().endswith(".pdf")):
+    try:
+        parts = urlsplit(url)
+        invalid = (parts.scheme != "https" or parts.hostname not in ALLOWED_PDF_HOSTS
+                   or parts.port not in (None, 443)
+                   or parts.username or parts.password
+                   or parts.query or parts.fragment
+                   or not parts.path.casefold().endswith(".pdf"))
+    except ValueError:
+        invalid = True
+    if invalid:
         raise HTTPException(422, "Solo se admiten enlaces HTTPS directos a PDF de dominios institucionales autorizados.")
 
 
