@@ -95,3 +95,27 @@ def test_generated_causality_remains_blocked():
         result=asyncio.run(guided.guide(request(),"Bearer synthetic"))
     assert result["blocked_for_evidence"]
     assert result["suggestion"] is None
+
+
+def test_invalid_citation_page_is_not_offered_as_approvable_draft():
+    doc={**guided.INSTITUTIONAL_DOCUMENTS[("neira","caldas")][0],
+         "passages":[{"page":1,"excerpt":"Banda estudiantil con actividades musicales."}]}
+    with patch.object(guided, "research", new=AsyncMock(return_value=research_result())), \
+         patch.object(guided, "fetch_document", new=AsyncMock(return_value=doc)), \
+         patch.object(guided, "assist", new=AsyncMock(return_value={
+             "suggestion":"Texto sin respaldo [F1, p.99].", "blocked_for_evidence":False, "review_flags":[]})):
+        result=asyncio.run(guided.guide(request(), "Bearer synthetic"))
+    assert result["blocked_for_evidence"] is True
+    assert result["suggestion"] is None
+
+
+def test_provider_429_still_returns_guidance():
+    doc={**guided.INSTITUTIONAL_DOCUMENTS[("neira","caldas")][0],
+         "passages":[{"page":1,"excerpt":"La banda estudiantil participa en actividades musicales."}]}
+    with patch.object(guided, "research", new=AsyncMock(return_value=research_result())), \
+         patch.object(guided, "fetch_document", new=AsyncMock(return_value=doc)), \
+         patch.object(guided, "assist", new=AsyncMock(side_effect=HTTPException(429,"rate limit"))):
+        result=asyncio.run(guided.guide(request(), "Bearer synthetic"))
+    assert result["guidance"]
+    assert result["suggestion"] is None
+    assert result["sources"]
