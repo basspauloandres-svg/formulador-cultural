@@ -62,6 +62,25 @@ def search_terms(request: ResearchRequest) -> str:
     return (location + " " + topic)[:100]
 
 
+
+CULTURAL_TERMS = ("cultur", "music", "artist", "arte", "festival", "fiesta", "patrimonio", "teatro", "danza", "biblioteca", "museo", "artesania", "saberes")
+OTHER_TERMS = {
+    "territorio_o_lugar_de_intervencion": ("territor", "municip", "geograf", "vereda", "ordenamiento", "cartograf", "poblacion"),
+    "principales_dinamicas_sociales": ("social", "poblacion", "comun", "convivencia", "educacion", "salud", "empleo"),
+    "antecedentes": ("proyecto", "programa", "convocatoria", "cultur", "artist", "ejecucion", "informe"),
+}
+def filter_relevant(items: list[dict], field: str) -> tuple[list[dict], int]:
+    """Filtra candidatos según metadatos temáticos; no verifica su contenido."""
+    import unicodedata
+    terms = CULTURAL_TERMS if field == "caracteristicas_culturales" else OTHER_TERMS[field]
+    selected = []
+    for item in items:
+        value = f"{item.get('title', '')} {item.get('summary', '')}".casefold()
+        value = "".join(ch for ch in unicodedata.normalize("NFKD", value) if not unicodedata.combining(ch))
+        if any(term in value for term in terms):
+            selected.append({**item, "relevance_status": "THEMATIC_CANDIDATE"})
+    return selected, len(items) - len(selected)
+
 def normalize_catalog(data: dict) -> list[dict]:
     results = []
     for entry in data.get("results", [])[:6]:
@@ -164,13 +183,14 @@ async def research(req: ResearchRequest, authorization: str) -> dict:
                 findings += normalize_brave(response.json())
             except (httpx.HTTPError, ValueError, TypeError, KeyError):
                 errors.append("La búsqueda web ampliada no respondió.")
+    findings, excluded = filter_relevant(findings, req.field)
     # No se envía el texto del proyecto a motores de búsqueda y nunca se genera una cita falsa.
     return {
         "section": "S02", "query": query,
-        "sources": findings, "verified_claims": [],
+        "sources": findings, "excluded_for_low_relevance": excluded, "verified_claims": [],
         "evidence_status": "INSUFFICIENT_EVIDENCE",
         "web_enabled": req.include_web,
         "web_extended_enabled": bool(os.environ.get("BRAVE_SEARCH_API_KEY", "").strip()),
         "web_requested": req.include_web, "errors": errors,
-        "note": "Fuentes candidatas, no afirmaciones verificadas. Revisa contenido, fecha, alcance y pasaje original antes de incorporar datos."
+        "note": "Candidatos con coincidencia temática preliminar, no afirmaciones verificadas. Revisa el documento y su pasaje original; si faltan candidatos, conserva INSUFFICIENT_EVIDENCE."
     }
