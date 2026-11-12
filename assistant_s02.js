@@ -33,13 +33,42 @@ function cardFor(textarea){
  [localBtn,questionsBtn,aiBtn,researchBtn].forEach(b=>actions.appendChild(b));
  const status=createText('p','vt-assist-status','');status.setAttribute('role','status');
  const references=createText('section','vt-assist-references','');references.hidden=true;
+ const evidencePanel=document.createElement('details');
+ evidencePanel.className='vt-assist-evidence';
+ const evidenceSummary=createText('summary','','Comprobar pasaje en PDF institucional');
+ const evidenceHelp=createText('p','vt-assist-source','Pega un enlace HTTPS directo a un PDF del Ministerio de las Culturas y un fragmento exacto de al menos 25 caracteres. Coincidencia textual no equivale a verificación de una afirmación.');
+ const evidenceUrl=document.createElement('input');evidenceUrl.type='url';evidenceUrl.placeholder='https://mng.mincultura.gov.co/.../documento.pdf';evidenceUrl.setAttribute('aria-label','Enlace PDF institucional');
+ const evidenceExcerpt=document.createElement('textarea');evidenceExcerpt.rows=3;evidenceExcerpt.placeholder='Fragmento textual exacto del PDF';evidenceExcerpt.setAttribute('aria-label','Fragmento por comprobar');
+ const evidenceButton=createText('button','','Comprobar fragmento');evidenceButton.type='button';
+ const evidenceStatus=createText('p','vt-assist-source','');evidenceStatus.setAttribute('aria-live','polite');
+ evidencePanel.append(evidenceSummary,evidenceHelp,evidenceUrl,evidenceExcerpt,evidenceButton,evidenceStatus);
+ evidenceButton.onclick=async()=>{
+   evidenceStatus.textContent='';
+   const url=evidenceUrl.value.trim(),excerpt=evidenceExcerpt.value.trim();
+   if(!url.startsWith('https://')||excerpt.length<25){evidenceStatus.textContent='Registra un enlace HTTPS directo y un fragmento de al menos 25 caracteres.';return}
+   evidenceButton.disabled=true;evidenceStatus.textContent='Comprobando coincidencia en el PDF...';
+   try{
+     const {data}=await sb.auth.getSession();
+     if(!data?.session?.access_token){evidenceStatus.textContent='Inicia sesión para comprobar documentos.';return}
+     const response=await fetch(API+'/assistant/s02/verify-excerpt',{
+       method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+data.session.access_token},
+       body:JSON.stringify({section:'S02',url,excerpt})
+     });
+     const result=await response.json();
+     if(!response.ok){evidenceStatus.textContent=typeof result.detail==='string'?result.detail:'No se pudo comprobar el PDF.';return}
+     evidenceStatus.textContent=result.passage_status==='EXCERPT_FOUND'
+       ?'Fragmento localizado en página '+result.page+' de '+result.total_pages+'. Coincidencia textual comprobada; la afirmación aún requiere evaluación humana. Huella documental: '+String(result.document_sha256||'').slice(0,12)
+       :'El fragmento no se encontró de forma literal en el PDF. Mantener INSUFFICIENT_EVIDENCE.';
+   }catch{evidenceStatus.textContent='Fallo de conexión al comprobar el documento.'}
+   finally{evidenceButton.disabled=false}
+ };
  const proposal=createText('div','vt-assist-proposal','');proposal.hidden=true;
  const mode=createText('p','vt-assist-source','');
  const draftText=document.createElement('textarea');draftText.rows=4;draftText.setAttribute('aria-label','Propuesta editable del asistente');
  const approve=createText('button','vt-assist-approve','Usar esta propuesta');approve.type='button';
  const discard=createText('button','','Descartar');discard.type='button';
  const footer=createText('div','vt-assist-actions','');footer.append(approve,discard);
- proposal.append(mode,draftText,footer);card.append(heading,explanation,actions,status,references,proposal);
+ proposal.append(mode,draftText,footer);card.append(heading,explanation,actions,status,references,evidencePanel,proposal);
  host.appendChild(card);
  let sourceValue='',actionToken=0;
  function showReferences(data){
@@ -141,7 +170,7 @@ function mount(){
  if(typeof active==='undefined'||active!=='S02')return;
  document.querySelectorAll('#fields textarea[data-field]').forEach(cardFor);
 }
-const css=document.createElement('style');css.textContent='.vt-assist{border:1px solid #b5c8c0;background:#f5faf7;border-radius:11px;margin:9px 0 17px;padding:12px}.vt-assist-heading{display:block;font-size:.9rem}.vt-assist-note,.vt-assist-status,.vt-assist-source{font-size:.84rem;color:#425950;margin:7px 0}.vt-assist-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.vt-assist button{border:1px solid #789a8c;border-radius:8px;background:white;color:#17392c;padding:8px 11px;font:inherit;font-size:.82rem;cursor:pointer}.vt-assist button:disabled{opacity:.5}.vt-assist-proposal{border-top:1px solid #c9d8d0;margin-top:10px;padding-top:10px}.vt-assist-proposal[hidden],.vt-assist-references[hidden]{display:none}.vt-assist-references{border-top:1px solid #c9d8d0;margin-top:10px;padding-top:10px;font-size:.84rem}.vt-assist-references ul{padding-left:20px}.vt-assist-references li{margin:8px 0}.vt-assist-references a{color:#0b5347;text-decoration:underline}.vt-assist-proposal textarea{box-sizing:border-box;width:100%;border:1px solid #b0c5ba;border-radius:8px;min-height:90px;padding:9px;font:inherit}.vt-assist .vt-assist-approve{background:#123e2f;color:white}@media(max-width:600px){.vt-assist-actions button{flex:1 1 auto}}';
+const css=document.createElement('style');css.textContent='.vt-assist{border:1px solid #b5c8c0;background:#f5faf7;border-radius:11px;margin:9px 0 17px;padding:12px}.vt-assist-heading{display:block;font-size:.9rem}.vt-assist-note,.vt-assist-status,.vt-assist-source{font-size:.84rem;color:#425950;margin:7px 0}.vt-assist-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.vt-assist button{border:1px solid #789a8c;border-radius:8px;background:white;color:#17392c;padding:8px 11px;font:inherit;font-size:.82rem;cursor:pointer}.vt-assist button:disabled{opacity:.5}.vt-assist-proposal{border-top:1px solid #c9d8d0;margin-top:10px;padding-top:10px}.vt-assist-proposal[hidden],.vt-assist-references[hidden]{display:none}.vt-assist-references{border-top:1px solid #c9d8d0;margin-top:10px;padding-top:10px;font-size:.84rem}.vt-assist-references ul{padding-left:20px}.vt-assist-references li{margin:8px 0}.vt-assist-references a{color:#0b5347;text-decoration:underline}.vt-assist-proposal textarea{box-sizing:border-box;width:100%;border:1px solid #b0c5ba;border-radius:8px;min-height:90px;padding:9px;font:inherit}.vt-assist-evidence{border-top:1px solid #c9d8d0;margin-top:10px;padding-top:10px}.vt-assist-evidence summary{cursor:pointer;font-weight:600;font-size:.86rem}.vt-assist-evidence input,.vt-assist-evidence textarea{display:block;width:100%;box-sizing:border-box;border:1px solid #b0c5ba;border-radius:8px;margin:8px 0;padding:8px;font:inherit;font-size:.82rem}.vt-assist .vt-assist-approve{background:#123e2f;color:white}@media(max-width:600px){.vt-assist-actions button{flex:1 1 auto}}';
 document.head.appendChild(css);
 new MutationObserver(mount).observe(document.getElementById('fields')||document.body,{childList:true,subtree:true});
 mount();
