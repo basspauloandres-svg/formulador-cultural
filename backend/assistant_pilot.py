@@ -10,6 +10,7 @@ from threading import Lock
 import httpx
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
+from claim_audit import audit_claims
 
 SUPABASE_URL = "https://rmaevwlxcuqimxdzxdmq.supabase.co"
 SUPABASE_PUBLIC_KEY = "sb_publishable_YYXIMlsNUfi5RhZfhevMJw_6DovU9RK"
@@ -161,6 +162,17 @@ async def assist(request: AssistantRequest, bearer: str) -> dict:
     except (ValueError, KeyError, IndexError, TypeError) as exc:
         logger.warning("assistant_groq_failure class=%s stage=upstream_response", type(exc).__name__)
         raise HTTPException(502, "Groq devolvió una respuesta no interpretable. Usa la orientación local.") from None
+    flags = audit_claims(suggestion) if request.action == "redactar" else []
+    if flags:
+        # Retener en backend: ninguna causalidad no respaldada pasa como propuesta aprobable.
+        logger.warning("assistant_s02_claim_gate flags=%d", len(flags))
+        return {"mode": "generativo", "section": "S02", "action": request.action,
+                "suggestion": "", "requires_approval": True,
+                "blocked_for_evidence": True, "review_flags": flags,
+                "evidence_status": "INSUFFICIENT_EVIDENCE",
+                "source": "Modelo generativo; propuesta retenida por revisión documental"}
     return {"mode": "generativo", "section": "S02", "action": request.action,
             "suggestion": suggestion, "requires_approval": True,
+            "blocked_for_evidence": False, "review_flags": [],
+            "evidence_status": "INSUFFICIENT_EVIDENCE",
             "source": "Modelo generativo; no constituye evidencia primaria"}
