@@ -88,3 +88,15 @@ def test_unexpected_response_shape_fails_closed():
     with pytest.raises(HTTPException) as exc:
         run_assist(httpx.Response(200, json={"choices": []}))
     assert exc.value.status_code == 502
+
+
+def test_prompt_explicitly_limits_unsupported_cultural_impacts():
+    upstream = httpx.Response(200, json={
+        "choices": [{"message": {"content": "Texto por revisar [POR VERIFICAR]."}, "finish_reason": "stop"}]
+    })
+    _, request_payload = run_assist(upstream)
+    system = request_payload["messages"][0]["content"]
+    assert "cohesión social" in system
+    assert "tradiciones" in system
+    assert "junto a la afirmación específica" in system
+    assert "hipótesis" in system
