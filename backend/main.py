@@ -10,6 +10,7 @@ from repository_memory import InMemoryProjectRepository
 from document_generator import generate_docx, generate_pdf
 from assistant_pilot import AssistantRequest, assist, configured
 from source_research import ResearchRequest, research
+from source_verifier import ExcerptRequest, verify_excerpt
 
 app = FastAPI(title="Formulador Cultural API", version="0.3.0")
 app.add_middleware(
@@ -109,6 +110,10 @@ async def assistant_s02(payload: AssistantRequest, authorization: str = Header(d
 @app.post("/assistant/s02/research")
 async def assistant_s02_research(payload: ResearchRequest, authorization: str = Header(default="")) -> dict:
     return await research(payload, authorization)
+
+@app.post("/assistant/s02/verify-excerpt")
+async def assistant_s02_verify_excerpt(payload: ExcerptRequest, authorization: str = Header(default="")) -> dict:
+    return await verify_excerpt(payload, authorization)
 
 @app.post("/documents/docx")
 def document_docx(payload: dict) -> StreamingResponse:
