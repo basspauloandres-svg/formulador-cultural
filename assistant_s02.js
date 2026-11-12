@@ -40,7 +40,7 @@ function cardFor(textarea){
  const evidenceUrl=document.createElement('input');evidenceUrl.type='url';evidenceUrl.placeholder='https://mng.mincultura.gov.co/.../documento.pdf';evidenceUrl.setAttribute('aria-label','Enlace PDF institucional');
  const evidenceExcerpt=document.createElement('textarea');evidenceExcerpt.rows=3;evidenceExcerpt.placeholder='Fragmento textual exacto del PDF';evidenceExcerpt.setAttribute('aria-label','Fragmento por comprobar');
  const evidenceButton=createText('button','','Comprobar fragmento');evidenceButton.type='button';
- const evidenceStatus=createText('p','vt-assist-status','');evidenceStatus.setAttribute('role','status');
+ const evidenceStatus=createText('p','vt-assist-source','');evidenceStatus.setAttribute('aria-live','polite');
  evidencePanel.append(evidenceSummary,evidenceHelp,evidenceUrl,evidenceExcerpt,evidenceButton,evidenceStatus);
  evidenceButton.onclick=async()=>{
    evidenceStatus.textContent='';
