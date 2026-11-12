@@ -24,72 +24,61 @@ function cardFor(textarea){
  const card=document.createElement('section');
  card.className='vt-assist';card.dataset.assistField=fieldId;
  const heading=createText('strong','vt-assist-heading','Asistente de formulación · S02 (evaluación)');
- const explanation=createText('p','vt-assist-note','El texto original permanece intacto hasta que apruebes. Las propuestas de IA todavía no usan las fuentes encontradas: revísalas por separado.');
+ const explanation=createText('p','vt-assist-note','El texto original permanece intacto hasta que apruebes. VÉRTICE investiga y orienta automáticamente según el municipio. Los datos documentales y las propuestas se muestran para revisión.');
  const actions=createText('div','vt-assist-actions','');
  const localBtn=createText('button','','Ayúdame a redactar');localBtn.type='button';localBtn.dataset.assistAction='local';
  const questionsBtn=createText('button','','Oriéntame');questionsBtn.type='button';questionsBtn.dataset.assistAction='questions';
  const aiBtn=createText('button','','Consultar IA (experimental)');aiBtn.type='button';aiBtn.dataset.assistAction='ai';
- const researchBtn=createText('button','','Investigar con fuentes');researchBtn.type='button';researchBtn.dataset.assistAction='research';
+ const researchBtn=createText('button','','Investigar y orientar');researchBtn.type='button';researchBtn.dataset.assistAction='research';
  [localBtn,questionsBtn,aiBtn,researchBtn].forEach(b=>actions.appendChild(b));
  const status=createText('p','vt-assist-status','');status.setAttribute('role','status');
  const references=createText('section','vt-assist-references','');references.hidden=true;
- const evidencePanel=document.createElement('details');
- evidencePanel.className='vt-assist-evidence';
- const evidenceSummary=createText('summary','','Comprobar pasaje en PDF institucional');
- const evidenceHelp=createText('p','vt-assist-source','Pega un enlace HTTPS directo a un PDF del Ministerio de las Culturas y un fragmento exacto de al menos 25 caracteres. Coincidencia textual no equivale a verificación de una afirmación.');
- const evidenceUrl=document.createElement('input');evidenceUrl.type='url';evidenceUrl.placeholder='https://mng.mincultura.gov.co/.../documento.pdf';evidenceUrl.setAttribute('aria-label','Enlace PDF institucional');
- const evidenceExcerpt=document.createElement('textarea');evidenceExcerpt.rows=3;evidenceExcerpt.placeholder='Fragmento textual exacto del PDF';evidenceExcerpt.setAttribute('aria-label','Fragmento por comprobar');
- const evidenceButton=createText('button','','Comprobar fragmento');evidenceButton.type='button';
- const evidenceStatus=createText('p','vt-assist-source','');evidenceStatus.setAttribute('aria-live','polite');
- evidencePanel.append(evidenceSummary,evidenceHelp,evidenceUrl,evidenceExcerpt,evidenceButton,evidenceStatus);
- evidenceButton.onclick=async()=>{
-   evidenceStatus.textContent='';
-   const url=evidenceUrl.value.trim(),excerpt=evidenceExcerpt.value.trim();
-   if(!url.startsWith('https://')||excerpt.length<25){evidenceStatus.textContent='Registra un enlace HTTPS directo y un fragmento de al menos 25 caracteres.';return}
-   evidenceButton.disabled=true;evidenceStatus.textContent='Comprobando coincidencia en el PDF...';
-   try{
-     const {data}=await sb.auth.getSession();
-     if(!data?.session?.access_token){evidenceStatus.textContent='Inicia sesión para comprobar documentos.';return}
-     const response=await fetch(API+'/assistant/s02/verify-excerpt',{
-       method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+data.session.access_token},
-       body:JSON.stringify({section:'S02',url,excerpt})
-     });
-     const result=await response.json();
-     if(!response.ok){evidenceStatus.textContent=typeof result.detail==='string'?result.detail:'No se pudo comprobar el PDF.';return}
-     evidenceStatus.textContent=result.passage_status==='EXCERPT_FOUND'
-       ?'Fragmento localizado en página '+result.page+' de '+result.total_pages+'. Coincidencia textual comprobada; la afirmación aún requiere evaluación humana. Huella documental: '+String(result.document_sha256||'').slice(0,12)
-       :'El fragmento no se encontró de forma literal en el PDF. Mantener INSUFFICIENT_EVIDENCE.';
-   }catch{evidenceStatus.textContent='Fallo de conexión al comprobar el documento.'}
-   finally{evidenceButton.disabled=false}
- };
  const proposal=createText('div','vt-assist-proposal','');proposal.hidden=true;
  const mode=createText('p','vt-assist-source','');
  const draftText=document.createElement('textarea');draftText.rows=4;draftText.setAttribute('aria-label','Propuesta editable del asistente');
  const approve=createText('button','vt-assist-approve','Usar esta propuesta');approve.type='button';
  const discard=createText('button','','Descartar');discard.type='button';
  const footer=createText('div','vt-assist-actions','');footer.append(approve,discard);
- proposal.append(mode,draftText,footer);card.append(heading,explanation,actions,status,references,evidencePanel,proposal);
+ proposal.append(mode,draftText,footer);card.append(heading,explanation,actions,status,references,proposal);
  host.appendChild(card);
  let sourceValue='',actionToken=0;
  function showReferences(data){
    references.replaceChildren();
-   const title=createText('strong','','Fuentes candidatas para revisar');references.appendChild(title);
-   references.appendChild(createText('p','vt-assist-source',data.note||'La búsqueda no constituye verificación documental.'));
-   const list=document.createElement('ul');
-   (Array.isArray(data.sources)?data.sources:[]).forEach(item=>{
-     if(typeof item.url!=='string'||!item.url.startsWith('https://'))return;
-     const li=document.createElement('li'),link=document.createElement('a');
-     link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';
-     link.textContent=item.title||'Consultar documento';
-     li.append(link,createText('p','vt-assist-source',(item.publisher||'')+' · '+(item.locator||'Requiere verificación')));
-     list.appendChild(li);
+   references.appendChild(createText('strong','','Orientación para diligenciar este campo'));
+   const guidance=document.createElement('ul');
+   (Array.isArray(data.guidance)?data.guidance:[]).forEach(note=>{
+     const li=createText('li','',String(note));guidance.appendChild(li);
    });
-   if(list.children.length)references.appendChild(list);
-   else references.appendChild(createText('p','vt-assist-source','No se localizaron documentos temáticamente pertinentes. INSUFFICIENT_EVIDENCE.'));
-   if(Number.isInteger(data.excluded_for_low_relevance)&&data.excluded_for_low_relevance>0){
-     references.appendChild(createText('p','vt-assist-source','Resultados descartados por baja pertinencia temática: '+data.excluded_for_low_relevance+'. Este filtro preliminar puede excluir documentos relevantes con títulos genéricos.'));
+   references.appendChild(guidance);
+   references.appendChild(createText('strong','','Información documental recuperada'));
+   const docs=Array.isArray(data.sources)?data.sources:[];
+   if(!docs.length)references.appendChild(createText('p','vt-assist-source','Todavía no se recuperaron pasajes primarios utilizables para este campo. INSUFFICIENT_EVIDENCE.'));
+   docs.forEach(doc=>{
+     const wrapper=document.createElement('div');
+     const title=document.createElement('a');
+     title.href=doc.url;title.target='_blank';title.rel='noopener noreferrer';
+     title.textContent=String(doc.title||'Documento institucional');
+     wrapper.appendChild(title);
+     (Array.isArray(doc.passages)?doc.passages:[]).forEach(pass=>{
+       wrapper.appendChild(createText('p','vt-assist-source','Página '+pass.page+': '+String(pass.excerpt||'')));
+     });
+     wrapper.appendChild(createText('p','vt-assist-source','Año '+doc.year+' · Extracto localizado. La afirmación e interpretación siguen pendientes de revisión.'));
+     references.appendChild(wrapper);
+   });
+   const candidates=Array.isArray(data.candidate_sources)?data.candidate_sources:[];
+   if(candidates.length){
+     const details=document.createElement('details');
+     details.appendChild(createText('summary','','Otras fuentes candidatas ('+candidates.length+')'));
+     const list=document.createElement('ul');
+     candidates.slice(0,6).forEach(item=>{
+       if(typeof item.url!=='string'||!item.url.startsWith('https://'))return;
+       const li=document.createElement('li'),link=document.createElement('a');
+       link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';
+       link.textContent=item.title||'Consultar fuente';li.appendChild(link);list.appendChild(li);
+     });
+     details.appendChild(list);references.appendChild(details);
    }
-   if(data.web_requested&&!data.web_extended_enabled)references.appendChild(createText('p','vt-assist-source','La búsqueda web general ampliada necesita un proveedor adicional; se consultaron el catálogo colombiano y una enciclopedia pública. Esta última es fuente secundaria.'));
+   references.appendChild(createText('p','vt-assist-source',data.note||'La información requiere revisión.'));
    (data.errors||[]).forEach(error=>references.appendChild(createText('p','vt-assist-source',String(error))));
    references.hidden=false;
  }
@@ -97,18 +86,27 @@ function cardFor(textarea){
    const input=textarea.value.trim();
    if(input.length<10){status.textContent='Primero escribe al menos diez caracteres para orientar la investigación.';return}
    references.hidden=true;references.replaceChildren();
-   researchBtn.disabled=true;status.textContent='Buscando fuentes documentales...';
+   researchBtn.disabled=true;status.textContent='Consultando información y preparando orientación...';
    try{
      const {data}=await sb.auth.getSession();
      if(!data?.session?.access_token){status.textContent='Inicia sesión para consultar fuentes.';return}
-     const response=await fetch(API+'/assistant/s02/research',{
+     const response=await fetch(API+'/assistant/s02/guide',{
        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+data.session.access_token},
-       body:JSON.stringify({section:'S02',field:fieldId,text:input,context:String(draft?.S01?.municipio||'').slice(0,200),include_web:true})
+       body:JSON.stringify({section:'S02',field:fieldId,text:input,context:String(draft?.S01?.municipio||'').slice(0,200),include_web:true,generate:true})
      });
      if(!response.ok){let detail='No fue posible consultar fuentes.';try{const error=await response.json();if(typeof error.detail==='string')detail=error.detail}catch{}status.textContent=detail;return}
      const result=await response.json();
+     if(active!=='S02'||textarea.value.trim()!==input){status.textContent='El campo cambió durante la consulta. Repite la asistencia.';return}
      showReferences(result);
-     status.textContent='Consulta completada. Revisa cada documento antes de utilizarlo como evidencia.';
+     if(result.blocked_for_evidence){
+       proposal.hidden=true;
+       status.textContent='La propuesta generativa fue retenida por afirmaciones que requieren evidencia. Consulta las orientaciones y fuentes anteriores.';
+     }else if(typeof result.suggestion==='string'&&result.suggestion.trim()){
+       present(result.suggestion.slice(0,1600),'Propuesta asistida por extractos documentales recuperados. Requiere verificar que cada afirmación esté respaldada y aprobarla.');
+     }else{
+       proposal.hidden=true;
+       status.textContent='Orientación disponible. Faltan documentos suficientes para redactar con evidencia externa, por eso se conserva tu texto.';
+     }
    }catch{status.textContent='No se pudo completar la búsqueda documental.'}
    finally{researchBtn.disabled=false}
  };
@@ -170,7 +168,7 @@ function mount(){
  if(typeof active==='undefined'||active!=='S02')return;
  document.querySelectorAll('#fields textarea[data-field]').forEach(cardFor);
 }
-const css=document.createElement('style');css.textContent='.vt-assist{border:1px solid #b5c8c0;background:#f5faf7;border-radius:11px;margin:9px 0 17px;padding:12px}.vt-assist-heading{display:block;font-size:.9rem}.vt-assist-note,.vt-assist-status,.vt-assist-source{font-size:.84rem;color:#425950;margin:7px 0}.vt-assist-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.vt-assist button{border:1px solid #789a8c;border-radius:8px;background:white;color:#17392c;padding:8px 11px;font:inherit;font-size:.82rem;cursor:pointer}.vt-assist button:disabled{opacity:.5}.vt-assist-proposal{border-top:1px solid #c9d8d0;margin-top:10px;padding-top:10px}.vt-assist-proposal[hidden],.vt-assist-references[hidden]{display:none}.vt-assist-references{border-top:1px solid #c9d8d0;margin-top:10px;padding-top:10px;font-size:.84rem}.vt-assist-references ul{padding-left:20px}.vt-assist-references li{margin:8px 0}.vt-assist-references a{color:#0b5347;text-decoration:underline}.vt-assist-proposal textarea{box-sizing:border-box;width:100%;border:1px solid #b0c5ba;border-radius:8px;min-height:90px;padding:9px;font:inherit}.vt-assist-evidence{border-top:1px solid #c9d8d0;margin-top:10px;padding-top:10px}.vt-assist-evidence summary{cursor:pointer;font-weight:600;font-size:.86rem}.vt-assist-evidence input,.vt-assist-evidence textarea{display:block;width:100%;box-sizing:border-box;border:1px solid #b0c5ba;border-radius:8px;margin:8px 0;padding:8px;font:inherit;font-size:.82rem}.vt-assist .vt-assist-approve{background:#123e2f;color:white}@media(max-width:600px){.vt-assist-actions button{flex:1 1 auto}}';
+const css=document.createElement('style');css.textContent='.vt-assist{border:1px solid #b5c8c0;background:#f5faf7;border-radius:11px;margin:9px 0 17px;padding:12px}.vt-assist-heading{display:block;font-size:.9rem}.vt-assist-note,.vt-assist-status,.vt-assist-source{font-size:.84rem;color:#425950;margin:7px 0}.vt-assist-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.vt-assist button{border:1px solid #789a8c;border-radius:8px;background:white;color:#17392c;padding:8px 11px;font:inherit;font-size:.82rem;cursor:pointer}.vt-assist button:disabled{opacity:.5}.vt-assist-proposal{border-top:1px solid #c9d8d0;margin-top:10px;padding-top:10px}.vt-assist-proposal[hidden],.vt-assist-references[hidden]{display:none}.vt-assist-references{border-top:1px solid #c9d8d0;margin-top:10px;padding-top:10px;font-size:.84rem}.vt-assist-references ul{padding-left:20px}.vt-assist-references li{margin:8px 0}.vt-assist-references a{color:#0b5347;text-decoration:underline}.vt-assist-proposal textarea{box-sizing:border-box;width:100%;border:1px solid #b0c5ba;border-radius:8px;min-height:90px;padding:9px;font:inherit}.vt-assist .vt-assist-approve{background:#123e2f;color:white}@media(max-width:600px){.vt-assist-actions button{flex:1 1 auto}}';
 document.head.appendChild(css);
 new MutationObserver(mount).observe(document.getElementById('fields')||document.body,{childList:true,subtree:true});
 mount();
