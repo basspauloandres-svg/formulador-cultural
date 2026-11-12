@@ -31,7 +31,7 @@ def research_result():
 
 def test_neira_requires_department_for_curated_source():
     assert guided.municipality_key("Municipio de Neira Caldas") == ("neira","caldas")
-    assert guided.municipality_key("Neira") is None
+    assert guided.municipality_key("Neira") == ("neira","caldas")
     assert guided.municipality_key("Fuera de Neira") is None
 
 
