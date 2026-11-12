@@ -153,12 +153,26 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             for passage in doc["passages"][:3]:
                 excerpts.append(f"[F1, p.{passage['page']}] {passage['excerpt']}")
         evidence = "\n".join(excerpts)[:950]
-        generative = await assist(AssistantRequest(section="S02", field=req.field,
-            text=req.text, context=req.context, action="redactar"), bearer,
-            evidence=evidence)
-        suggestion = generative["suggestion"] or None
-        blocked = generative.get("blocked_for_evidence", False)
-        flags = generative.get("review_flags", [])
+        try:
+            generative = await assist(AssistantRequest(section="S02", field=req.field,
+                text=req.text, context=req.context, action="redactar"), bearer,
+                evidence=evidence)
+            suggestion = generative["suggestion"] or None
+            blocked = generative.get("blocked_for_evidence", False)
+            flags = generative.get("review_flags", [])
+            # Solo se permiten localizadores de las páginas recuperadas.
+            allowed_pages = {p["page"] for d in docs for p in d["passages"]}
+            cited_pages = [int(value) for value in re.findall(r"\\[F1,\\s*p\\.(\\d+)\\]", suggestion or "")]
+            if any(page not in allowed_pages for page in cited_pages):
+                suggestion = None
+                blocked = True
+                flags.append({"type": "UNVERIFIED_CITATION",
+                              "instruction": "El modelo citó una página ausente en los pasajes recuperados."})
+        except HTTPException as exc:
+            # Una caída o cuota del proveedor no debe impedir orientar al formador.
+            if exc.status_code not in (429, 502, 503, 504):
+                raise
+            suggestion = None
     return {
         "section": "S02", "field": req.field,
         "guidance": list(GUIDANCE[req.field]),
