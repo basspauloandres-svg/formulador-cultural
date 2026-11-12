@@ -162,7 +162,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             flags = generative.get("review_flags", [])
             # Solo se permiten localizadores de las páginas recuperadas.
             allowed_pages = {p["page"] for d in docs for p in d["passages"]}
-            cited_pages = [int(value) for value in re.findall(r"\\[F1,\\s*p\\.(\\d+)\\]", suggestion or "")]
+            cited_pages = [int(value) for value in re.findall(r"\[F1,\s*p\.(\d+)\]", suggestion or "")]
             if any(page not in allowed_pages for page in cited_pages):
                 suggestion = None
                 blocked = True
