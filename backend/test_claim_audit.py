@@ -37,7 +37,7 @@ class MockClient:
             "finish_reason": "stop"}]})
 
 
-def test_model_output_with_unverified_causality_is_withheld():
+def test_model_output_with_unverified_causality_is_qualified():
     pilot._times.clear()
     req = pilot.AssistantRequest(
         field="caracteristicas_culturales", section="S02", action="redactar",
@@ -49,7 +49,17 @@ def test_model_output_with_unverified_causality_is_withheld():
          patch.object(pilot.httpx, "AsyncClient", return_value=MockClient()):
         result = asyncio.run(pilot.assist(req, "Bearer synthetic-token"))
     pilot._times.clear()
-    assert result["blocked_for_evidence"] is True
-    assert result["suggestion"] == ""
+    assert result["blocked_for_evidence"] is False
+    assert "Se plantea como hipótesis" in result["suggestion"]
+    assert "[POR VERIFICAR]" in result["suggestion"]
     assert result["requires_approval"] is True
     assert result["review_flags"]
+
+
+def test_only_causal_sentence_is_qualified():
+    original = ("La banda municipal participa en encuentros. "
+                "La posición geográfica influye en sus prácticas musicales.")
+    rewritten, flags = claim_audit.qualify_claims(original)
+    assert rewritten.startswith("La banda municipal participa en encuentros.")
+    assert "Se plantea como hipótesis por verificar que la posición" in rewritten
+    assert flags

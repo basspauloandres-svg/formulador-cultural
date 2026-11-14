@@ -48,3 +48,24 @@ def audit_claims(text: str) -> list[dict]:
             "instruction": "Reformula como hipótesis y especifica qué relación requiere fuente.",
         })
     return results[:5]
+
+
+def qualify_claims(text: str) -> tuple[str, list[dict]]:
+    """Reformula proposiciones causales detectadas como hipótesis editables.
+
+    No certifica el resto de la respuesta. Devuelve las alertas para revisión
+    y evita que el formador pierda el borrador completo.
+    """
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    rewritten = []
+    flagged = []
+    for sentence in sentences:
+        issues = audit_claims(sentence)
+        if issues:
+            flagged.extend(issues)
+            lead = sentence[0].lower() + sentence[1:] if sentence else sentence
+            rewritten.append("Se plantea como hipótesis por verificar que " +
+                             lead.rstrip(" .") + " [POR VERIFICAR].")
+        else:
+            rewritten.append(sentence)
+    return " ".join(rewritten), flagged[:5]
