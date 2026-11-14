@@ -48,7 +48,8 @@ def test_other_municipalities_receive_guidance_without_fabricated_facts():
          patch.object(guided, "assist", new=AsyncMock()) as model:
         result=asyncio.run(guided.guide(request(context="Anserma Caldas"), "Bearer synthetic"))
     fetch.assert_not_called()
-    model.assert_not_called()
+    model.assert_awaited_once()
+    assert model.await_args.kwargs["evidence"] is None
     assert result["sources"] == []
     assert result["candidate_sources"]
     assert result["suggestion"] is None
@@ -61,7 +62,7 @@ def test_inaccessible_document_gracefully_falls_back_to_guidance():
          patch.object(guided, "fetch_document", new=AsyncMock(return_value=None)), \
          patch.object(guided, "assist", new=AsyncMock()) as model:
         result=asyncio.run(guided.guide(request(), "Bearer synthetic"))
-    model.assert_not_called()
+    model.assert_awaited_once()
     assert result["sources"] == []
     assert result["guidance"]
 
@@ -119,3 +120,27 @@ def test_provider_429_still_returns_guidance():
     assert result["guidance"]
     assert result["suggestion"] is None
     assert result["sources"]
+
+
+def test_no_source_still_generates_editable_draft_without_fake_evidence():
+    generated = {"suggestion": "Borrador basado en observación del formador.",
+                 "blocked_for_evidence": False, "review_flags": []}
+    with patch.object(guided, "research", new=AsyncMock(return_value=research_result())), \
+         patch.object(guided, "fetch_document", new=AsyncMock(return_value=None)), \
+         patch.object(guided, "assist", new=AsyncMock(return_value=generated)) as model:
+        result=asyncio.run(guided.guide(request(), "Bearer synthetic"))
+    assert result["suggestion"] == generated["suggestion"]
+    assert result["sources"] == []
+    assert model.await_args.kwargs["evidence"] is None
+    assert result["claim_status"] == "INSUFFICIENT_EVIDENCE"
+
+
+def test_irrelevant_pcc_is_not_used_as_local_music_evidence():
+    buf = BytesIO()
+    pdf = canvas.Canvas(buf)
+    pdf.drawString(40, 740, "El Paisaje Cultural Cafetero constituye un ejemplo de adaptación")
+    pdf.drawString(40, 725, "humana a condiciones geográficas difíciles sobre las que")
+    pdf.drawString(40, 710, "se desarrolló una caficultura de ladera y montaña.")
+    pdf.showPage()
+    pdf.save()
+    assert guided.passages_from_pdf(buf.getvalue(), "caracteristicas_culturales") == []
