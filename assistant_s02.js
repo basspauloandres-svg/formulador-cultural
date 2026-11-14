@@ -24,12 +24,12 @@ function cardFor(textarea){
  const card=document.createElement('section');
  card.className='vt-assist';card.dataset.assistField=fieldId;
  const heading=createText('strong','vt-assist-heading','Asistente de formulación · S02 (evaluación)');
- const explanation=createText('p','vt-assist-note','El texto original permanece intacto hasta que apruebes. VÉRTICE investiga y orienta automáticamente según el municipio. Los datos documentales y las propuestas se muestran para revisión.');
+ const explanation=createText('p','vt-assist-note','VÉRTICE utiliza IA generativa para ayudarte a formular; también puede investigar y complementar con fuentes. Toda propuesta es editable y requiere tu aprobación.');
  const actions=createText('div','vt-assist-actions','');
- const localBtn=createText('button','','Ayúdame a redactar');localBtn.type='button';localBtn.dataset.assistAction='local';
+ const localBtn=createText('button','','Ayúdame a formular');localBtn.type='button';localBtn.dataset.assistAction='local';
  const questionsBtn=createText('button','','Oriéntame');questionsBtn.type='button';questionsBtn.dataset.assistAction='questions';
- const aiBtn=createText('button','','Consultar IA (experimental)');aiBtn.type='button';aiBtn.dataset.assistAction='ai';
- const researchBtn=createText('button','','Investigar y orientar');researchBtn.type='button';researchBtn.dataset.assistAction='research';
+ const aiBtn=createText('button','','Redacción con IA');aiBtn.type='button';aiBtn.dataset.assistAction='ai';
+ const researchBtn=createText('button','','Investigar y complementar');researchBtn.type='button';researchBtn.dataset.assistAction='research';
  [localBtn,questionsBtn,aiBtn,researchBtn].forEach(b=>actions.appendChild(b));
  const status=createText('p','vt-assist-status','');status.setAttribute('role','status');
  const references=createText('section','vt-assist-references','');references.hidden=true;
@@ -42,6 +42,11 @@ function cardFor(textarea){
  proposal.append(mode,draftText,footer);card.append(heading,explanation,actions,status,references,proposal);
  host.appendChild(card);
  let sourceValue='',actionToken=0;
+ function showWarnings(flags){
+   if(!Array.isArray(flags)||!flags.length)return;
+   const unique=flags.slice(0,3).map(flag=>String(flag.instruction||'Revisa la relación causal y su evidencia.'));
+   status.textContent='Propuesta editable. Atención: '+unique.join(' ');
+ }
  function showReferences(data){
    references.replaceChildren();
    references.appendChild(createText('strong','','Orientación para diligenciar este campo'));
@@ -52,7 +57,7 @@ function cardFor(textarea){
    references.appendChild(guidance);
    references.appendChild(createText('strong','','Información documental recuperada'));
    const docs=Array.isArray(data.sources)?data.sources:[];
-   if(!docs.length)references.appendChild(createText('p','vt-assist-source','Todavía no se recuperaron pasajes primarios utilizables para este campo. INSUFFICIENT_EVIDENCE.'));
+   if(!docs.length)references.appendChild(createText('p','vt-assist-source','Sin documentos primarios pertinentes recuperados en esta consulta. Los datos externos permanecen por verificar.'));
    docs.forEach(doc=>{
      const wrapper=document.createElement('div');
      const title=document.createElement('a');
@@ -80,6 +85,7 @@ function cardFor(textarea){
    }
    references.appendChild(createText('p','vt-assist-source',data.note||'La información requiere revisión.'));
    (data.errors||[]).forEach(error=>references.appendChild(createText('p','vt-assist-source',String(error))));
+   showWarnings(data.review_flags);
    references.hidden=false;
  }
  researchBtn.onclick=async()=>{
@@ -100,12 +106,15 @@ function cardFor(textarea){
      showReferences(result);
      if(result.blocked_for_evidence){
        proposal.hidden=true;
-       status.textContent='La propuesta generativa fue retenida por afirmaciones que requieren evidencia. Consulta las orientaciones y fuentes anteriores.';
+       status.textContent='Se detectó una referencia documental que no corresponde al documento recuperado. Conserva tu texto y utiliza la asistencia de redacción.';
      }else if(typeof result.suggestion==='string'&&result.suggestion.trim()){
-       present(result.suggestion.slice(0,1600),'Propuesta asistida por extractos documentales recuperados. Requiere verificar que cada afirmación esté respaldada y aprobarla.');
+       present(result.suggestion.slice(0,1600),result.sources?.length
+         ?'Borrador generativo con pasajes institucionales para contrastar. Revisa afirmaciones, referencias y alcance.'
+         :'Borrador generativo a partir de tu texto; sin respaldo documental adicional. Revisa las afirmaciones.');
+       showWarnings(result.review_flags);
      }else{
        proposal.hidden=true;
-       status.textContent='Orientación disponible. Faltan documentos suficientes para redactar con evidencia externa, por eso se conserva tu texto.';
+       status.textContent='Orientación disponible. No se generó texto complementario; puedes usar Ayúdame a formular.';
      }
    }catch{status.textContent='No se pudo completar la búsqueda documental.'}
    finally{researchBtn.disabled=false}
@@ -117,11 +126,7 @@ function cardFor(textarea){
    proposal.hidden=false;
    status.textContent='Propuesta pendiente de aprobación. Puedes editarla antes de incorporarla.';
  }
- localBtn.onclick=()=>{
-   const input=textarea.value.trim();
-   if(input.length<10){status.textContent='Primero escribe al menos diez caracteres con tus propias ideas.';return}
-   present(formatLocal(input),'Revisión local de claridad; basada exclusivamente en tu texto. No utiliza IA generativa.');
- };
+ localBtn.onclick=()=>aiBtn.click();
  questionsBtn.onclick=()=>{
    const questions=TEXTS[fieldId];
    status.textContent=questions.join(' ');
@@ -143,14 +148,14 @@ function cardFor(textarea){
      if(active!=='S02'||textarea.value.trim()!==input||requestId!==actionToken){status.textContent='El texto cambió. La sugerencia anterior no se aplicará.';return}
      if(result.blocked_for_evidence){
        proposal.hidden=true;
-       const flags=Array.isArray(result.review_flags)?result.review_flags:[];
-       status.textContent='La IA formuló posibles relaciones causales sin evidencia. Propuesta retenida. '+flags.map(item=>item.fragment||'').slice(0,2).join(' · ')+' Revisa fuentes y formula las relaciones como hipótesis.';
+       status.textContent='La IA no devolvió una propuesta adecuada. Conserva el original.';
        return;
      }
      if(typeof result.suggestion!=='string'||!result.suggestion.trim()){
        proposal.hidden=true;status.textContent='La IA no generó una propuesta válida. Conserva el texto original.';return;
      }
-     present(result.suggestion.slice(0,1600),'Propuesta de un modelo generativo; no constituye evidencia primaria. Requiere revisión.');
+     present(result.suggestion.slice(0,1600),'Propuesta generativa editable basada en tu texto. Las afirmaciones externas requieren evidencia.');
+     showWarnings(result.review_flags);
    }catch{status.textContent='No se pudo conectar el modelo. La orientación local sigue disponible.'}
    finally{aiBtn.disabled=false}
  };
