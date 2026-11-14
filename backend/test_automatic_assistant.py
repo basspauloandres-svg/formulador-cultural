@@ -45,7 +45,7 @@ def test_extracts_page_as_excerpt_without_certifying_claim():
 def test_other_municipalities_receive_guidance_without_fabricated_facts():
     with patch.object(guided, "research", new=AsyncMock(return_value=research_result())), \
          patch.object(guided, "fetch_document", new=AsyncMock()) as fetch, \
-         patch.object(guided, "assist", new=AsyncMock()) as model:
+         patch.object(guided, "assist", new=AsyncMock(return_value={"suggestion":"", "review_flags":[], "blocked_for_evidence":False})) as model:
         result=asyncio.run(guided.guide(request(context="Anserma Caldas"), "Bearer synthetic"))
     fetch.assert_not_called()
     model.assert_awaited_once()
@@ -60,7 +60,7 @@ def test_other_municipalities_receive_guidance_without_fabricated_facts():
 def test_inaccessible_document_gracefully_falls_back_to_guidance():
     with patch.object(guided, "research", new=AsyncMock(return_value=research_result())), \
          patch.object(guided, "fetch_document", new=AsyncMock(return_value=None)), \
-         patch.object(guided, "assist", new=AsyncMock()) as model:
+         patch.object(guided, "assist", new=AsyncMock(return_value={"suggestion":"", "review_flags":[], "blocked_for_evidence":False})) as model:
         result=asyncio.run(guided.guide(request(), "Bearer synthetic"))
     model.assert_awaited_once()
     assert result["sources"] == []
