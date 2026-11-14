@@ -83,8 +83,13 @@ function cardFor(textarea){
      });
      details.appendChild(list);references.appendChild(details);
    }
-   references.appendChild(createText('p','vt-assist-source',data.note||'La información requiere revisión.'));
-   (data.errors||[]).forEach(error=>references.appendChild(createText('p','vt-assist-source',String(error))));
+   if(docs.length)references.appendChild(createText('p','vt-assist-source',data.note||'Los pasajes requieren revisión.'));
+   if(Array.isArray(data.errors)&&data.errors.length){
+     const details=document.createElement('details');
+     details.appendChild(createText('summary','','Detalles de servicios externos ('+data.errors.length+')'));
+     data.errors.forEach(error=>details.appendChild(createText('p','vt-assist-source',String(error))));
+     references.appendChild(details);
+   }
    showWarnings(data.review_flags);
    references.hidden=false;
  }
