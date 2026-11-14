@@ -32,8 +32,11 @@ INSTITUTIONAL_DOCUMENTS = {
 }
 
 TOPIC_KEYWORDS = {
-    "caracteristicas_culturales": ("cultura", "musica", "musical", "fiesta", "banda", "artistic", "patrimonio"),
-    "antecedentes": ("programa", "proyecto", "cultura", "banda", "musica"),
+    "caracteristicas_culturales": (
+        "banda", "musica", "musical", "fiesta", "festival", "danza",
+        "teatro", "biblioteca", "museo", "artesania", "escuela de arte",
+    ),
+    "antecedentes": ("programa", "proyecto", "banda", "musica", "festival"),
 }
 
 GUIDANCE = {
@@ -82,26 +85,47 @@ def clean_text(value: str) -> str:
 
 
 def passages_from_pdf(content: bytes, field: str) -> list[dict]:
-    """Fragmentos documentales para revisión, no afirmaciones corroboradas."""
+    """Extrae fragmentos coherentes y concretos, evita renglones sueltos.
+
+    Busca expresiones de práctica cultural; una referencia genérica al
+    Paisaje Cultural Cafetero no caracteriza por sí sola la música local.
+    """
     try:
         reader = PdfReader(BytesIO(content), strict=False)
         if len(reader.pages) > MAX_PAGES:
             return []
         terms = TOPIC_KEYWORDS.get(field, ())
-        records = []
+        matches = []
         for page_num, page in enumerate(reader.pages, 1):
-            body = (page.extract_text() or "").replace("\x00", " ")
-            for line in body.splitlines():
-                normalized = clean_text(line)
-                if (30 <= len(line.strip()) <= 320 and any(term in normalized for term in terms)
-                        and len(records) < 3):
-                    records.append({"page": page_num, "excerpt": " ".join(line.split())[:300]})
-            if len(records) >= 3:
+            body = (page.extract_text() or "").replace("\\x00", " ")
+            lines = [" ".join(line.split()) for line in body.splitlines() if line.strip()]
+            for index, line in enumerate(lines):
+                compact = clean_text(line)
+                if not any(term in compact for term in terms):
+                    continue
+                # Se incluyen líneas adyacentes como contexto; no se finge
+                # continuidad cuando el PDF presenta columnas o tablas.
+                before = lines[index - 1] if index > 0 else ""
+                after = lines[index + 1] if index + 1 < len(lines) else ""
+                passage = " ".join((before, line, after)).strip()[:470]
+                if len(passage) < 35:
+                    continue
+                local = "neira" in clean_text(passage)
+                specificity = sum(term in clean_text(passage) for term in terms)
+                matches.append((local, specificity, page_num, passage))
+        matches.sort(key=lambda item: (-int(item[0]), -item[1], item[2]))
+        seen = set()
+        result = []
+        for _, _, page_num, passage in matches:
+            if (page_num, passage) in seen:
+                continue
+            seen.add((page_num, passage))
+            result.append({"page": page_num, "excerpt": passage})
+            if len(result) == 3:
                 break
-        return records
+        return result
     except Exception:
         return []
-
 
 async def fetch_document(record: dict, field: str) -> dict | None:
     url = record["url"]
@@ -148,12 +172,12 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     suggestion = None
     blocked = False
     flags = []
-    if docs and req.generate:
+    if req.generate:
         excerpts = []
         for doc in docs[:1]:
             for passage in doc["passages"][:3]:
                 excerpts.append(f"[F1, p.{passage['page']}] {passage['excerpt']}")
-        evidence = "\n".join(excerpts)[:950]
+        evidence = "\n".join(excerpts)[:950] if docs else None
         try:
             generative = await assist(AssistantRequest(section="S02", field=req.field,
                 text=req.text, context=req.context, action="redactar"), bearer,
