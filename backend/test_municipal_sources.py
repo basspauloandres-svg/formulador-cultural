@@ -28,7 +28,7 @@ def test_scope_is_limited_to_official_villamaria_and_topic():
     calls = []
     async def mock_extract(record, category):
         calls.append((record["id"], category))
-        return [{"passage_status":"EXCERPT_FOUND_CLAIM_UNVERIFIED",
+        return [{"category":category,"passage_status":"EXCERPT_FOUND_CLAIM_UNVERIFIED",
                  "scope_warning":"Describe específicamente la vereda Gallinazo."}]
     with patch.object(municipal,"extract_page",new=mock_extract):
         data=asyncio.run(municipal.municipal_passages(
@@ -36,3 +36,18 @@ def test_scope_is_limited_to_official_villamaria_and_topic():
     assert len(data)==1
     assert calls==[("VILLAMARIA-ALCALDIA-TERRITORIOS","GASTRONOMIA")]
     assert asyncio.run(municipal.municipal_passages(("neira","caldas"), {"GASTRONOMIA"}))==[]
+
+
+def test_indexed_fallback_is_never_presented_as_lively_verified_document():
+    with patch.object(municipal, "extract_page", new=AsyncMock(return_value=[])):
+        records=asyncio.run(municipal.municipal_passages(
+            ("villamaria", "caldas"),
+            {"TERRITORIO", "GASTRONOMIA", "PRACTICAS_MUSICALES"}))
+    assert len(records)==3
+    assert {item["category"] for item in records} == {
+        "TERRITORIO", "GASTRONOMIA", "PRACTICAS_MUSICALES"}
+    assert all(item["passage_status"]=="INDEXED_INSTITUTIONAL_REFERENCE_UNVERIFIED"
+               for item in records)
+    assert all(item["sha256"] is None for item in records)
+    assert all(item["indexed_on"]=="2026-11-18" for item in records)
+    assert any("2020" in item["scope_warning"] for item in records)
