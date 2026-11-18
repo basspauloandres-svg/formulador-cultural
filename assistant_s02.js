@@ -214,5 +214,29 @@ const css=document.createElement('style');css.textContent='.vt-assist{border:1px
 document.head.appendChild(css);
 new MutationObserver(mount).observe(document.getElementById('fields')||document.body,{childList:true,subtree:true});
 mount();
+const VERTICE_BUILD='20261118-territory1';
+let lastVersionCheck=0;
+async function checkVersionOnReturn(){
+  const now=Date.now();
+  if(now-lastVersionCheck<90000||document.visibilityState==='hidden')return;
+  lastVersionCheck=now;
+  try{
+    const url=location.pathname+(location.search?'&':'?')+'vt_build_check='+now;
+    const response=await fetch(url,{cache:'no-store'});
+    if(!response.ok)return;
+    const html=await response.text();
+    const latest=html.match(/<meta name="vt-build" content="([^"]+)"/);
+    if(!latest||latest[1]===VERTICE_BUILD||document.getElementById('vt-version-notice'))return;
+    const notice=createText('div','vt-version-notice','Hay una actualización disponible. Guarda tus cambios antes de cargarla. ');
+    notice.id='vt-version-notice';
+    notice.setAttribute('role','status');
+    notice.style.cssText='position:fixed;top:8px;left:8px;right:8px;z-index:9999;background:#fff;border:2px solid #197052;border-radius:10px;padding:12px;color:#123e2f;box-shadow:0 2px 16px #0002';
+    const button=createText('button','','Actualizar página');
+    button.type='button';button.onclick=()=>location.reload();
+    notice.appendChild(button);document.body.prepend(notice);
+  }catch{/* Sin red se conserva el formulario actual. */}
+}
+window.addEventListener('focus',checkVersionOnReturn);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkVersionOnReturn()});
 window.fcAssistantS02LocalRewrite=formatLocal;
 })();
