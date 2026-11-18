@@ -192,7 +192,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     text_normalized = clean_text(req.text)
     conflicts = [TERRITORIAL_IDENTITIES[other]["municipality"]
                  for other in TERRITORIAL_IDENTITIES
-                 if other != key and re.search(r"\\b" + other[0] + r"\\b", text_normalized)]
+                 if other != key and re.search(r"\b" + other[0] + r"\b", text_normalized)]
     territory_flags = ([{
         "type": "TERRITORY_MISMATCH", "status": "INSUFFICIENT_EVIDENCE",
         "instruction": ("El texto menciona " + ", ".join(conflicts)
