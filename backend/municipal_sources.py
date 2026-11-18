@@ -23,7 +23,7 @@ SOURCES = {
             "title": "Territorios y veredas",
             "publisher": "Alcaldía de Villamaría",
             "url": "https://villamaria-caldas.gov.co/MiMunicipio/Paginas/Territorios.aspx",
-            "topics": ("GASTRONOMIA", "TERRITORIO"),
+            "topics": ("GASTRONOMIA",),
         },
     ),
 }
@@ -155,6 +155,13 @@ async def extract_page(source: dict, category: str) -> list[dict]:
         for idx, block in enumerate(blocks, 1):
             normalized = block.casefold()
             if not any(term in normalized for term in tokens):
+                continue
+            if category == "TERRITORIO" and not re.search(
+                    r"(?:la ciudad est[aá] unida a manizales|ubicada en la parte centro.sur|limita con manizales)",
+                    normalized):
+                continue
+            if category == "GASTRONOMIA" and not (
+                    "gallinazo" in normalized and "gastronom" in normalized):
                 continue
             matched.append({
                 "source_id": source["id"], "title": source["title"],
