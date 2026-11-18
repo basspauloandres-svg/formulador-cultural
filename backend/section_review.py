@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from assistant_pilot import verified_user
 from source_research import ResearchRequest, research
 from automatic_assistant import municipality_key, TERRITORIAL_IDENTITIES
+from municipal_sources import municipal_passages
 
 REVIEW_FIELDS = {
     "S02": {
@@ -63,28 +64,56 @@ class SectionReviewRequest(BaseModel):
 
 
 def split_claims(value: str) -> list[str]:
-    """Segmentación provisional por oraciones y saltos, sin análisis semántico."""
-    parts = re.split(r"(?<=[.!?])\s+|\n+", value.strip())
-    return [part.strip() for part in parts if len(part.strip()) >= 5][:18]
+    """Separación provisional de varias afirmaciones incluidas en una frase.
+
+    Conserva el texto original en cada fragmento; no deduce hechos ni relaciones
+    entre la proximidad geográfica, la gastronomía y las prácticas musicales.
+    """
+    sentences = re.split(r"(?<=[.!?])\s+|\n+", value.strip())
+    parts = []
+    for sentence in sentences:
+        segments = re.split(r",\s+(?=(?:es|son|se|tiene|hay)\b)", sentence, flags=re.I)
+        for segment in segments:
+            # En «su gastronomía y su proceso musical» hay dos afirmaciones
+            # sustantivas que requieren fuentes independientes.
+            subparts = re.split(r"\s+y\s+(?=su\s+(?:proceso|tradici[oó]n|actividad|pr[aá]ctica|gastronom[ií]a|m[uú]sica)\b)",
+                                segment, flags=re.I)
+            parts.extend(part.strip() for part in subparts if len(part.strip()) >= 5)
+    return parts[:18]
+
+
+def claim_source_need(statement: str) -> tuple[str, str]:
+    value = statement.casefold()
+    if FIGURE.search(statement):
+        return "DEMOGRAFIA_O_CIFRA", "Localizar la variable original, unidad, año y cobertura municipal antes de usar la cifra."
+    if re.search(r"gastronom|culinari|plato(s)? t[ií]pic", value):
+        return "GASTRONOMIA", "Buscar inventarios culturales, estudios o registros municipales de prácticas gastronómicas."
+    if re.search(r"m[uú]sic|banda|agrupaci[oó]n|orquesta|escuela de arte", value):
+        return "PRACTICAS_MUSICALES", "Comprobar existencia, fechas y alcance de las prácticas musicales en documentos o registros locales."
+    if re.search(r"cerca|ubic|casco urbano|geogr[aá]f|l[ií]mite|distancia", value):
+        return "TERRITORIO", "Contrastar la delimitación y relación espacial con cartografía o documentación territorial oficial."
+    if re.search(r"genera|causa|influye|fortalece|afecta|transforma", value):
+        return "RELACION_CAUSAL", "Separar observación de relación causal y buscar evidencia específica para esta última."
+    return "OTRA_AFIRMACION", "Requiere una fuente original o un registro de observación pertinente."
 
 
 def classify_claim(statement: str) -> dict:
     speculative = bool(HYPOTHESIS.search(statement))
     quantitative = bool(FIGURE.search(statement))
     factual = bool(CLAIM.search(statement)) or quantitative
+    category, instruction = claim_source_need(statement)
+    source_required = factual or category != "OTRA_AFIRMACION"
     status = ("HYPOTHESIS_UNVERIFIED" if speculative else
-              "USER_ASSERTION_UNVERIFIED" if factual else
+              "USER_ASSERTION_UNVERIFIED" if source_required else
               "USER_TEXT_NOT_ASSESSED")
     return {
         "statement": statement[:400],
         "classification": status,
+        "review_category": category,
         "evidence_status": "INSUFFICIENT_EVIDENCE",
-        "requires_source": factual or quantitative,
-        "note": ("Verificar la cifra, periodo, unidad y población de referencia."
-                 if quantitative else
-                 "Requiere una fuente original o registro de observación pertinente."
-                 if factual else
-                 "Determinar si es propuesta, observación o afirmación antes de presentarlo como hecho."),
+        "requires_source": source_required,
+        "note": instruction if source_required else
+                "Determinar si es propuesta, observación o afirmación antes de presentarlo como hecho.",
         "supporting_passages": [],
     }
 
@@ -111,6 +140,9 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
             raise
         errors.append("Búsqueda documental temporalmente limitada; la revisión de afirmaciones sigue disponible.")
     key = municipality_key(req.context)
+    categories = {item["review_category"] for item in claims}
+    primary_passages = (await municipal_passages(key, categories)
+                        if req.section == "S02" else [])
     conflicts = []
     for other, identity in TERRITORIAL_IDENTITIES.items():
         if other != key and re.search(r"\b" + re.escape(other[0]) + r"\b",
@@ -122,12 +154,15 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
         "territory": TERRITORIAL_IDENTITIES.get(key),
         "claims": claims,
         "candidate_sources": candidates,
+        "primary_passages": primary_passages,
         "verified_claims": [],
         "conflicting_municipalities": conflicts,
         "evidence_status": "INSUFFICIENT_EVIDENCE",
         "errors": errors,
         "requires_approval": True,
-        "note": ("La búsqueda identifica documentos candidatos. Ninguna afirmación se "
+        "note": ("Se recuperaron pasajes de documentos institucionales cuando estuvieron disponibles. "
+                 "La coincidencia de términos no demuestra que respalden cada afirmación. "
+                 "Los demás resultados de búsqueda son solo documentos candidatos. "
                  "considera corroborada mediante títulos o resúmenes. Para emplearla "
                  "como hecho hace falta cotejar su contenido, fecha, ámbito y pasaje original."),
     }
