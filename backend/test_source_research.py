@@ -128,3 +128,33 @@ def test_context_field_preserves_territorial_source_without_declaring_evidence()
         "territorio_o_lugar_de_intervencion")
     assert len(chosen) == 1
     assert excluded == 0
+
+
+def test_villamaria_filters_results_from_cali_and_pereira():
+    irrelevant = [
+        {"title": "Listado de Artistas PEREIRA", "summary": "Proyectos musicales."},
+        {"title": "Temporada Encuentro Música Clásica Cali", "summary": "Música."},
+        {"title": "Espacios de las Artes, las Culturas y los Saberes", "summary": "Colombia"},
+        {"title": "Género y escolarización", "summary": "Informe de formación"},
+        {"title": "Espacios de formación en tradición oral, sonora y música popular 2017 Cali", "summary": ""},
+    ]
+    relevant = {"title": "Caracterización cultural de Villamaría (Caldas)",
+                "summary": "Bandas, prácticas musicales y patrimonio local"}
+    items = irrelevant + [relevant]
+    chosen, excluded = research.filter_relevant(items, "caracteristicas_culturales", "Villamaría, Caldas")
+    assert len(chosen) == 1
+    assert chosen[0]["title"] == relevant["title"]
+    assert chosen[0]["territorial_scope_status"] == "MUNICIPALITY_MENTIONED_IN_METADATA"
+    assert excluded == 5
+
+
+def test_department_only_is_insufficient_for_municipal_data():
+    items=[{"title":"Caldas música tradicional","summary":"Programas y proyectos culturales"}]
+    chosen, excluded = research.filter_relevant(items, "caracteristicas_culturales", "Villamaría, Caldas")
+    assert chosen == []
+    assert excluded == 1
+
+
+def test_context_normalizes_accents_and_municipality_prefix():
+    assert research.municipality_from_context("Municipio de Villamaría, Caldas") == "villamaria"
+    assert research.municipality_from_context("Neira, Caldas") == "neira"
