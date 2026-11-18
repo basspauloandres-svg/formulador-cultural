@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from assistant_pilot import verified_user
 from source_research import ResearchRequest, research
 from automatic_assistant import municipality_key, TERRITORIAL_IDENTITIES
+from municipal_sources import municipal_passages
 
 REVIEW_FIELDS = {
     "S02": {
@@ -139,6 +140,9 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
             raise
         errors.append("Búsqueda documental temporalmente limitada; la revisión de afirmaciones sigue disponible.")
     key = municipality_key(req.context)
+    categories = {item["review_category"] for item in claims}
+    primary_passages = (await municipal_passages(key, categories)
+                        if req.section == "S02" else [])
     conflicts = []
     for other, identity in TERRITORIAL_IDENTITIES.items():
         if other != key and re.search(r"\b" + re.escape(other[0]) + r"\b",
@@ -150,12 +154,15 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
         "territory": TERRITORIAL_IDENTITIES.get(key),
         "claims": claims,
         "candidate_sources": candidates,
+        "primary_passages": primary_passages,
         "verified_claims": [],
         "conflicting_municipalities": conflicts,
         "evidence_status": "INSUFFICIENT_EVIDENCE",
         "errors": errors,
         "requires_approval": True,
-        "note": ("La búsqueda identifica documentos candidatos. Ninguna afirmación se "
+        "note": ("Se recuperaron pasajes de documentos institucionales cuando estuvieron disponibles. "
+                 "La coincidencia de términos no demuestra que respalden cada afirmación. "
+                 "Los demás resultados de búsqueda son solo documentos candidatos. "
                  "considera corroborada mediante títulos o resúmenes. Para emplearla "
                  "como hecho hace falta cotejar su contenido, fecha, ámbito y pasaje original."),
     }
