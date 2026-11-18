@@ -184,3 +184,18 @@ def test_neira_pdf_is_not_reused_for_villamaria_cultural_field():
     assert result["sources"] == []
     assert result["territory"]["divipola"] == "17873"
     fetch.assert_not_called()
+
+
+def test_territory_switch_flags_old_neira_text_without_erasing_it():
+    req=guided.GuidedRequest(field="caracteristicas_culturales",
+                            context="Villamaría, Caldas",
+                            text="Las características culturales de Neira y su música son objeto de investigación.",
+                            generate=False)
+    with patch.object(guided, "research", new=AsyncMock(return_value=research_result())), \
+         patch.object(guided, "fetch_document", new=AsyncMock()) as fetch:
+        result=asyncio.run(guided.guide(req, "Bearer synthetic"))
+    assert result["territory"]["municipality"] == "Villamaría"
+    assert result["review_flags"][0]["type"] == "TERRITORY_MISMATCH"
+    assert "Neira" in result["review_flags"][0]["instruction"]
+    assert result["suggestion"] is None
+    fetch.assert_not_called()
