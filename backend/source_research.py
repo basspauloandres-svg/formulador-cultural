@@ -69,17 +69,47 @@ OTHER_TERMS = {
     "principales_dinamicas_sociales": ("social", "poblacion", "comun", "convivencia", "educacion", "salud", "empleo"),
     "antecedentes": ("proyecto", "programa", "convocatoria", "cultur", "artist", "ejecucion", "informe"),
 }
-def filter_relevant(items: list[dict], field: str) -> tuple[list[dict], int]:
-    """Filtra candidatos según metadatos temáticos; no verifica su contenido."""
+def normalize_metadata_text(value: str) -> str:
+    """Comparación literal normalizada, no similitud semántica."""
     import unicodedata
+    value = unicodedata.normalize("NFKD", str(value).casefold())
+    return "".join(ch for ch in value if not unicodedata.combining(ch))
+
+
+def municipality_from_context(context: str) -> str:
+    """Municipio del primer componente de S01; departamento es contexto auxiliar."""
+    raw = re.split(r",|;", context.strip(), maxsplit=1)[0]
+    raw = re.sub(r"^(?:municipio de|municipio)\s+", "", raw, flags=re.I)
+    normalized = normalize_metadata_text(raw)
+    return " ".join(re.findall(r"[a-z0-9]+", normalized))
+
+
+def filter_relevant(items: list[dict], field: str, context: str = "") -> tuple[list[dict], int]:
+    """Filtro conservador de municipio + tema en metadatos.
+
+    Una coincidencia temática sola nunca acredita pertinencia territorial.
+    Sin municipio explícito en metadatos, el documento se retiene fuera de
+    la lista; es un falso negativo aceptable antes que simular evidencia local.
+    """
     terms = CULTURAL_TERMS if field == "caracteristicas_culturales" else OTHER_TERMS[field]
+    municipality = municipality_from_context(context)
     selected = []
     for item in items:
-        value = f"{item.get('title', '')} {item.get('summary', '')}".casefold()
-        value = "".join(ch for ch in unicodedata.normalize("NFKD", value) if not unicodedata.combining(ch))
-        if any(term in value for term in terms):
-            selected.append({**item, "relevance_status": "THEMATIC_CANDIDATE"})
+        value = normalize_metadata_text(f"{item.get('title', '')} {item.get('summary', '')}")
+        topic_found = any(term in value for term in terms)
+        if not topic_found:
+            continue
+        if municipality:
+            words = r"\b" + r"\s+".join(re.escape(word) for word in municipality.split()) + r"\b"
+            if not re.search(words, value):
+                continue
+        selected.append({
+            **item,
+            "relevance_status": "MUNICIPAL_THEMATIC_CANDIDATE" if municipality else "THEMATIC_CANDIDATE",
+            "territorial_scope_status": "MUNICIPALITY_MENTIONED_IN_METADATA" if municipality else "NOT_ASSESSED",
+        })
     return selected, len(items) - len(selected)
+
 
 def normalize_catalog(data: dict) -> list[dict]:
     results = []
@@ -183,7 +213,7 @@ async def research(req: ResearchRequest, authorization: str) -> dict:
                 findings += normalize_brave(response.json())
             except (httpx.HTTPError, ValueError, TypeError, KeyError):
                 errors.append("La búsqueda web ampliada no respondió.")
-    findings, excluded = filter_relevant(findings, req.field)
+    findings, excluded = filter_relevant(findings, req.field, req.context)
     # No se envía el texto del proyecto a motores de búsqueda y nunca se genera una cita falsa.
     return {
         "section": "S02", "query": query,
@@ -192,5 +222,7 @@ async def research(req: ResearchRequest, authorization: str) -> dict:
         "web_enabled": req.include_web,
         "web_extended_enabled": bool(os.environ.get("BRAVE_SEARCH_API_KEY", "").strip()),
         "web_requested": req.include_web, "errors": errors,
-        "note": "Candidatos con coincidencia temática preliminar, no afirmaciones verificadas. Revisa el documento y su pasaje original; si faltan candidatos, conserva INSUFFICIENT_EVIDENCE."
+        "note": ("Candidatos cuya descripción menciona el municipio y el tema; "
+                 "sin lectura, el documento no demuestra ningún hecho. "
+                 "La ausencia de resultados no significa ausencia de prácticas culturales.")
     }
