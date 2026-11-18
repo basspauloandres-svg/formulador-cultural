@@ -79,17 +79,34 @@ function mount(){
        if(data.conflicting_municipalities?.length){
          results.appendChild(node('p','El texto menciona otro municipio: '+data.conflicting_municipalities.join(', ')+'. Comprueba si es una comparación o un dato heredado.','vt-evidence-detail'));
        }
+       const primary=Array.isArray(data.primary_passages)?data.primary_passages:[];
+       if(primary.length){
+         results.appendChild(node('strong','Pasajes recuperados de fuentes institucionales'));
+         primary.slice(0,4).forEach(source=>{
+           const wrapper=node('div','','vt-evidence-passages');
+           const a=node('a',String(source.title||'Fuente institucional')+' · '+String(source.locator||''));
+           if(typeof source.url==='string'&&source.url.startsWith('https://')){
+             a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';
+             wrapper.appendChild(a);
+           }
+           wrapper.appendChild(node('p',String(source.excerpt||''),'vt-evidence-detail'));
+           wrapper.appendChild(node('p',String(source.scope_warning||'')+' Pasaje localizado: la afirmación del formador sigue sin corroborarse.','vt-evidence-detail'));
+           results.appendChild(wrapper);
+         });
+       }
        const candidates=Array.isArray(data.candidate_sources)?data.candidate_sources:[];
        const details=node('details');
-       details.appendChild(node('summary','Documentos candidatos ('+candidates.length+') · pendientes de lectura y cotejo'));
+       details.appendChild(node('summary','Otros documentos candidatos ('+candidates.length+') · sin comprobación de contenido'));
        const links=node('ul');
        candidates.slice(0,6).forEach(source=>{
          if(typeof source.url!=='string'||!source.url.startsWith('https://'))return;
          const li=node('li');const a=node('a',String(source.title||'Documento candidato'));
          a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';li.appendChild(a);links.appendChild(li);
        });
-       details.appendChild(links);results.appendChild(details);
-       results.appendChild(node('p','La búsqueda por metadatos no confirma las afirmaciones. Las observaciones permanecen como aportes del formador; para utilizar datos como hechos es necesario comprobar el pasaje original, año y territorio.','vt-evidence-detail'));
+       details.appendChild(links);
+       if(candidates.length)results.appendChild(details);
+       else if(!primary.length)results.appendChild(node('p','No se localizaron documentos pertinentes para el municipio y el tema. La afirmación continúa sin respaldo documental.','vt-evidence-detail'));
+       results.appendChild(node('p','Los pasajes institucionales identifican fragmentos consultables, pero su coincidencia temática no equivale a corroboración. Las afirmaciones y las observaciones siguen diferenciadas.','vt-evidence-detail'));
        results.hidden=false;status.textContent='Revisión preliminar realizada. Ningún dato externo ha sido confirmado automáticamente.';
      }catch{status.textContent='La consulta no respondió. El texto original sigue intacto.'}
      finally{button.disabled=false}
@@ -98,7 +115,7 @@ function mount(){
  document.querySelectorAll('#fields .vt-evidence-audit').forEach(el=>el.vtReviewInvalidate?.());
 }
 const style=node('style');
-style.textContent='.vt-evidence-audit{margin:9px 0 14px;padding:10px;border:1px solid #c9d8d0;background:#f6faf8;border-radius:9px;font-size:.83rem;color:#234838}.vt-evidence-audit button{border:1px solid #8ba99a;border-radius:7px;background:#fff;color:#234838;padding:8px;font:inherit;cursor:pointer}.vt-evidence-audit button:disabled{opacity:.5}.vt-evidence-audit-status,.vt-evidence-detail{font-size:.82rem;color:#4c6057;margin:6px 0}.vt-evidence-audit-results ul{padding-left:19px}.vt-evidence-audit-results li{margin:9px 0}.vt-evidence-audit-results details{margin:10px 0}.vt-evidence-audit-results a{color:#14614d;text-decoration:underline}.vt-evidence-audit-results[hidden]{display:none}';
+style.textContent='.vt-evidence-audit{margin:9px 0 14px;padding:10px;border:1px solid #c9d8d0;background:#f6faf8;border-radius:9px;font-size:.83rem;color:#234838}.vt-evidence-audit button{border:1px solid #8ba99a;border-radius:7px;background:#fff;color:#234838;padding:8px;font:inherit;cursor:pointer}.vt-evidence-audit button:disabled{opacity:.5}.vt-evidence-audit-status,.vt-evidence-detail{font-size:.82rem;color:#4c6057;margin:6px 0}.vt-evidence-audit-results ul{padding-left:19px}.vt-evidence-audit-results li{margin:9px 0}.vt-evidence-audit-results details{margin:10px 0}.vt-evidence-passages{border-left:2px solid #b7cfc2;padding-left:9px;margin:8px 0}.vt-evidence-audit-results a{color:#14614d;text-decoration:underline}.vt-evidence-audit-results[hidden]{display:none}';
 document.head.appendChild(style);
 new MutationObserver(mount).observe(document.getElementById('fields')||document.body,{childList:true,subtree:true});
 mount();
