@@ -31,6 +31,22 @@ INSTITUTIONAL_DOCUMENTS = {
     }]
 }
 
+# Directorios institucionales; el código identifica el municipio, no su población.
+TERRITORIAL_IDENTITIES = {
+    ("villamaria", "caldas"): {
+        "municipality": "Villamaría", "department": "Caldas",
+        "divipola": "17873", "publisher": "Alcaldía de Villamaría",
+        "url": "https://www.villamaria-caldas.gov.co/MiMunicipio/Paginas/Mi-Municipio.aspx",
+        "year": None, "status": "IDENTIFICACION_TERRITORIAL_REFERENCIADA",
+    },
+    ("neira", "caldas"): {
+        "municipality": "Neira", "department": "Caldas",
+        "divipola": "17486", "publisher": "Ministerio de Cultura de Colombia",
+        "url": "https://mng.mincultura.gov.co/prensa/noticias/Documents/Fomento/FichaTerritorial_17486_2016_SIFO.pdf",
+        "year": 2016, "status": "IDENTIFICACION_TERRITORIAL_REFERENCIADA",
+    },
+}
+
 TOPIC_KEYWORDS = {
     "caracteristicas_culturales": (
         "banda", "musica", "musical", "fiesta", "festival", "danza",
@@ -63,18 +79,21 @@ GUIDANCE = {
 class GuidedRequest(BaseModel):
     section: str = "S02"
     field: str = Field(max_length=100)
-    text: str = Field(min_length=10, max_length=1800)
+    text: str = Field(default="", max_length=1800)
     context: str = Field(min_length=2, max_length=200)
     include_web: bool = True
     generate: bool = True
 
 
 def municipality_key(context: str) -> tuple[str, str] | None:
-    """Solo coincide con municipios registrados y departamento explícito."""
-    value = re.sub(r"[^a-z0-9]+", " ", context.casefold())
-    if re.search(r"\bneira\b", value) and (
-            re.search(r"\bcaldas\b", value) or value.strip() in ("neira", "municipio de neira")):
-        return ("neira", "caldas")
+    """Resolución acotada: nombre exacto, o nombre y departamento explícito."""
+    value = re.sub(r"[^a-z0-9]+", " ", clean_text(context)).strip()
+    for municipality, department in TERRITORIAL_IDENTITIES:
+        if value in (municipality, "municipio de " + municipality):
+            return municipality, department
+        if re.fullmatch(r"(?:municipio de )?" + municipality +
+                        r"(?: departamento de)? " + department, value):
+            return municipality, department
     return None
 
 
@@ -159,8 +178,9 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     if req.section != "S02" or req.field not in GUIDANCE:
         raise HTTPException(422, "La asistencia automática está limitada a S02.")
     # research() verifica sesión y consume únicamente la cuota de investigación.
+    search_text = req.text.strip() or ("Información territorial de " + req.context)
     found = await research(ResearchRequest(section="S02", field=req.field,
-        text=req.text, context=req.context, include_web=req.include_web), bearer)
+        text=search_text, context=req.context, include_web=req.include_web), bearer)
     key = municipality_key(req.context)
     docs = []
     for record in INSTITUTIONAL_DOCUMENTS.get(key, []):
@@ -172,7 +192,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     suggestion = None
     blocked = False
     flags = []
-    if req.generate:
+    if req.generate and len(req.text.strip()) >= 10:
         excerpts = []
         for doc in docs[:1]:
             for passage in doc["passages"][:3]:
@@ -200,6 +220,8 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             suggestion = None
     return {
         "section": "S02", "field": req.field,
+        "territory": TERRITORIAL_IDENTITIES.get(key),
+        "territory_context": req.context,
         "guidance": list(GUIDANCE[req.field]),
         "sources": docs,
         "candidate_sources": found["sources"],
