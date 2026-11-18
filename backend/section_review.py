@@ -101,7 +101,8 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
     try:
         found = await research(ResearchRequest(
             section="S02", field=mapping_field,
-            text=req.text, context=req.context, include_web=req.include_web,
+            text=(req.text if len(req.text) >= 10 else "Información territorial de " + req.context),
+            context=req.context, include_web=req.include_web,
         ), authorization)
         candidates = found["sources"]
         errors = found["errors"]
