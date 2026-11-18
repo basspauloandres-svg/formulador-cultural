@@ -63,28 +63,56 @@ class SectionReviewRequest(BaseModel):
 
 
 def split_claims(value: str) -> list[str]:
-    """Segmentación provisional por oraciones y saltos, sin análisis semántico."""
-    parts = re.split(r"(?<=[.!?])\s+|\n+", value.strip())
-    return [part.strip() for part in parts if len(part.strip()) >= 5][:18]
+    """Separación provisional de varias afirmaciones incluidas en una frase.
+
+    Conserva el texto original en cada fragmento; no deduce hechos ni relaciones
+    entre la proximidad geográfica, la gastronomía y las prácticas musicales.
+    """
+    sentences = re.split(r"(?<=[.!?])\s+|\n+", value.strip())
+    parts = []
+    for sentence in sentences:
+        segments = re.split(r",\s+(?=(?:es|son|se|tiene|hay)\b)", sentence, flags=re.I)
+        for segment in segments:
+            # En «su gastronomía y su proceso musical» hay dos afirmaciones
+            # sustantivas que requieren fuentes independientes.
+            subparts = re.split(r"\s+y\s+(?=su\s+(?:proceso|tradici[oó]n|actividad|pr[aá]ctica|gastronom[ií]a|m[uú]sica)\b)",
+                                segment, flags=re.I)
+            parts.extend(part.strip() for part in subparts if len(part.strip()) >= 5)
+    return parts[:18]
+
+
+def claim_source_need(statement: str) -> tuple[str, str]:
+    value = statement.casefold()
+    if FIGURE.search(statement):
+        return "DEMOGRAFIA_O_CIFRA", "Localizar la variable original, unidad, año y cobertura municipal antes de usar la cifra."
+    if re.search(r"gastronom|culinari|plato(s)? t[ií]pic", value):
+        return "GASTRONOMIA", "Buscar inventarios culturales, estudios o registros municipales de prácticas gastronómicas."
+    if re.search(r"m[uú]sic|banda|agrupaci[oó]n|orquesta|escuela de arte", value):
+        return "PRACTICAS_MUSICALES", "Comprobar existencia, fechas y alcance de las prácticas musicales en documentos o registros locales."
+    if re.search(r"cerca|ubic|casco urbano|geogr[aá]f|l[ií]mite|distancia", value):
+        return "TERRITORIO", "Contrastar la delimitación y relación espacial con cartografía o documentación territorial oficial."
+    if re.search(r"genera|causa|influye|fortalece|afecta|transforma", value):
+        return "RELACION_CAUSAL", "Separar observación de relación causal y buscar evidencia específica para esta última."
+    return "OTRA_AFIRMACION", "Requiere una fuente original o un registro de observación pertinente."
 
 
 def classify_claim(statement: str) -> dict:
     speculative = bool(HYPOTHESIS.search(statement))
     quantitative = bool(FIGURE.search(statement))
     factual = bool(CLAIM.search(statement)) or quantitative
+    category, instruction = claim_source_need(statement)
+    source_required = factual or category != "OTRA_AFIRMACION"
     status = ("HYPOTHESIS_UNVERIFIED" if speculative else
-              "USER_ASSERTION_UNVERIFIED" if factual else
+              "USER_ASSERTION_UNVERIFIED" if source_required else
               "USER_TEXT_NOT_ASSESSED")
     return {
         "statement": statement[:400],
         "classification": status,
+        "review_category": category,
         "evidence_status": "INSUFFICIENT_EVIDENCE",
-        "requires_source": factual or quantitative,
-        "note": ("Verificar la cifra, periodo, unidad y población de referencia."
-                 if quantitative else
-                 "Requiere una fuente original o registro de observación pertinente."
-                 if factual else
-                 "Determinar si es propuesta, observación o afirmación antes de presentarlo como hecho."),
+        "requires_source": source_required,
+        "note": instruction if source_required else
+                "Determinar si es propuesta, observación o afirmación antes de presentarlo como hecho.",
         "supporting_passages": [],
     }
 
