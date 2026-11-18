@@ -17,6 +17,12 @@ function formatLocal(input){
 function createText(tag,cls,txt){
  const node=document.createElement(tag);node.className=cls;node.textContent=txt;return node
 }
+function territorialContext(){
+ const city=String(draft?.S01?.municipio||'').trim();
+ const department=String(draft?.S01?.departamento||'').trim();
+ return city+(department?', '+department:'');
+}
+
 function cardFor(textarea){
  const fieldId=textarea.dataset.field;
  if(!TEXTS[fieldId]||textarea.closest('.field')?.querySelector('.vt-assist'))return;
@@ -41,7 +47,16 @@ function cardFor(textarea){
  const footer=createText('div','vt-assist-actions','');footer.append(approve,discard);
  proposal.append(mode,draftText,footer);card.append(heading,explanation,actions,status,references,proposal);
  host.appendChild(card);
- let sourceValue='',actionToken=0;
+ let sourceValue='',actionToken=0,contextAtMount=territorialContext();
+ function invalidateIfTerritoryChanged(){
+   const now=territorialContext();
+   if(now===contextAtMount)return false;
+   contextAtMount=now;
+   ++actionToken;references.hidden=true;references.replaceChildren();proposal.hidden=true;
+   status.textContent='El territorio cambió a '+(now||'sin municipio')+'. Los resultados previos se descartaron. Revisa si tus textos corresponden al nuevo lugar.';
+   return true;
+ }
+ card.vtValidateTerritory=invalidateIfTerritoryChanged;
  function showWarnings(flags){
    if(!Array.isArray(flags)||!flags.length)return;
    const unique=flags.slice(0,3).map(flag=>String(flag.instruction||'Revisa la relación causal y su evidencia.'));
@@ -55,6 +70,12 @@ function cardFor(textarea){
      const li=createText('li','',String(note));guidance.appendChild(li);
    });
    references.appendChild(guidance);
+   const identity=data.territory;
+   if(identity&&identity.divipola&&identity.url){
+     const p=createText('p','vt-assist-source','Municipio identificado: '+identity.municipality+', '+identity.department+' · Código DIVIPOLA '+identity.divipola+' (identificación territorial, no dato demográfico). ');
+     const a=document.createElement('a');a.href=identity.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Fuente institucional';
+     p.appendChild(a);references.appendChild(p);
+   }
    references.appendChild(createText('strong','','Información documental recuperada'));
    const docs=Array.isArray(data.sources)?data.sources:[];
    if(!docs.length)references.appendChild(createText('p','vt-assist-source','Sin documentos primarios pertinentes recuperados en esta consulta. Los datos externos permanecen por verificar.'));
@@ -94,20 +115,28 @@ function cardFor(textarea){
    references.hidden=false;
  }
  researchBtn.onclick=async()=>{
-   const input=textarea.value.trim();
-   if(input.length<10){status.textContent='Primero escribe al menos diez caracteres para orientar la investigación.';return}
-   references.hidden=true;references.replaceChildren();
-   researchBtn.disabled=true;status.textContent='Consultando información y preparando orientación...';
+   invalidateIfTerritoryChanged();
+   const input=textarea.value.trim(),context=territorialContext();
+   if(!context){status.textContent='Indica el municipio en S01 para investigar automáticamente.';return}
+   const requestId=++actionToken;
+   references.hidden=true;references.replaceChildren();proposal.hidden=true;
+   researchBtn.disabled=true;status.textContent='Consultando información de '+context+' y preparando orientación...';
    try{
      const {data}=await sb.auth.getSession();
      if(!data?.session?.access_token){status.textContent='Inicia sesión para consultar fuentes.';return}
      const response=await fetch(API+'/assistant/s02/guide',{
        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+data.session.access_token},
-       body:JSON.stringify({section:'S02',field:fieldId,text:input,context:String(draft?.S01?.municipio||'').slice(0,200),include_web:true,generate:true})
+       body:JSON.stringify({section:'S02',field:fieldId,text:input,context:context.slice(0,200),include_web:true,generate:input.length>=10})
      });
      if(!response.ok){let detail='No fue posible consultar fuentes.';try{const error=await response.json();if(typeof error.detail==='string')detail=error.detail}catch{}status.textContent=detail;return}
      const result=await response.json();
-     if(active!=='S02'||textarea.value.trim()!==input){status.textContent='El campo cambió durante la consulta. Repite la asistencia.';return}
+     if(active!=='S02'||textarea.value.trim()!==input||territorialContext()!==context||requestId!==actionToken){
+       invalidateIfTerritoryChanged();
+       status.textContent='El texto o municipio cambió durante la consulta. Los resultados anteriores se descartaron.';return;
+     }
+     if(typeof result.territory_context==='string'&&result.territory_context!==context){
+       status.textContent='La consulta respondió para otro territorio. Repite la investigación.';return;
+     }
      showReferences(result);
      if(result.blocked_for_evidence){
        proposal.hidden=true;
@@ -138,7 +167,8 @@ function cardFor(textarea){
    proposal.hidden=true;
  };
  aiBtn.onclick=async()=>{
-   const input=textarea.value.trim();
+   invalidateIfTerritoryChanged();
+   const input=textarea.value.trim(),context=territorialContext();
    if(input.length<10){status.textContent='Primero escribe al menos diez caracteres.';return}
    aiBtn.disabled=true;status.textContent='Comprobando disponibilidad de IA...';const requestId=++actionToken;
    try{
@@ -146,11 +176,11 @@ function cardFor(textarea){
      if(!data?.session?.access_token){status.textContent='Para consultar IA externa inicia sesión. La orientación local está disponible sin cuenta.';return}
      const response=await fetch(API+'/assistant/s02',{
        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+data.session.access_token},
-       body:JSON.stringify({section:'S02',field:fieldId,text:input,context:String(draft?.S01?.municipio||'').slice(0,200),action:'redactar'})
+       body:JSON.stringify({section:'S02',field:fieldId,text:input,context:context.slice(0,200),action:'redactar'})
      });
      if(!response.ok){let detail='No fue posible consultar la IA. Utiliza la orientación local.';try{const payload=await response.json();if(typeof payload.detail==='string'&&payload.detail.length<250)detail=payload.detail}catch{}status.textContent=detail;return}
      const result=await response.json();
-     if(active!=='S02'||textarea.value.trim()!==input||requestId!==actionToken){status.textContent='El texto cambió. La sugerencia anterior no se aplicará.';return}
+     if(active!=='S02'||textarea.value.trim()!==input||territorialContext()!==context||requestId!==actionToken){invalidateIfTerritoryChanged();status.textContent='El texto o municipio cambió. La sugerencia anterior se descartó.';return}
      if(result.blocked_for_evidence){
        proposal.hidden=true;
        status.textContent='La IA no devolvió una propuesta adecuada. Conserva el original.';
@@ -166,6 +196,7 @@ function cardFor(textarea){
  };
  approve.onclick=()=>{
    if(!draftText.value.trim()){status.textContent='La propuesta está vacía.';return}
+   if(invalidateIfTerritoryChanged())return;
    if(textarea.value!==sourceValue){status.textContent='El texto original cambió. Vuelve a generar la propuesta antes de aplicarla.';return}
    textarea.value=draftText.value.trim();
    textarea.dispatchEvent(new Event('input',{bubbles:true}));
@@ -177,6 +208,7 @@ function cardFor(textarea){
 function mount(){
  if(typeof active==='undefined'||active!=='S02')return;
  document.querySelectorAll('#fields textarea[data-field]').forEach(cardFor);
+ document.querySelectorAll('#fields .vt-assist').forEach(card=>card.vtValidateTerritory?.());
 }
 const css=document.createElement('style');css.textContent='.vt-assist{border:1px solid #b5c8c0;background:#f5faf7;border-radius:11px;margin:9px 0 17px;padding:12px}.vt-assist-heading{display:block;font-size:.9rem}.vt-assist-note,.vt-assist-status,.vt-assist-source{font-size:.84rem;color:#425950;margin:7px 0}.vt-assist-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.vt-assist button{border:1px solid #789a8c;border-radius:8px;background:white;color:#17392c;padding:8px 11px;font:inherit;font-size:.82rem;cursor:pointer}.vt-assist button:disabled{opacity:.5}.vt-assist-proposal{border-top:1px solid #c9d8d0;margin-top:10px;padding-top:10px}.vt-assist-proposal[hidden],.vt-assist-references[hidden]{display:none}.vt-assist-references{border-top:1px solid #c9d8d0;margin-top:10px;padding-top:10px;font-size:.84rem}.vt-assist-references ul{padding-left:20px}.vt-assist-references li{margin:8px 0}.vt-assist-references a{color:#0b5347;text-decoration:underline}.vt-assist-proposal textarea{box-sizing:border-box;width:100%;border:1px solid #b0c5ba;border-radius:8px;min-height:90px;padding:9px;font:inherit}.vt-assist .vt-assist-approve,.vt-assist [data-assist-action="local"]{background:#123e2f;color:white}@media(max-width:600px){.vt-assist-actions button{flex:1 1 auto}}';
 document.head.appendChild(css);
