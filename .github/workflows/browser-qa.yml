@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   navegador-publico:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Obtener candidato
@@ -36,7 +36,7 @@ jobs:
       - name: Instalar generador PDF/DOCX
         run: pip install -r backend/requirements.txt
       - name: Instalar navegador Chromium
-        run: npx playwright install chromium --with-deps
+        run: npx playwright install chromium
       - name: Servir el frontend candidato (sin credenciales)
         run: |
           python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/formulador-e2e-server.log 2>&1 &

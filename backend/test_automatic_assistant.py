@@ -144,3 +144,58 @@ def test_irrelevant_pcc_is_not_used_as_local_music_evidence():
     pdf.showPage()
     pdf.save()
     assert guided.passages_from_pdf(buf.getvalue(), "caracteristicas_culturales") == []
+
+
+def test_villamaria_identity_is_distinct_from_neira():
+    assert guided.municipality_key("Villamaría, Caldas") == ("villamaria", "caldas")
+    assert guided.municipality_key("Villamaria") == ("villamaria", "caldas")
+    assert guided.municipality_key("Municipio de Villamaría Caldas") == ("villamaria", "caldas")
+    assert guided.municipality_key("Municipio de Neira Caldas") == ("neira", "caldas")
+    assert guided.municipality_key("Neira, Villamaría, Caldas") is None
+    assert guided.TERRITORIAL_IDENTITIES[("villamaria", "caldas")]["divipola"] == "17873"
+
+
+def test_villamaria_blank_field_gets_guidance_without_groq_or_neira_pdf():
+    req=guided.GuidedRequest(field="territorio_o_lugar_de_intervencion",
+                            context="Villamaría, Caldas", text="", generate=False)
+    with patch.object(guided, "research", new=AsyncMock(return_value=research_result())) as search, \
+         patch.object(guided, "fetch_document", new=AsyncMock()) as fetch, \
+         patch.object(guided, "assist", new=AsyncMock()) as model:
+        result=asyncio.run(guided.guide(req, "Bearer synthetic"))
+    assert result["territory"]["divipola"] == "17873"
+    assert result["territory"]["municipality"] == "Villamaría"
+    assert result["territory_context"] == "Villamaría, Caldas"
+    assert result["sources"] == []
+    assert result["guidance"]
+    assert result["suggestion"] is None
+    assert result["claim_status"] == "INSUFFICIENT_EVIDENCE"
+    assert "Villamaría" in search.await_args.args[0].text
+    fetch.assert_not_called()
+    model.assert_not_called()
+
+
+def test_neira_pdf_is_not_reused_for_villamaria_cultural_field():
+    req=guided.GuidedRequest(field="caracteristicas_culturales",
+                            context="Villamaria, Caldas", text="Musicas tradicionales de la comunidad.",
+                            generate=False)
+    with patch.object(guided, "research", new=AsyncMock(return_value=research_result())), \
+         patch.object(guided, "fetch_document", new=AsyncMock()) as fetch:
+        result=asyncio.run(guided.guide(req, "Bearer synthetic"))
+    assert result["sources"] == []
+    assert result["territory"]["divipola"] == "17873"
+    fetch.assert_not_called()
+
+
+def test_territory_switch_flags_old_neira_text_without_erasing_it():
+    req=guided.GuidedRequest(field="caracteristicas_culturales",
+                            context="Villamaría, Caldas",
+                            text="Las características culturales de Neira y su música son objeto de investigación.",
+                            generate=False)
+    with patch.object(guided, "research", new=AsyncMock(return_value=research_result())), \
+         patch.object(guided, "fetch_document", new=AsyncMock()) as fetch:
+        result=asyncio.run(guided.guide(req, "Bearer synthetic"))
+    assert result["territory"]["municipality"] == "Villamaría"
+    assert result["review_flags"][0]["type"] == "TERRITORY_MISMATCH"
+    assert "Neira" in result["review_flags"][0]["instruction"]
+    assert result["suggestion"] is None
+    fetch.assert_not_called()
