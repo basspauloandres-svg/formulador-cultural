@@ -188,10 +188,21 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             doc = await fetch_document(record, req.field)
             if doc:
                 docs.append(doc)
+    # Aviso si el texto conserva explícitamente otro municipio tras un cambio.
+    text_normalized = clean_text(req.text)
+    conflicts = [TERRITORIAL_IDENTITIES[other]["municipality"]
+                 for other in TERRITORIAL_IDENTITIES
+                 if other != key and re.search(r"\\b" + other[0] + r"\\b", text_normalized)]
+    territory_flags = ([{
+        "type": "TERRITORY_MISMATCH", "status": "INSUFFICIENT_EVIDENCE",
+        "instruction": ("El texto menciona " + ", ".join(conflicts)
+                        + ", pero el municipio registrado es " + req.context
+                        + ". Confirma si se trata de una comparación o de contenido anterior.")
+    }] if conflicts else [])
     # Los resultados de catálogo permanecen sin verificar y no ingresan al prompt.
     suggestion = None
     blocked = False
-    flags = []
+    flags = list(territory_flags)
     if req.generate and len(req.text.strip()) >= 10:
         excerpts = []
         for doc in docs[:1]:
@@ -204,7 +215,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
                 evidence=evidence)
             suggestion = generative["suggestion"] or None
             blocked = generative.get("blocked_for_evidence", False)
-            flags = generative.get("review_flags", [])
+            flags.extend(generative.get("review_flags", []))
             # Solo se permiten localizadores de las páginas recuperadas.
             allowed_pages = {p["page"] for d in docs for p in d["passages"]}
             cited_pages = [int(value) for value in re.findall(r"\[F1,\s*p\.(\d+)\]", suggestion or "")]
