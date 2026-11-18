@@ -12,6 +12,7 @@ from assistant_pilot import AssistantRequest, assist, configured
 from source_research import ResearchRequest, research
 from source_verifier import ExcerptRequest, verify_excerpt
 from automatic_assistant import GuidedRequest, guide
+from section_review import SectionReviewRequest, review_section
 
 app = FastAPI(title="Formulador Cultural API", version="0.3.0")
 app.add_middleware(
@@ -103,6 +104,10 @@ def assistant_status() -> dict:
                 and "POST" in getattr(route, "methods", set())
                 for route in app.routes
             ), "research_build": "s02-research-route-check-20261111"}
+
+@app.post("/assistant/section/review")
+async def assistant_section_review(payload: SectionReviewRequest, authorization: str = Header(default="")) -> dict:
+    return await review_section(payload, authorization)
 
 @app.post("/assistant/s02")
 async def assistant_s02(payload: AssistantRequest, authorization: str = Header(default="")) -> dict:

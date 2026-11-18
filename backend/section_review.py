@@ -1,0 +1,133 @@
+"""Revisión de afirmaciones transversal a secciones de VÉRTICE.
+
+Los metadatos de búsqueda NO corroboran hechos. Ninguna respuesta clasifica
+afirmaciones como verificadas sin un pasaje original y un cotejo adicional.
+"""
+from __future__ import annotations
+
+import re
+from fastapi import HTTPException
+from pydantic import BaseModel, Field
+from assistant_pilot import verified_user
+from source_research import ResearchRequest, research
+from automatic_assistant import municipality_key, TERRITORIAL_IDENTITIES
+
+REVIEW_FIELDS = {
+    "S02": {
+        "territorio_o_lugar_de_intervencion": "territorio_o_lugar_de_intervencion",
+        "caracteristicas_culturales": "caracteristicas_culturales",
+        "principales_dinamicas_sociales": "principales_dinamicas_sociales",
+        "antecedentes": "antecedentes",
+    },
+    "S03": {key: "principales_dinamicas_sociales" for key in (
+        "poblacion_afectada", "poblacion_participante", "caracterizacion", "cantidad_estimada")},
+    "S04": {key: "antecedentes" for key in (
+        "evidencia_disponible", "fuentes", "datos_por_verificar", "observaciones")},
+    "S05": {key: "principales_dinamicas_sociales" for key in (
+        "situaciones_observables", "descripcion", "evidencia_asociada", "prioridad_preliminar")},
+    "S07": {key: "principales_dinamicas_sociales" for key in (
+        "causas_indirectas", "causas_directas", "problema_central",
+        "efectos_directos", "efectos_indirectos")},
+    "S08": {key: "principales_dinamicas_sociales" for key in (
+        "enunciado", "poblacion_afectada", "evidencia_soporte", "alcance")},
+    "S09": {key: "antecedentes" for key in (
+        "objetivo_central", "medios_directos", "medios_indirectos", "fines_directos", "fines_indirectos")},
+    "S10": {key: "antecedentes" for key in (
+        "alternativa_seleccionada", "criterios", "justificacion_seleccion")},
+    "S11": {key: "antecedentes" for key in (
+        "resultados_productos", "actividades_confirmadas", "observaciones_actividades")},
+    "S12": {key: "principales_dinamicas_sociales" for key in (
+        "indicadores_confirmados", "metas_confirmadas", "medios_verificacion")},
+    "S14": {"presupuesto_resumen": "antecedentes"},
+    "S15": {"riesgos_resumen": "principales_dinamicas_sociales"},
+}
+# S01 es contexto suministrado por el usuario; S06 requiere juicio de
+# causalidad/valoración, S13 cálculo del cronograma y S16 revisión de coherencia.
+# No les aplica la misma comprobación documental por oración.
+
+HYPOTHESIS = re.compile(
+    r"\b(podr[ií]a|podr[ií]an|hip[oó]tesis|posible|posiblemente|"
+    r"se plantea|se espera|se propone|por verificar|se estima)\b", re.I)
+FIGURE = re.compile(r"(?<!\w)\d[\d.,%]*\b")
+CLAIM = re.compile(r"\b(es|son|existe|existen|tiene|tienen|representa|"
+                   r"cuenta con|influye|genera|causa|produce|fortalece|afecta|"
+                   r"registra|participa|hay|presenta|se ubica|se encuentra)\b", re.I)
+
+
+class SectionReviewRequest(BaseModel):
+    section: str = Field(min_length=3, max_length=3)
+    field: str = Field(min_length=2, max_length=100)
+    text: str = Field(min_length=1, max_length=1800)
+    context: str = Field(min_length=2, max_length=200)
+    include_web: bool = True
+
+
+def split_claims(value: str) -> list[str]:
+    """Segmentación provisional por oraciones y saltos, sin análisis semántico."""
+    parts = re.split(r"(?<=[.!?])\s+|\n+", value.strip())
+    return [part.strip() for part in parts if len(part.strip()) >= 5][:18]
+
+
+def classify_claim(statement: str) -> dict:
+    speculative = bool(HYPOTHESIS.search(statement))
+    quantitative = bool(FIGURE.search(statement))
+    factual = bool(CLAIM.search(statement)) or quantitative
+    status = ("HYPOTHESIS_UNVERIFIED" if speculative else
+              "USER_ASSERTION_UNVERIFIED" if factual else
+              "USER_TEXT_NOT_ASSESSED")
+    return {
+        "statement": statement[:400],
+        "classification": status,
+        "evidence_status": "INSUFFICIENT_EVIDENCE",
+        "requires_source": factual or quantitative,
+        "note": ("Verificar la cifra, periodo, unidad y población de referencia."
+                 if quantitative else
+                 "Requiere una fuente original o registro de observación pertinente."
+                 if factual else
+                 "Determinar si es propuesta, observación o afirmación antes de presentarlo como hecho."),
+        "supporting_passages": [],
+    }
+
+
+async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
+    mapping = REVIEW_FIELDS.get(req.section)
+    if mapping is None or req.field not in mapping:
+        raise HTTPException(422, "Este campo no utiliza la auditoría documental transversal.")
+    # Verificar autenticación antes de consultar servicios externos.
+    await verified_user(authorization)
+    claims = [classify_claim(s) for s in split_claims(req.text)]
+    mapping_field = mapping[req.field]
+    candidates, errors = [], []
+    try:
+        found = await research(ResearchRequest(
+            section="S02", field=mapping_field,
+            text=(req.text if len(req.text) >= 10 else "Información territorial de " + req.context),
+            context=req.context, include_web=req.include_web,
+        ), authorization)
+        candidates = found["sources"]
+        errors = found["errors"]
+    except HTTPException as exc:
+        if exc.status_code not in (429, 502, 503, 504):
+            raise
+        errors.append("Búsqueda documental temporalmente limitada; la revisión de afirmaciones sigue disponible.")
+    key = municipality_key(req.context)
+    conflicts = []
+    for other, identity in TERRITORIAL_IDENTITIES.items():
+        if other != key and re.search(r"\b" + re.escape(other[0]) + r"\b",
+                                       req.text.casefold()):
+            conflicts.append(identity["municipality"])
+    return {
+        "section": req.section, "field": req.field,
+        "territory_context": req.context,
+        "territory": TERRITORIAL_IDENTITIES.get(key),
+        "claims": claims,
+        "candidate_sources": candidates,
+        "verified_claims": [],
+        "conflicting_municipalities": conflicts,
+        "evidence_status": "INSUFFICIENT_EVIDENCE",
+        "errors": errors,
+        "requires_approval": True,
+        "note": ("La búsqueda identifica documentos candidatos. Ninguna afirmación se "
+                 "considera corroborada mediante títulos o resúmenes. Para emplearla "
+                 "como hecho hace falta cotejar su contenido, fecha, ámbito y pasaje original."),
+    }
