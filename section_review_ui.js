@@ -81,7 +81,7 @@ function mount(){
        }
        const primary=Array.isArray(data.primary_passages)?data.primary_passages:[];
        if(primary.length){
-         results.appendChild(node('strong','Pasajes recuperados de fuentes institucionales'));
+         results.appendChild(node('strong','Referencias institucionales localizadas'));
          primary.slice(0,4).forEach(source=>{
            const wrapper=node('div','','vt-evidence-passages');
            const a=node('a',String(source.title||'Fuente institucional')+' · '+String(source.locator||''));
@@ -89,8 +89,16 @@ function mount(){
              a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';
              wrapper.appendChild(a);
            }
+           const indexed=source.passage_status==='INDEXED_INSTITUTIONAL_REFERENCE_UNVERIFIED';
            wrapper.appendChild(node('p',String(source.excerpt||''),'vt-evidence-detail'));
-           wrapper.appendChild(node('p',String(source.scope_warning||'')+' Pasaje localizado: la afirmación del formador sigue sin corroborarse.','vt-evidence-detail'));
+           wrapper.appendChild(node('p',
+             indexed
+               ?'Referencia institucional indexada el '+String(source.indexed_on||'')+
+                '. Descripción de contenido, no cita textual. Acceso al documento no confirmado en esta consulta.'
+               :'Extracto recuperado durante esta consulta con localizador y huella del documento.',
+             'vt-evidence-detail'));
+           wrapper.appendChild(node('p',String(source.scope_warning||'')+
+             ' La afirmación sigue pendiente de cotejo.','vt-evidence-detail'));
            results.appendChild(wrapper);
          });
        }
@@ -105,9 +113,12 @@ function mount(){
        });
        details.appendChild(links);
        if(candidates.length)results.appendChild(details);
-       else if(!primary.length)results.appendChild(node('p','No se localizaron documentos pertinentes para el municipio y el tema. La afirmación continúa sin respaldo documental.','vt-evidence-detail'));
+       else if(!primary.length)results.appendChild(node('p','No se localizaron fuentes institucionales pertinentes en esta consulta. La afirmación continúa sin respaldo documental.','vt-evidence-detail'));
        results.appendChild(node('p','Los pasajes institucionales identifican fragmentos consultables, pero su coincidencia temática no equivale a corroboración. Las afirmaciones y las observaciones siguen diferenciadas.','vt-evidence-detail'));
-       results.hidden=false;status.textContent='Revisión preliminar realizada. Ningún dato externo ha sido confirmado automáticamente.';
+       results.hidden=false;
+       status.textContent=primary.length
+         ?'Se localizaron referencias institucionales. Sus pasajes o descripciones aún necesitan cotejo con cada afirmación.'
+         :'Revisión preliminar: todavía no hay evidencia pertinente que confirme las afirmaciones.';
      }catch{status.textContent='La consulta no respondió. El texto original sigue intacto.'}
      finally{button.disabled=false}
    };
