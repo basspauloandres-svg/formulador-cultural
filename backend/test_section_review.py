@@ -86,3 +86,32 @@ def test_invalid_session_stops_search():
             asyncio.run(review.review_section(payload,""))
     assert exc.value.status_code==401
     search.assert_not_awaited()
+
+
+def test_villamaria_screenshot_is_split_into_independently_testable_claims():
+    original = ("Municipio cerca al casco urbano de Manizales, es un municipio "
+                "que se caracteriza por su gastronomía y su proceso musical en bandas.")
+    chunks = review.split_claims(original)
+    assert len(chunks) == 3
+    categories = [review.classify_claim(chunk)["review_category"] for chunk in chunks]
+    assert categories == ["TERRITORIO", "GASTRONOMIA", "PRACTICAS_MUSICALES"]
+    assert all(review.classify_claim(chunk)["evidence_status"] == "INSUFFICIENT_EVIDENCE"
+               for chunk in chunks)
+
+
+def test_primary_passages_are_not_mislabeled_as_verified_claims():
+    payload=review.SectionReviewRequest(section="S02",field="caracteristicas_culturales",
+        text="Villamaría tiene bandas de música y gastronomía.",
+        context="Villamaría, Caldas")
+    candidate={"url":"https://villamaria-caldas.gov.co/MiMunicipio/Paginas/Territorios.aspx",
+               "title":"Territorios", "excerpt":"La vereda Gallinazo es un corredor gastronómico.",
+               "locator":"Párrafo HTML 24",
+               "passage_status":"EXCERPT_FOUND_CLAIM_UNVERIFIED"}
+    with patch.object(review, "verified_user", new=AsyncMock(return_value="synthetic")), \
+         patch.object(review, "research", new=AsyncMock(return_value={"sources":[],"errors":[]})), \
+         patch.object(review, "municipal_passages", new=AsyncMock(return_value=[candidate])) as fetch:
+        result=asyncio.run(review.review_section(payload,"Bearer synthetic"))
+    assert fetch.await_count == 1
+    assert result["primary_passages"][0]["passage_status"] == "EXCERPT_FOUND_CLAIM_UNVERIFIED"
+    assert result["verified_claims"] == []
+    assert all(x["evidence_status"] == "INSUFFICIENT_EVIDENCE" for x in result["claims"])
