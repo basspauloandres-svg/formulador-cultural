@@ -110,7 +110,7 @@ async def compose_section_draft(*, section: str, field: str, text: str,
                                                  "ADMINISTRATIVE_REGISTRY_MATCH")
                     for x in claims)):
             draft = "Según la información preliminar aportada por el formador, " + (
-                draft[:1].lower() + draft[1:] if draft else text
+                draft if draft else text
             )
             if "[POR VERIFICAR]" not in draft:
                 draft = draft.rstrip(" .") + ". [POR VERIFICAR]"
