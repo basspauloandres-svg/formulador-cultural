@@ -12,6 +12,7 @@ from assistant_pilot import verified_user
 from source_research import ResearchRequest, research
 from automatic_assistant import municipality_key, TERRITORIAL_IDENTITIES
 from municipal_sources import municipal_passages
+from evidence_drafting import compose_section_draft
 
 REVIEW_FIELDS = {
     "S02": {
@@ -61,6 +62,7 @@ class SectionReviewRequest(BaseModel):
     text: str = Field(min_length=1, max_length=1800)
     context: str = Field(min_length=2, max_length=200)
     include_web: bool = True
+    compose: bool = False
 
 
 def split_claims(value: str) -> list[str]:
@@ -123,7 +125,7 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
     if mapping is None or req.field not in mapping:
         raise HTTPException(422, "Este campo no utiliza la auditoría documental transversal.")
     # Verificar autenticación antes de consultar servicios externos.
-    await verified_user(authorization)
+    user_id = await verified_user(authorization)
     claims = [classify_claim(s) for s in split_claims(req.text)]
     mapping_field = mapping[req.field]
     candidates, errors = [], []
@@ -158,7 +160,15 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
         if other != key and re.search(r"\b" + re.escape(other[0]) + r"\b",
                                        req.text.casefold()):
             conflicts.append(identity["municipality"])
+    draft_result = {"suggestion": None, "draft_status": "NOT_REQUESTED",
+                    "review_flags": [], "evidence_used": []}
+    if req.compose:
+        draft_result = await compose_section_draft(
+            section=req.section, field=req.field, text=req.text,
+            territory=req.context, claims=claims,
+            passages=primary_passages, user_id=user_id)
     return {
+        **draft_result,
         "section": req.section, "field": req.field,
         "territory_context": req.context,
         "territory": TERRITORIAL_IDENTITIES.get(key),

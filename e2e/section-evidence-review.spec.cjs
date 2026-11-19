@@ -23,7 +23,7 @@ test('EVIDENCIA-TRANSVERSAL-01: revisa una cifra sin validarla desde metadatos',
   const field=page.locator('#fields [data-field="cantidad_estimada"]');
   await field.fill('Villamaría tiene 500000 habitantes.');
   const audit=page.locator('.vt-evidence-audit[data-review-field="cantidad_estimada"]');
-  await audit.getByRole('button',{name:'Revisar afirmaciones y fuentes'}).click();
+  await audit.getByRole('button',{name:'Investigar y preparar redacción'}).click();
   await expect(audit.locator('.vt-evidence-audit-results')).toContainText('Villamaría tiene 500000 habitantes.');
   await expect(audit.locator('.vt-evidence-audit-results')).toContainText('evidencia insuficiente');
   await expect(field).toHaveValue('Villamaría tiene 500000 habitantes.');

@@ -32,17 +32,26 @@ function mount(){
    if(!host||host.querySelector('.vt-evidence-audit'))return;
    const panel=node('div','','vt-evidence-audit');
    panel.dataset.reviewField=field.dataset.field;
-   const button=node('button','Revisar afirmaciones y fuentes');
+   const button=node('button','Investigar y preparar redacción');
    button.type='button';button.dataset.reviewAction='verify';
    const status=node('p','','vt-evidence-audit-status');status.setAttribute('role','status');
    const results=node('div','','vt-evidence-audit-results');results.hidden=true;
-   panel.append(button,status,results);
+   const proposal=node('div','','vt-evidence-draft');proposal.hidden=true;
+   const proposalTitle=node('strong','Redacción propuesta · pendiente de aprobación');
+   const proposalText=node('textarea');proposalText.rows=5;
+   proposalText.setAttribute('aria-label','Redacción propuesta para este campo');
+   const approve=node('button','Incorporar y guardar redacción');approve.type='button';
+   approve.dataset.reviewAction='approve';
+   const discard=node('button','Descartar redacción');discard.type='button';
+   discard.dataset.reviewAction='discard';
+   proposal.append(proposalTitle,proposalText,approve,discard);
+   panel.append(button,status,results,proposal);
    host.appendChild(panel);
-   let seq=0,lastContext=territory();
+   let seq=0,lastContext=territory(),sourceValue='',sourceContext='';
    function clearIfChanged(){
      const now=territory();
      if(now===lastContext)return false;
-     lastContext=now;seq+=1;results.hidden=true;results.replaceChildren();
+     lastContext=now;seq+=1;results.hidden=true;results.replaceChildren();proposal.hidden=true;
      status.textContent='Cambió el municipio. Se descartó la revisión anterior.';
      return true;
    }
@@ -50,17 +59,17 @@ function mount(){
    button.onclick=async()=>{
      clearIfChanged();
      const context=territory(),input=field.value.trim(),request=++seq;
-     results.hidden=true;results.replaceChildren();
+     results.hidden=true;results.replaceChildren();proposal.hidden=true;
      if(!context){status.textContent='Completa el municipio en S01 para contextualizar la revisión.';return}
      if(!input){status.textContent='Escribe una observación o afirmación en este campo para contrastarla.';return}
-     button.disabled=true;status.textContent='Identificando afirmaciones y consultando posibles fuentes...';
+     button.disabled=true;status.textContent='Contrastando afirmaciones y preparando un borrador editable...';
      try{
        const sessionResult=await sb.auth.getSession();
        const token=sessionResult?.data?.session?.access_token;
        if(!token){status.textContent='Inicia sesión para revisar fuentes.';return}
        const response=await fetch(API+'/assistant/section/review',{
          method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-         body:JSON.stringify({section:active,field:field.dataset.field,text:input,context,include_web:true})
+         body:JSON.stringify({section:active,field:field.dataset.field,text:input,context,include_web:true,compose:true})
        });
        const data=await response.json();
        if(!response.ok){status.textContent=String(data.detail||'No se pudo completar la revisión.').slice(0,220);return}
@@ -116,17 +125,45 @@ function mount(){
        else if(!primary.length)results.appendChild(node('p','No se localizaron fuentes institucionales pertinentes en esta consulta. La afirmación continúa sin respaldo documental.','vt-evidence-detail'));
        results.appendChild(node('p','Los pasajes institucionales identifican fragmentos consultables, pero su coincidencia temática no equivale a corroboración. Las afirmaciones y las observaciones siguen diferenciadas.','vt-evidence-detail'));
        results.hidden=false;
-       status.textContent=primary.length
-         ?'Se localizaron referencias institucionales. Sus pasajes o descripciones aún necesitan cotejo con cada afirmación.'
-         :'Revisión preliminar: todavía no hay evidencia pertinente que confirme las afirmaciones.';
+       const suggestion=typeof data.suggestion==='string'?data.suggestion.trim():'';
+       if(suggestion){
+         sourceValue=field.value;sourceContext=context;
+         proposalText.value=suggestion;
+         proposal.hidden=false;
+         status.textContent='Redacción preparada. Verifica los datos y aprueba para incorporarla al campo y guardarla.';
+         if(Array.isArray(data.review_flags)&&data.review_flags.length){
+           results.appendChild(node('p','El borrador contiene '+data.review_flags.length+
+             ' advertencia(s) sobre contenido generado o inferencias. Revisa antes de aprobar.','vt-evidence-detail'));
+         }
+       }else{
+         status.textContent='Se completó la revisión documental, pero la IA no produjo un borrador utilizable. Conservamos el texto original.';
+       }
      }catch{status.textContent='La consulta no respondió. El texto original sigue intacto.'}
      finally{button.disabled=false}
+   };
+   approve.onclick=()=>{
+     if(clearIfChanged())return;
+     if(territory()!==sourceContext||field.value!==sourceValue ){
+       status.textContent='Cambió el campo o el municipio. Repite la investigación antes de incorporar la redacción.';return;
+     }
+     const edited=proposalText.value.trim();
+     if(!edited){status.textContent='La propuesta está vacía. Conservamos tu texto.';return}
+     field.value=edited;
+     field.dispatchEvent(new Event('input',{bubbles:true}));
+     field.dispatchEvent(new Event('change',{bubbles:true}));
+     proposal.hidden=true;
+     status.textContent='Redacción incorporada al campo. Se solicitó guardar el proyecto.';
+     const save=document.getElementById('save');if(save)save.click();
+   };
+   discard.onclick=()=>{
+     proposal.hidden=true;
+     status.textContent='Propuesta descartada. El texto original continúa intacto.';
    };
  });
  document.querySelectorAll('#fields .vt-evidence-audit').forEach(el=>el.vtReviewInvalidate?.());
 }
 const style=node('style');
-style.textContent='.vt-evidence-audit{margin:9px 0 14px;padding:10px;border:1px solid #c9d8d0;background:#f6faf8;border-radius:9px;font-size:.83rem;color:#234838}.vt-evidence-audit button{border:1px solid #8ba99a;border-radius:7px;background:#fff;color:#234838;padding:8px;font:inherit;cursor:pointer}.vt-evidence-audit button:disabled{opacity:.5}.vt-evidence-audit-status,.vt-evidence-detail{font-size:.82rem;color:#4c6057;margin:6px 0}.vt-evidence-audit-results ul{padding-left:19px}.vt-evidence-audit-results li{margin:9px 0}.vt-evidence-audit-results details{margin:10px 0}.vt-evidence-passages{border-left:2px solid #b7cfc2;padding-left:9px;margin:8px 0}.vt-evidence-audit-results a{color:#14614d;text-decoration:underline}.vt-evidence-audit-results[hidden]{display:none}';
+style.textContent='.vt-evidence-audit{margin:9px 0 14px;padding:10px;border:1px solid #c9d8d0;background:#f6faf8;border-radius:9px;font-size:.83rem;color:#234838}.vt-evidence-audit button{border:1px solid #8ba99a;border-radius:7px;background:#fff;color:#234838;padding:8px;font:inherit;cursor:pointer}.vt-evidence-audit button:disabled{opacity:.5}.vt-evidence-audit-status,.vt-evidence-detail{font-size:.82rem;color:#4c6057;margin:6px 0}.vt-evidence-audit-results ul{padding-left:19px}.vt-evidence-audit-results li{margin:9px 0}.vt-evidence-audit-results details{margin:10px 0}.vt-evidence-passages{border-left:2px solid #b7cfc2;padding-left:9px;margin:8px 0}.vt-evidence-audit-results a{color:#14614d;text-decoration:underline}.vt-evidence-audit-results[hidden],.vt-evidence-draft[hidden]{display:none}.vt-evidence-draft{margin-top:12px;padding-top:10px;border-top:1px solid #c9d8d0}.vt-evidence-draft textarea{width:100%;min-height:115px;box-sizing:border-box;padding:10px;border:1px solid #9bb7a8;border-radius:8px;font:inherit;margin:9px 0}.vt-evidence-draft button{margin:4px 7px 3px 0}.vt-evidence-draft [data-review-action="approve"]{background:#155b43;color:white}';
 document.head.appendChild(style);
 new MutationObserver(mount).observe(document.getElementById('fields')||document.body,{childList:true,subtree:true});
 mount();

@@ -115,3 +115,38 @@ def test_primary_passages_are_not_mislabeled_as_verified_claims():
     assert result["primary_passages"][0]["passage_status"] == "EXCERPT_FOUND_CLAIM_UNVERIFIED"
     assert result["verified_claims"] == []
     assert all(x["evidence_status"] == "INSUFFICIENT_EVIDENCE" for x in result["claims"])
+
+
+def test_one_request_returns_claims_sources_and_editable_proposal():
+    req=review.SectionReviewRequest(section="S02", field="caracteristicas_culturales",
+        text="Villamaría registra bandas musicales en su territorio.",
+        context="Villamaría, Caldas", compose=True)
+    source={"title":"Alcaldía", "url":"https://villamaria-caldas.gov.co/example",
+            "excerpt":"Se registró una banda musical.","sha256":"a"*64,
+            "locator":"Párrafo HTML 7", "passage_status":"EXCERPT_FOUND_CLAIM_UNVERIFIED",
+            "category":"PRACTICAS_MUSICALES"}
+    generative={"suggestion":"Se registran bandas musicales en Villamaría [POR VERIFICAR].",
+                "draft_status":"EDITABLE_UNVERIFIED", "review_flags":[], "evidence_used":[source]}
+    with patch.object(review, "verified_user", new=AsyncMock(return_value="test-user")), \
+         patch.object(review, "research",new=AsyncMock(return_value={"sources":[],"errors":[]})), \
+         patch.object(review, "municipal_passages",new=AsyncMock(return_value=[source])), \
+         patch.object(review, "compose_section_draft",new=AsyncMock(return_value=generative)) as model:
+        result=asyncio.run(review.review_section(req,"Bearer synthetic"))
+    assert result["suggestion"]==generative["suggestion"]
+    assert result["draft_status"]=="EDITABLE_UNVERIFIED"
+    assert result["verified_claims"]==[]
+    assert len(result["claims"])==1
+    assert result["claims"][0]["candidate_passages"][0]["source_id"] is None
+    assert model.await_args.kwargs["user_id"]=="test-user"
+    assert model.await_args.kwargs["passages"]==[source]
+
+
+def test_review_only_does_not_consume_generative_quota():
+    req=review.SectionReviewRequest(section="S03", field="caracterizacion",
+        text="Descripción proporcionada por el formador.",context="Villamaría, Caldas")
+    with patch.object(review,"verified_user",new=AsyncMock(return_value="user")), \
+         patch.object(review,"research",new=AsyncMock(return_value={"sources":[],"errors":[]})), \
+         patch.object(review,"compose_section_draft",new=AsyncMock()) as model:
+        result=asyncio.run(review.review_section(req,"Bearer synthetic"))
+    assert result["draft_status"]=="NOT_REQUESTED"
+    model.assert_not_awaited()
