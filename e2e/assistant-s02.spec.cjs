@@ -32,7 +32,7 @@ test('S02 integra una sola consulta, propuesta y aprobación',async({page})=>{
   await expect(field).toHaveValue('Se describen encuentros musicales en la comunidad.');
   await card.getByRole('button',{name:'Investigar y preparar redacción'}).click();
   await card.getByRole('button',{name:'Incorporar y guardar redacción'}).click();
-  await expect(field).toContainText('Según la información preliminar del formador');
+  await expect(field).toHaveValue(/Según la información preliminar del formador/);
 });
 
 test('S02 conserva el original cuando no hay sesión',async({page})=>{
