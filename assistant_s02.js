@@ -234,7 +234,7 @@ const css=document.createElement('style');css.textContent='.vt-assist{border:1px
 document.head.appendChild(css);
 new MutationObserver(mount).observe(document.getElementById('fields')||document.body,{childList:true,subtree:true});
 mount();
-const VERTICE_BUILD='20261118-source-grounded4';
+const VERTICE_BUILD='20261118-evidence-draft5';
 let lastVersionCheck=0;
 async function checkVersionOnReturn(){
   const now=Date.now();
