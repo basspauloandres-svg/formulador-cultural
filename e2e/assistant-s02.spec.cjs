@@ -1,52 +1,48 @@
 const {test,expect}=require('@playwright/test');
 
-test('ASISTENTE-S02-01: formulación con IA, aprobación explícita y preservación del original',async({page})=>{
-  const writes=[];
-  page.on('request',r=>{if(r.url().includes('.supabase.co/rest/v1/')&&['POST','PATCH','PUT','DELETE'].includes(r.method()))writes.push(r.url())});
+test('S02 integra una sola consulta, propuesta y aprobación',async({page})=>{
   await page.goto('/',{waitUntil:'domcontentloaded'});
-  await page.locator('#guidedJourney .guided-subsection[data-code="S02"]').click();
-  const field=page.locator('#fields [data-field="caracteristicas_culturales"]');
-  await expect(field).toBeVisible();
-  await field.fill('en el barrio hay encuentros culturales con jóvenes');
-  const card=page.locator('.vt-assist[data-assist-field="caracteristicas_culturales"]');
-  await expect(card).toBeVisible();
-  await card.locator('[data-assist-action="questions"]').click();
-  await expect(card.locator('[role="status"]')).toContainText('¿Qué prácticas');
-  await page.evaluate(()=>{
-    sb.auth.getSession=async()=>({data:{session:{access_token:'synthetic-e2e'}}});
-  });
-  await page.route('https://formulador-cultural-api.onrender.com/assistant/s02',async route=>{
+  await page.evaluate(()=>{sb.auth.getSession=async()=>({data:{session:{access_token:'synthetic-e2e'}}});});
+  await page.route('https://formulador-cultural-api.onrender.com/assistant/section/review',async route=>{
+    const req=route.request().postDataJSON();
+    expect(req.section).toBe('S02');
+    expect(req.compose).toBe(true);
     await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
-      suggestion:'En el barrio se realizan encuentros culturales con jóvenes.',
-      blocked_for_evidence:false,review_flags:[],requires_approval:true,
-      evidence_status:'INSUFFICIENT_EVIDENCE'
+      section:req.section,field:req.field,territory_context:req.context,
+      claims:[{statement:req.text,evidence_status:'INSUFFICIENT_EVIDENCE',note:'Requiere fuente original'}],
+      primary_passages:[],candidate_sources:[],conflicting_municipalities:[],
+      suggestion:'Según la información preliminar del formador, se describen encuentros musicales. [POR VERIFICAR]',
+      review_flags:[{type:'USER_ASSERTIONS_UNVERIFIED'}],
+      draft_status:'EDITABLE_UNVERIFIED',errors:[]
     })});
   });
-  await card.locator('[data-assist-action="local"]').click();
-  await expect(field).toHaveValue('en el barrio hay encuentros culturales con jóvenes');
-  await expect(card.locator('.vt-assist-proposal textarea')).toHaveValue('En el barrio se realizan encuentros culturales con jóvenes.');
-  await card.getByRole('button',{name:'Descartar'}).click();
-  await expect(field).toHaveValue('en el barrio hay encuentros culturales con jóvenes');
-  await card.locator('[data-assist-action="local"]').click();
-  await card.getByRole('button',{name:'Usar esta propuesta'}).click();
-  await expect(field).toHaveValue('En el barrio se realizan encuentros culturales con jóvenes.');
-  await page.locator('#save').click();
-  await page.reload({waitUntil:'domcontentloaded'});
+  await page.locator('#guidedJourney .guided-subsection[data-code="S01"]').click();
+  await page.locator('#fields [data-field="municipio"]').fill('Villamaría');
+  await page.locator('#fields [data-field="departamento"]').fill('Caldas');
   await page.locator('#guidedJourney .guided-subsection[data-code="S02"]').click();
-  await expect(page.locator('#fields [data-field="caracteristicas_culturales"]')).toHaveValue('En el barrio se realizan encuentros culturales con jóvenes.');
-  expect(writes).toEqual([]);
+  const field=page.locator('#fields [data-field="caracteristicas_culturales"]');
+  await field.fill('Se describen encuentros musicales en la comunidad.');
+  await expect(page.locator('.vt-assist')).toHaveCount(0);
+  const card=page.locator('.vt-evidence-audit[data-review-field="caracteristicas_culturales"]');
+  await expect(card).toHaveCount(1);
+  await card.getByRole('button',{name:'Investigar y preparar redacción'}).click();
+  await expect(card.locator('.vt-evidence-draft')).toBeVisible();
+  await expect(field).toHaveValue('Se describen encuentros musicales en la comunidad.');
+  await card.getByRole('button',{name:'Descartar redacción'}).click();
+  await expect(field).toHaveValue('Se describen encuentros musicales en la comunidad.');
+  await card.getByRole('button',{name:'Investigar y preparar redacción'}).click();
+  await card.getByRole('button',{name:'Incorporar y guardar redacción'}).click();
+  await expect(field).toContainText('Según la información preliminar del formador');
 });
 
-test('ASISTENTE-S02-02: sin sesión la guía funciona y la IA no modifica el original',async({page})=>{
+test('S02 conserva el original cuando no hay sesión',async({page})=>{
   await page.goto('/',{waitUntil:'domcontentloaded'});
   await page.locator('#guidedJourney .guided-subsection[data-code="S02"]').click();
-  const card=page.locator('.vt-assist[data-assist-field="antecedentes"]');
   const field=page.locator('#fields [data-field="antecedentes"]');
-  await field.fill('se realizaron reuniones de la comunidad');
-  await card.locator('[data-assist-action="local"]').click();
-  await expect(card.locator('[role="status"]')).toContainText('inicia sesión');
-  await expect(card.locator('.vt-assist-proposal')).toBeHidden();
-  await card.locator('[data-assist-action="questions"]').click();
-  await expect(card.locator('[role="status"]')).toContainText('¿Qué acciones');
-  await expect(field).toHaveValue('se realizaron reuniones de la comunidad');
+  await field.fill('Se realizaron encuentros culturales.');
+  const card=page.locator('.vt-evidence-audit[data-review-field="antecedentes"]');
+  await card.getByRole('button',{name:'Investigar y preparar redacción'}).click();
+  await expect(card.locator('[role="status"]')).toContainText('Inicia sesión');
+  await expect(card.locator('.vt-evidence-draft')).toBeHidden();
+  await expect(field).toHaveValue('Se realizaron encuentros culturales.');
 });
