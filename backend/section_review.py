@@ -208,10 +208,10 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
         } for p in primary_passages
             if p.get("category") == claim["review_category"]][:3]
     conflicts = []
-    for other, identity in TERRITORIAL_IDENTITIES.items():
+    for other, other_identity in TERRITORIAL_IDENTITIES.items():
         if other != key and re.search(r"\b" + re.escape(other[0]) + r"\b",
                                        req.text.casefold()):
-            conflicts.append(identity["municipality"])
+            conflicts.append(other_identity["municipality"])
     draft_result = {"suggestion": None, "draft_status": "NOT_REQUESTED",
                     "review_flags": [], "evidence_used": []}
     if req.compose:
