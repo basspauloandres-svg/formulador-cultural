@@ -73,7 +73,9 @@ def test_generated_cohesion_is_not_passed_as_fact():
             territory="Villamaría, Caldas",claims=[baseline_claim()],
             passages=[],user_id="synthetic"))
     assert result["draft_status"]=="EDITABLE_UNVERIFIED"
-    assert result["suggestion"]=="Villamaría tiene bandas musicales."
+    assert result["suggestion"].startswith("Según la información preliminar aportada por el formador,")
+    assert "Villamaría tiene bandas musicales." in result["suggestion"]
+    assert "[POR VERIFICAR]" in result["suggestion"]
     assert "cohesión social" not in result["suggestion"]
     assert result["review_flags"]
 
@@ -91,3 +93,19 @@ def test_invented_citation_prevents_incorporation():
             passages=[],user_id="synthetic"))
     assert result["suggestion"] is None
     assert result["draft_status"]=="INVALID_CITATION"
+
+
+def test_s02_unverified_input_is_always_explicitly_attributed_to_author():
+    with patch.object(drafting,"configured",return_value=True), \
+         patch.object(drafting,"reserve",return_value=True), \
+         patch.object(drafting,"groq_key",return_value="synthetic"), \
+         patch.object(drafting.httpx,"AsyncClient",return_value=MockClient(MockResponse(
+             "Villamaría se destaca por su gastronomía local y sus bandas."))):
+        result=asyncio.run(drafting.compose_section_draft(
+            section="S02",field="caracteristicas_culturales",
+            text="Villamaría se destaca por su gastronomía local y sus bandas.",
+            territory="Villamaría, Caldas",claims=[baseline_claim()],
+            passages=[],user_id="synthetic"))
+    assert result["suggestion"].startswith("Según la información preliminar aportada por el formador,")
+    assert "[POR VERIFICAR]" in result["suggestion"]
+    assert any(flag["type"]=="USER_ASSERTIONS_UNVERIFIED" for flag in result["review_flags"])

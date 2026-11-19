@@ -101,7 +101,25 @@ async def compose_section_draft(*, section: str, field: str, text: str,
                         "type": "INVALID_CITATION",
                         "instruction": "El modelo inventó un identificador documental."}],
                     "evidence_used": used}
-        return {"suggestion": draft, "draft_status": "EDITABLE_UNVERIFIED",
+        # Un extracto sin cotejo por afirmación tampoco autoriza el paso a
+        # hecho. Mientras todas las afirmaciones sigan sin corroborarse,
+        # S02 debe atribuir explícitamente la información a su autor.
+        if (section == "S02" and field != "territorio_o_lugar_de_intervencion"
+                and claims and not any(
+                    x.get("evidence_status") in ("SUPPORTED", "VERIFIED",
+                                                 "ADMINISTRATIVE_REGISTRY_MATCH")
+                    for x in claims)):
+            draft = "Según la información preliminar aportada por el formador, " + (
+                draft if draft else text
+            )
+            if "[POR VERIFICAR]" not in draft:
+                draft = draft.rstrip(" .") + ". [POR VERIFICAR]"
+            flags.append({
+                "type": "USER_ASSERTIONS_UNVERIFIED",
+                "status": "INSUFFICIENT_EVIDENCE",
+                "instruction": "La información del formador no se ha corroborado con documentos primarios.",
+            })
+        return {"suggestion": draft[:1600], "draft_status": "EDITABLE_UNVERIFIED",
                 "review_flags": flags[:10], "evidence_used": used}
     except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
         logger.info("section_draft_failure class=%s", type(exc).__name__)

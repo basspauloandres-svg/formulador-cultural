@@ -226,7 +226,10 @@ function cardFor(textarea){
  discard.onclick=()=>{proposal.hidden=true;status.textContent='Propuesta descartada. Se conserva tu texto original.'};
 }
 function mount(){
- if(typeof active==='undefined'||active!=='S02')return;
+ // La investigación y redacción S02 se ejecutan exclusivamente en section_review_ui.js.
+ // Se conserva este módulo únicamente para su detector de versión y compatibilidad.
+ // El panel anterior duplicaba propuestas y admitía rutas sin auditoría por afirmación.
+ return;
  document.querySelectorAll('#fields textarea[data-field]').forEach(cardFor);
  document.querySelectorAll('#fields .vt-assist').forEach(card=>card.vtValidateTerritory?.());
 }
@@ -234,7 +237,7 @@ const css=document.createElement('style');css.textContent='.vt-assist{border:1px
 document.head.appendChild(css);
 new MutationObserver(mount).observe(document.getElementById('fields')||document.body,{childList:true,subtree:true});
 mount();
-const VERTICE_BUILD='20261119-national-divipola1';
+const VERTICE_BUILD='20261119-unified-s02a';
 let lastVersionCheck=0;
 async function checkVersionOnReturn(){
   const now=Date.now();
