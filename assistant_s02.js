@@ -91,6 +91,26 @@ function cardFor(textarea){
      wrapper.appendChild(createText('p','vt-assist-source','Año '+doc.year+' · Extracto localizado. La afirmación e interpretación siguen pendientes de revisión.'));
      references.appendChild(wrapper);
    });
+   const municipal=Array.isArray(data.municipal_references)?data.municipal_references:[];
+   if(municipal.length){
+     references.appendChild(createText('strong','','Referencias institucionales vinculadas al municipio'));
+     municipal.slice(0,6).forEach(item=>{
+       const div=createText('div','vt-assist-source','');
+       const link=document.createElement('a');
+       if(typeof item.url==='string'&&item.url.startsWith('https://')){
+         link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';
+         link.textContent=String(item.title||'Referencia municipal');
+         div.appendChild(link);
+       }
+       const downloaded=item.passage_status==='EXCERPT_FOUND_CLAIM_UNVERIFIED';
+       div.appendChild(createText('p','',''+String(item.locator||'')+' · '+
+         (downloaded?'Extracto descargado, afirmación no corroborada.':
+         'Referencia previamente identificada; documento no cotejado en esta consulta.')));
+       div.appendChild(createText('p','',String(item.excerpt||'')+
+         ' '+String(item.scope_warning||'')));
+       references.appendChild(div);
+     });
+   }
    const candidates=Array.isArray(data.candidate_sources)?data.candidate_sources:[];
    if(candidates.length){
      const details=document.createElement('details');
@@ -143,7 +163,7 @@ function cardFor(textarea){
        status.textContent='Se detectó una referencia documental que no corresponde al documento recuperado. Conserva tu texto y utiliza la asistencia de redacción.';
      }else if(typeof result.suggestion==='string'&&result.suggestion.trim()){
        present(result.suggestion.slice(0,1600),result.sources?.length
-         ?'Borrador generativo con pasajes institucionales para contrastar. Revisa afirmaciones, referencias y alcance.'
+         ?'Borrador generativo de revisión; las citas localizadas requieren evaluar su soporte semántico.'
          :'Borrador generativo a partir de tu texto; sin respaldo documental adicional. Revisa las afirmaciones.');
        showWarnings(result.review_flags);
      }else{
