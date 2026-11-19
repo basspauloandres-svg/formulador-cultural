@@ -11,6 +11,7 @@ import httpx
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 from claim_audit import qualify_claims
+from generative_grounding import guard_generated_claims
 
 SUPABASE_URL = "https://rmaevwlxcuqimxdzxdmq.supabase.co"
 SUPABASE_PUBLIC_KEY = "sb_publishable_YYXIMlsNUfi5RhZfhevMJw_6DovU9RK"
@@ -173,11 +174,15 @@ async def assist(request: AssistantRequest, bearer: str, evidence: str | None = 
         raise HTTPException(502, "Groq devolvió una respuesta no interpretable. Usa la orientación local.") from None
     flags = []
     if request.action == "redactar":
-        suggestion, flags = qualify_claims(suggestion)
+        # El contexto indexado no se admite como evidencia. Únicamente
+        # extractos descargados por el servidor llegan en evidence.
+        suggestion, rejected = guard_generated_claims(suggestion, request.text, evidence)
+        suggestion, qualified = qualify_claims(suggestion)
+        flags = rejected + qualified
         if flags:
-            logger.info("assistant_s02_claim_qualification count=%d", len(flags))
+            logger.info("assistant_s02_grounding_flags count=%d", len(flags))
     return {"mode": "generativo", "section": "S02", "action": request.action,
             "suggestion": suggestion, "requires_approval": True,
             "blocked_for_evidence": False, "review_flags": flags,
             "evidence_status": "INSUFFICIENT_EVIDENCE",
-            "source": "Modelo generativo; no constituye evidencia primaria"}
+            "source": "Borrador generativo con control léxico de adiciones; no constituye verificación factual"}
