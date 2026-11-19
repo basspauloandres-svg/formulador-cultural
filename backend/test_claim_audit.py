@@ -50,8 +50,9 @@ def test_model_output_with_unverified_causality_is_qualified():
         result = asyncio.run(pilot.assist(req, "Bearer synthetic-token"))
     pilot._times.clear()
     assert result["blocked_for_evidence"] is False
-    assert "Se plantea como hipótesis" in result["suggestion"]
-    assert "[POR VERIFICAR]" in result["suggestion"]
+    assert result["suggestion"] == req.text
+    assert "cohesión social" not in result["suggestion"]
+    assert any(flag["type"] == "GENERATIVE_CONTENT_NOT_IN_SOURCE" for flag in result["review_flags"])
     assert result["requires_approval"] is True
     assert result["review_flags"]
 
