@@ -53,9 +53,9 @@ def guard_generated_claims(generated: str, original: str,
                  if re.search(regex, normalized) and not re.search(regex, authorized)]
         # Nunca introducir cifras o años que el formador no aportó y que
         # tampoco aparecen en un extracto obtenido durante esta petición.
-        de_cited = re.sub(r"\\[(?:F\\d+,\\s*p\\.\\d+|M\\d+)\\]", "", normalized)
-        numbers = set(re.findall(r"(?<!\\w)\\d+(?:[.,]\\d+)*(?!\\w)", de_cited))
-        known = set(re.findall(r"(?<!\\w)\\d+(?:[.,]\\d+)*(?!\\w)", authorized))
+        de_cited = re.sub(r"\[(?:F\d+,\s*p\.\d+|M\d+)\]", "", normalized)
+        numbers = set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)*(?!\w)", de_cited))
+        known = set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)*(?!\w)", authorized))
         if numbers - known:
             novel.append("cifras_nuevas_sin_fuente")
         if novel:
