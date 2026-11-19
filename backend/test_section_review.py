@@ -10,6 +10,29 @@ from fastapi import HTTPException
 sys.path.insert(0, os.path.dirname(__file__))
 import section_review as review
 
+@pytest.fixture(autouse=True)
+def isolated_national_divipola():
+    async def fake_resolve(context):
+        value=context.casefold()
+        if "villamar" in value:
+            label,code,dept="Villamaría","17873","Caldas"
+        elif "neira" in value:
+            label,code,dept="Neira","17486","Caldas"
+        elif "anserma" in value:
+            label,code,dept="Anserma","17042","Caldas"
+        else:
+            return {"status":"NOT_FOUND","identity":None}
+        return {"status":"FOUND","identity":{
+            "municipality":label,"department":dept,"divipola":code,
+            "territory_type":"Municipio",
+            "publisher":"DANE / Portal Nacional de Datos Abiertos",
+            "url":"https://www.datos.gov.co/Mapas-Nacionales/DIVIPOLA-C-digos-municipios/gdxc-w37w",
+            "status":"ADMINISTRATIVE_REGISTRY_MATCH",
+        }}
+    with patch.object(review,"resolve_territory",new=fake_resolve):
+        yield
+
+
 
 def test_review_scope_by_function_not_blanket_application():
     assert "S03" in review.REVIEW_FIELDS
