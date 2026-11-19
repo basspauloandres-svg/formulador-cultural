@@ -143,6 +143,16 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
     categories = {item["review_category"] for item in claims}
     primary_passages = (await municipal_passages(key, categories)
                         if req.section == "S02" else [])
+    # Asociación categorial, no inferencia de respaldo lógico.
+    for claim in claims:
+        claim["candidate_passages"] = [{
+            "source_id": p.get("source_id"),
+            "locator": p.get("locator"),
+            "url": p.get("url"),
+            "passage_status": p.get("passage_status"),
+            "corroboration_status": "INSUFFICIENT_EVIDENCE",
+        } for p in primary_passages
+            if p.get("category") == claim["review_category"]][:3]
     conflicts = []
     for other, identity in TERRITORIAL_IDENTITIES.items():
         if other != key and re.search(r"\b" + re.escape(other[0]) + r"\b",
@@ -160,9 +170,8 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
         "evidence_status": "INSUFFICIENT_EVIDENCE",
         "errors": errors,
         "requires_approval": True,
-        "note": ("Se recuperaron pasajes de documentos institucionales cuando estuvieron disponibles. "
-                 "La coincidencia de términos no demuestra que respalden cada afirmación. "
-                 "Los demás resultados de búsqueda son solo documentos candidatos. "
-                 "considera corroborada mediante títulos o resúmenes. Para emplearla "
-                 "como hecho hace falta cotejar su contenido, fecha, ámbito y pasaje original."),
+        "note": ("Las referencias se vinculan a cada afirmación por categoría. "
+                 "Una coincidencia temática o un pasaje localizado no comprueba "
+                 "el contenido de la afirmación. Se conservan los datos sin respaldo "
+                 "como INSUFFICIENT_EVIDENCE."),
     }

@@ -17,6 +17,7 @@ from pypdf import PdfReader
 from assistant_pilot import AssistantRequest, assist
 from source_research import ResearchRequest, research
 from source_verifier import validate_pdf_url, MAX_PDF_BYTES, MAX_PAGES
+from municipal_sources import municipal_passages
 
 # Registro provisional de documentos institucionales identificados por municipio.
 # La existencia de una URL no implica accesibilidad ni validez de su contenido.
@@ -188,8 +189,21 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             doc = await fetch_document(record, req.field)
             if doc:
                 docs.append(doc)
-    # Aviso si el texto conserva explícitamente otro municipio tras un cambio.
+    # Rutas municipales HTML: las referencias preindexadas se muestran, pero
+    # jamás se inyectan como pruebas en el prompt generativo.
     text_normalized = clean_text(req.text)
+    topics = set()
+    if re.search(r"manizales|cerca|ubicad|territor|l[ií]mite|casco", text_normalized):
+        topics.add("TERRITORIO")
+    if re.search(r"gastronom|plato|culinari", text_normalized):
+        topics.add("GASTRONOMIA")
+    if re.search(r"music|banda|orquesta|agrupacion", text_normalized):
+        topics.add("PRACTICAS_MUSICALES")
+    local_references = await municipal_passages(key, topics) if topics else []
+    live_passages = [p for p in local_references
+                    if p.get("passage_status") == "EXCERPT_FOUND_CLAIM_UNVERIFIED"
+                    and p.get("sha256") and p.get("excerpt")]
+    # Aviso si el texto conserva explícitamente otro municipio tras un cambio.
     conflicts = [TERRITORIAL_IDENTITIES[other]["municipality"]
                  for other in TERRITORIAL_IDENTITIES
                  if other != key and re.search(r"\b" + other[0] + r"\b", text_normalized)]
@@ -208,7 +222,13 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         for doc in docs[:1]:
             for passage in doc["passages"][:3]:
                 excerpts.append(f"[F1, p.{passage['page']}] {passage['excerpt']}")
-        evidence = "\n".join(excerpts)[:950] if docs else None
+        for i, passage in enumerate(live_passages[:2], 1):
+            excerpts.append(
+                f"[M{i}] Fuente: {passage['publisher']}; "
+                f"{passage['title']}; {passage['url']}; "
+                f"{passage['locator']}; Extracto: {passage['excerpt']}"
+            )
+        evidence = "\n".join(excerpts)[:1400] if excerpts else None
         try:
             generative = await assist(AssistantRequest(section="S02", field=req.field,
                 text=req.text, context=req.context, action="redactar"), bearer,
@@ -219,7 +239,10 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             # Solo se permiten localizadores de las páginas recuperadas.
             allowed_pages = {p["page"] for d in docs for p in d["passages"]}
             cited_pages = [int(value) for value in re.findall(r"\[F1,\s*p\.(\d+)\]", suggestion or "")]
-            if any(page not in allowed_pages for page in cited_pages):
+            indexed_citations = re.findall(r"\[M(\d+)\]", suggestion or "")
+            invalid_municipal = any(int(n) < 1 or int(n) > len(live_passages[:2])
+                                    for n in indexed_citations)
+            if invalid_municipal or any(page not in allowed_pages for page in cited_pages):
                 suggestion = None
                 blocked = True
                 flags.append({"type": "UNVERIFIED_CITATION",
@@ -235,6 +258,9 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         "territory_context": req.context,
         "guidance": list(GUIDANCE[req.field]),
         "sources": docs,
+        "municipal_references": local_references,
+        "evidence_input_status": ("LIVE_PASSAGES_AVAILABLE" if live_passages
+                                  else "NO_LIVE_PASSAGES"),
         "candidate_sources": found["sources"],
         "errors": found["errors"],
         "suggestion": suggestion,
