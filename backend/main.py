@@ -13,6 +13,7 @@ from source_research import ResearchRequest, research
 from source_verifier import ExcerptRequest, verify_excerpt
 from automatic_assistant import GuidedRequest, guide
 from section_review import SectionReviewRequest, review_section
+from territory_registry import resolve_territory
 
 app = FastAPI(title="Formulador Cultural API", version="0.3.0")
 app.add_middleware(
@@ -104,6 +105,14 @@ def assistant_status() -> dict:
                 and "POST" in getattr(route, "methods", set())
                 for route in app.routes
             ), "research_build": "s02-research-route-check-20261111"}
+
+class TerritoryResolveRequest(BaseModel):
+    context: str = Field(min_length=2, max_length=200)
+
+@app.post("/territory/resolve")
+async def territorial_identity(payload: TerritoryResolveRequest) -> dict:
+    """Identificación administrativa pública; sin cifras ni datos personales."""
+    return await resolve_territory(payload.context)
 
 @app.post("/assistant/section/review")
 async def assistant_section_review(payload: SectionReviewRequest, authorization: str = Header(default="")) -> dict:
