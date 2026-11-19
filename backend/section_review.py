@@ -127,6 +127,50 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
     # Verificar autenticación antes de consultar servicios externos.
     user_id = await verified_user(authorization)
     claims = [classify_claim(s) for s in split_claims(req.text)]
+    key = municipality_key(req.context)
+    identity = TERRITORIAL_IDENTITIES.get(key)
+    administrative_field = (req.section == "S02" and
+                            req.field == "territorio_o_lugar_de_intervencion")
+    # La identificación por DIVIPOLA se verifica en el directorio institucional.
+    # Que el proyecto elija el municipio es una declaración del formador,
+    # no una estadística cultural que requiera corroboración externa.
+    if administrative_field and identity:
+        normalized = req.text.casefold()
+        is_simple_territory = not re.search(
+            r"gastronom|m[uú]sic|banda|poblaci[oó]n|habitantes|"
+            r"cohesi[oó]n|causa|influye|producci[oó]n|festiv|"
+            r"cercan[ií]a|l[ií]mite|distancia|vereda", normalized)
+        if is_simple_territory:
+            statement = {
+                "statement": f"{identity['municipality']}, {identity['department']} "
+                             f"(DIVIPOLA {identity['divipola']})",
+                "classification": "ADMINISTRATIVE_IDENTITY",
+                "review_category": "TERRITORIO",
+                "evidence_status": "ADMINISTRATIVE_REGISTRY_MATCH",
+                "requires_source": False,
+                "note": "Identificación administrativa respaldada por el registro territorial; "
+                        "el lugar de intervención es una decisión del proyecto.",
+                "supporting_passages": [],
+                "registry_url": identity["url"],
+            }
+            draft = (f"El proyecto tiene como territorio de intervención el municipio de "
+                     f"{identity['municipality']}, departamento de {identity['department']} "
+                     f"(código DIVIPOLA {identity['divipola']}).")
+            return {
+                "section": req.section, "field": req.field,
+                "territory_context": req.context, "territory": identity,
+                "claims": [statement], "candidate_sources": [],
+                "primary_passages": [], "verified_claims": [statement],
+                "conflicting_municipalities": [], "errors": [],
+                "suggestion": draft if req.compose else None,
+                "draft_status": "EDITABLE_ADMINISTRATIVE_CONTEXT" if req.compose else "NOT_REQUESTED",
+                "review_flags": [], "evidence_used": [],
+                "evidence_status": "ADMINISTRATIVE_REGISTRY_MATCH",
+                "requires_approval": True,
+                "note": "La identidad territorial tiene respaldo institucional. "
+                        "La selección del lugar de intervención procede de S01 y "
+                        "requiere aprobación del formador, no corroboración cultural.",
+            }
     mapping_field = mapping[req.field]
     candidates, errors = [], []
     try:
