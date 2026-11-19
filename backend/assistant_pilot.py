@@ -187,4 +187,4 @@ async def assist(request: AssistantRequest, bearer: str, evidence: str | None = 
             "suggestion": suggestion, "requires_approval": True,
             "blocked_for_evidence": False, "review_flags": flags,
             "evidence_status": "INSUFFICIENT_EVIDENCE",
-            "source": "Borrador generativo con control léxico de adiciones; no constituye verificación factual"}
+            "source": "Modelo generativo; borrador con control léxico de adiciones, sin verificación factual"}
