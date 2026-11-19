@@ -50,3 +50,20 @@ def test_original_text_is_never_rewritten_into_supposedly_verified_truth():
         "Los niños escuchan músicas de banda.")
     assert draft=="Los niños escuchan músicas de banda."
     assert flags
+
+
+def test_novel_population_figure_is_rejected():
+    draft, flags = guard_generated_claims(
+        "Villamaría tiene 500000 habitantes en 2026.",
+        "El proyecto se realizará en Villamaría, Caldas.")
+    assert draft == "El proyecto se realizará en Villamaría, Caldas."
+    assert any("cifras_nuevas_sin_fuente" in x.get("concepts", []) for x in flags)
+
+
+def test_numeric_citations_do_not_trigger_new_population_values():
+    draft, flags = guard_generated_claims(
+        "La banda musical participa en festividades [M1].",
+        "La banda musical se reúne en el municipio.",
+        "[M1] Extracto: La banda musical participa en festividades.")
+    assert "[M1]" in draft
+    assert not flags
