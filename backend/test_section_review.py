@@ -150,3 +150,36 @@ def test_review_only_does_not_consume_generative_quota():
         result=asyncio.run(review.review_section(req,"Bearer synthetic"))
     assert result["draft_status"]=="NOT_REQUESTED"
     model.assert_not_awaited()
+
+
+def test_official_municipality_identity_does_not_become_insufficient_evidence():
+    req=review.SectionReviewRequest(section="S02",
+        field="territorio_o_lugar_de_intervencion",
+        text="El municipio de Villamaría, Caldas, es el lugar de intervención señalado.",
+        context="Villamaría, Caldas", compose=True)
+    with patch.object(review, "verified_user",new=AsyncMock(return_value="user")), \
+         patch.object(review,"research",new=AsyncMock()) as search, \
+         patch.object(review,"compose_section_draft",new=AsyncMock()) as model:
+        result=asyncio.run(review.review_section(req,"Bearer synthetic"))
+    assert result["territory"]["divipola"]=="17873"
+    assert result["evidence_status"]=="ADMINISTRATIVE_REGISTRY_MATCH"
+    assert result["draft_status"]=="EDITABLE_ADMINISTRATIVE_CONTEXT"
+    assert "municipio de Villamaría, departamento de Caldas" in result["suggestion"]
+    assert "No se dispone de evidencia" not in result["suggestion"]
+    assert result["claims"][0]["classification"]=="ADMINISTRATIVE_IDENTITY"
+    search.assert_not_awaited()
+    model.assert_not_awaited()
+
+
+def test_cultural_assumptions_still_require_evidence_even_in_territorial_field():
+    req=review.SectionReviewRequest(section="S02",
+        field="territorio_o_lugar_de_intervencion",
+        text="Villamaría, Caldas desarrolla bandas y festividades comunitarias.",
+        context="Villamaría, Caldas")
+    with patch.object(review,"verified_user",new=AsyncMock(return_value="user")), \
+         patch.object(review,"research",new=AsyncMock(return_value={"sources":[],"errors":[]})) as search, \
+         patch.object(review,"municipal_passages",new=AsyncMock(return_value=[])):
+        result=asyncio.run(review.review_section(req,"Bearer synthetic"))
+    assert result["verified_claims"]==[]
+    assert result["evidence_status"]=="INSUFFICIENT_EVIDENCE"
+    search.assert_awaited_once()
