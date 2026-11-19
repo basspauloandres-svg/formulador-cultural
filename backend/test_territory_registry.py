@@ -42,6 +42,7 @@ def test_dataset_rejects_partial_or_duplicate_download():
         registry.parse_dataset(fixture_rows()[:700])
     data=fixture_rows()
     data[-1]["cod_mpio"]="17486"
+    data[-1]["cod_dpto"]="17"
     with pytest.raises(ValueError,match="repetidos"):
         registry.parse_dataset(data)
 
