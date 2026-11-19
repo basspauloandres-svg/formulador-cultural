@@ -37,6 +37,9 @@ test('S02 integra una sola consulta, propuesta y aprobación',async({page})=>{
 
 test('S02 conserva el original cuando no hay sesión',async({page})=>{
   await page.goto('/',{waitUntil:'domcontentloaded'});
+  await page.locator('#guidedJourney .guided-subsection[data-code="S01"]').click();
+  await page.locator('#fields [data-field="municipio"]').fill('Villamaría');
+  await page.locator('#fields [data-field="departamento"]').fill('Caldas');
   await page.locator('#guidedJourney .guided-subsection[data-code="S02"]').click();
   const field=page.locator('#fields [data-field="antecedentes"]');
   await field.fill('Se realizaron encuentros culturales.');
