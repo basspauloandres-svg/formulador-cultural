@@ -36,7 +36,15 @@ def guard_generated_claims(generated: str, original: str,
     Solo el contenido extraído en vivo cuenta como posible contexto autorizado.
     Una referencia indexada o metadatos de búsqueda nunca cuentan como evidencia.
     """
-    authorized = normalize(original + "\n" + (live_evidence or ""))
+    # Las etiquetas de fuente, URL y títulos no acreditan conceptos: se
+    # consideran únicamente los extractos documentales propiamente dichos.
+    extracts = []
+    for line in (live_evidence or "").splitlines():
+        if "Extracto:" in line:
+            extracts.append(line.split("Extracto:", 1)[1])
+        elif re.match(r"^\[F\d+,\s*p\.\d+\]", line):
+            extracts.append(line.split("]", 1)[1])
+    authorized = normalize(original + "\n" + "\n".join(extracts))
     approved, flags = [], []
     sentences = re.split(r"(?<=[.!?])\s+|\n+", generated.strip())
     for sentence in sentences:
