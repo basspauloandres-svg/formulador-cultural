@@ -13,6 +13,7 @@ from source_research import ResearchRequest, research
 from automatic_assistant import municipality_key, TERRITORIAL_IDENTITIES
 from municipal_sources import municipal_passages
 from evidence_drafting import compose_section_draft
+from territory_registry import resolve_territory, normalized as territory_normalized
 
 REVIEW_FIELDS = {
     "S02": {
@@ -127,14 +128,16 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
     # Verificar autenticación antes de consultar servicios externos.
     user_id = await verified_user(authorization)
     claims = [classify_claim(s) for s in split_claims(req.text)]
-    key = municipality_key(req.context)
-    identity = TERRITORIAL_IDENTITIES.get(key)
+    territorial_result = await resolve_territory(req.context)
+    identity = territorial_result.get("identity")
+    key = ((territory_normalized(identity["municipality"]),
+            territory_normalized(identity["department"])) if identity else None)
     administrative_field = (req.section == "S02" and
                             req.field == "territorio_o_lugar_de_intervencion")
     # La identificación por DIVIPOLA se verifica en el directorio institucional.
     # Que el proyecto elija el municipio es una declaración del formador,
     # no una estadística cultural que requiera corroboración externa.
-    if administrative_field and identity:
+    if administrative_field and identity and territorial_result["status"] == "FOUND":
         normalized = req.text.casefold()
         is_simple_territory = not re.search(
             r"gastronom|m[uú]sic|banda|poblaci[oó]n|habitantes|"
@@ -153,12 +156,18 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
                 "supporting_passages": [],
                 "registry_url": identity["url"],
             }
-            draft = (f"El proyecto tiene como territorio de intervención el municipio de "
+            kind = territory_normalized(identity["territory_type"])
+            label = ("municipio" if kind == "municipio" else
+                     "área no municipalizada" if "no municipalizada" in kind else
+                     "territorio administrativo")
+            draft = (f"El proyecto tiene como territorio de intervención {('el ' if label != 'área no municipalizada' else 'el área denominada ')}"
+                     f"{label + ' de ' if label != 'área no municipalizada' else ''}"
                      f"{identity['municipality']}, departamento de {identity['department']} "
                      f"(código DIVIPOLA {identity['divipola']}).")
             return {
                 "section": req.section, "field": req.field,
                 "territory_context": req.context, "territory": identity,
+                "territory_resolution": territorial_result["status"],
                 "claims": [statement], "candidate_sources": [],
                 "primary_passages": [], "verified_claims": [statement],
                 "conflicting_municipalities": [], "errors": [],
@@ -185,7 +194,6 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
         if exc.status_code not in (429, 502, 503, 504):
             raise
         errors.append("Búsqueda documental temporalmente limitada; la revisión de afirmaciones sigue disponible.")
-    key = municipality_key(req.context)
     categories = {item["review_category"] for item in claims}
     primary_passages = (await municipal_passages(key, categories)
                         if req.section == "S02" else [])
@@ -200,10 +208,10 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
         } for p in primary_passages
             if p.get("category") == claim["review_category"]][:3]
     conflicts = []
-    for other, identity in TERRITORIAL_IDENTITIES.items():
+    for other, other_identity in TERRITORIAL_IDENTITIES.items():
         if other != key and re.search(r"\b" + re.escape(other[0]) + r"\b",
                                        req.text.casefold()):
-            conflicts.append(identity["municipality"])
+            conflicts.append(other_identity["municipality"])
     draft_result = {"suggestion": None, "draft_status": "NOT_REQUESTED",
                     "review_flags": [], "evidence_used": []}
     if req.compose:
@@ -215,7 +223,9 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
         **draft_result,
         "section": req.section, "field": req.field,
         "territory_context": req.context,
-        "territory": TERRITORIAL_IDENTITIES.get(key),
+        "territory": identity,
+        "territory_resolution": territorial_result["status"],
+        "territory_candidates": territorial_result.get("candidates", []),
         "claims": claims,
         "candidate_sources": candidates,
         "primary_passages": primary_passages,

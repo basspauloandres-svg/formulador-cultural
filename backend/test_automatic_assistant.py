@@ -3,12 +3,35 @@ import asyncio
 import os
 import sys
 from unittest.mock import AsyncMock, patch
+import pytest
 
 from fastapi import HTTPException
 from reportlab.pdfgen import canvas
 from io import BytesIO
 sys.path.insert(0, os.path.dirname(__file__))
 import automatic_assistant as guided
+
+@pytest.fixture(autouse=True)
+def isolated_national_divipola():
+    async def fake_resolve(context):
+        value=context.casefold()
+        if "villamar" in value:
+            label,code="Villamaría","17873"
+        elif "neira" in value:
+            label,code="Neira","17486"
+        elif "anserma" in value:
+            label,code="Anserma","17042"
+        else:
+            return {"status":"NOT_FOUND","identity":None}
+        return {"status":"FOUND","identity":{
+            "municipality":label,"department":"Caldas","divipola":code,
+            "territory_type":"Municipio",
+            "url":"https://www.datos.gov.co/Mapas-Nacionales/DIVIPOLA-C-digos-municipios/gdxc-w37w",
+            "status":"ADMINISTRATIVE_REGISTRY_MATCH",
+        }}
+    with patch.object(guided,"resolve_territory",new=fake_resolve):
+        yield
+
 
 
 def request(context="Municipio de Neira Caldas", field="caracteristicas_culturales"):

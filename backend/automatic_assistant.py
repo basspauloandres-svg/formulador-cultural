@@ -18,6 +18,7 @@ from assistant_pilot import AssistantRequest, assist
 from source_research import ResearchRequest, research
 from source_verifier import validate_pdf_url, MAX_PDF_BYTES, MAX_PAGES
 from municipal_sources import municipal_passages
+from territory_registry import resolve_territory, normalized as territory_normalized
 
 # Registro provisional de documentos institucionales identificados por municipio.
 # La existencia de una URL no implica accesibilidad ni validez de su contenido.
@@ -182,7 +183,10 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     search_text = req.text.strip() or ("Información territorial de " + req.context)
     found = await research(ResearchRequest(section="S02", field=req.field,
         text=search_text, context=req.context, include_web=req.include_web), bearer)
-    key = municipality_key(req.context)
+    territorial_result = await resolve_territory(req.context)
+    identity = territorial_result.get("identity")
+    key = ((territory_normalized(identity["municipality"]),
+            territory_normalized(identity["department"])) if identity else None)
     docs = []
     for record in INSTITUTIONAL_DOCUMENTS.get(key, []):
         if req.field in record["topics"]:
@@ -254,7 +258,9 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             suggestion = None
     return {
         "section": "S02", "field": req.field,
-        "territory": TERRITORIAL_IDENTITIES.get(key),
+        "territory": identity,
+        "territory_resolution": territorial_result["status"],
+        "territory_candidates": territorial_result.get("candidates", []),
         "territory_context": req.context,
         "guidance": list(GUIDANCE[req.field]),
         "sources": docs,
