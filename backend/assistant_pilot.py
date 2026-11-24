@@ -27,7 +27,7 @@ _lock = Lock()
 class AssistantRequest(BaseModel):
     section: str = "S02"
     field: str = Field(max_length=100)
-    text: str = Field(min_length=10, max_length=1800)
+    text: str = Field(default="", max_length=1800)
     context: str = Field(default="", max_length=700)
     action: str = "redactar"
 
@@ -87,6 +87,8 @@ async def assist(request: AssistantRequest, bearer: str, evidence: str | None = 
         "principales_dinamicas_sociales", "antecedentes"
     } or request.action not in {"redactar", "orientar"}:
         raise HTTPException(422, "Esta evaluación funciona únicamente en S02.")
+    if len(request.text.strip()) < 10 and not evidence:
+        raise HTTPException(422, "Se requiere texto o evidencia documental recuperada.")
     if not configured():
         raise HTTPException(503, "La clave de Groq está vacía o contiene caracteres no válidos. Revisa GROQ_API_KEY en Render.")
     user_id = await verified_user(bearer)
@@ -94,11 +96,11 @@ async def assist(request: AssistantRequest, bearer: str, evidence: str | None = 
         raise HTTPException(429, "Límite de consultas del piloto alcanzado. Utiliza la orientación local.")
     system = (
         "Eres un asistente de formulación de proyectos culturales en español. "
-        "Ayudas al docente a mejorar claridad metodológica sin añadir hechos no aportados. "
+        "Formula propuestas a partir de evidencia recuperada y aportes opcionales del docente. "
         "No inventes cifras, fuentes, nombres, testimonios, localizaciones ni evidencia. "
         "No atribuyas causalidad ni verificación inexistentes. "
         "No agregues impactos sociales o culturales, patrimonio, identidad, cohesión social, "
-        "beneficios ni tradiciones que el participante no haya mencionado expresamente. "
+        "beneficios ni tradiciones sin respaldo en los extractos o aportes explícitos. "
         "Si el texto afirma una relación causal no demostrada, consérvala como hipótesis "
         "condicional y señala concretamente qué relación necesita respaldo. "
         "Si falta evidencia, coloca [POR VERIFICAR] junto a la afirmación específica, "
@@ -116,7 +118,7 @@ async def assist(request: AssistantRequest, bearer: str, evidence: str | None = 
                    "[F1, p.N] para PDF, [M1] o [M2] para extracto HTML. "
                    "No inventes referencias ni páginas. "
                    "No presentes causalidad, impacto o cifras sin apoyo textual. "
-                   "Si el extracto no sirve, no introduzcas datos ajenos al texto del participante.")
+                   "Si el extracto no sirve, declara la insuficiencia de evidencia. Si el texto docente está vacío, formula exclusivamente desde los extractos pertinentes y cita cada afirmación factual.")
     model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
     payload = {
         "model": model,
@@ -127,8 +129,8 @@ async def assist(request: AssistantRequest, bearer: str, evidence: str | None = 
             {"role": "user", "content": (
                 f"Campo S02: {request.field}. Acción: {request.action}. "
                 f"Contexto registrado (no evidencia adicional): {request.context}\n"
-                f"Texto original del participante: {request.text}" +
-                (f"\n<fuentes_extraidas>\n{evidence[:950]}\n</fuentes_extraidas>" if evidence else "")
+                f"Aporte opcional del participante: {request.text or 'Sin aporte previo'}" +
+                (f"\n<fuentes_extraidas>\n{evidence[:1400]}\n</fuentes_extraidas>" if evidence else "")
             )},
         ],
     }
