@@ -68,7 +68,7 @@ GUIDANCE = {
         "Contrasta la delimitación con información institucional actualizada.",
     ),
     "caracteristicas_culturales": (
-        "Describe las prácticas y expresiones culturales conocidas por el formador.",
+        "Investiga las prácticas y expresiones culturales del territorio; los aportes del formador son opcionales.",
         "Distingue experiencia local, datos documentados e hipótesis sobre su relación con el territorio.",
         "Identifica agentes, espacios o celebraciones únicamente si tienen respaldo.",
     ),
@@ -252,7 +252,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             if attempted >= 2:
                 break
             attempted += 1
-            record = {**candidate, "municipality": identity["municipality"], "year": None}
+            record = {**candidate, "municipality": identity["municipality"]}
             doc = await fetch_document(record, req.field)
             if doc:
                 docs.append(doc)
@@ -301,7 +301,11 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
                 f"{passage['title']}; {passage['url']}; "
                 f"{passage['locator']}; Extracto: {passage['excerpt']}"
             )
-        evidence = "\n".join(excerpts)[:1400] if excerpts else None
+        selected = []
+        for excerpt in excerpts:
+            if len("\n".join(selected + [excerpt])) <= 1400:
+                selected.append(excerpt)
+        evidence = "\n".join(selected) or None
         if len(req.text.strip()) < 10 and not evidence:
             blocked = True
             flags.append({"type": "NO_RECOVERED_EVIDENCE", "status": "INSUFFICIENT_EVIDENCE",
@@ -316,21 +320,25 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             blocked = generative.get("blocked_for_evidence", False)
             flags.extend(generative.get("review_flags", []))
             # Solo se permiten localizadores de las páginas recuperadas.
-            allowed_pages = {p["page"] for d in docs for p in d["passages"]}
+            allowed_pages = {int(n) for n in re.findall(r"^\[F1, p\.(\d+)\]", evidence or "", re.M)}
+            allowed_municipal = {int(n) for n in re.findall(r"^\[M(\d+)\]", evidence or "", re.M)}
             cited_pages = [int(value) for value in re.findall(r"\[F1,\s*p\.(\d+)\]", suggestion or "")]
             indexed_citations = re.findall(r"\[M(\d+)\]", suggestion or "")
-            invalid_municipal = any(int(n) < 1 or int(n) > len(live_passages[:2])
+            invalid_municipal = any(int(n) not in allowed_municipal
                                     for n in indexed_citations)
-            if invalid_municipal or any(page not in allowed_pages for page in cited_pages):
+            if (invalid_municipal or any(page not in allowed_pages for page in cited_pages)
+                    or (len(req.text.strip()) < 10 and suggestion and not (cited_pages or indexed_citations))):
                 suggestion = None
                 blocked = True
                 flags.append({"type": "UNVERIFIED_CITATION",
-                              "instruction": "El modelo citó una página ausente en los pasajes recuperados."})
+                              "instruction": "La propuesta carece de una cita requerida o cita un pasaje ausente del contexto entregado."})
         except HTTPException as exc:
             # Una caída o cuota del proveedor no debe impedir orientar al formador.
             if exc.status_code not in (429, 502, 503, 504):
                 raise
             suggestion = None
+            if not blocked:
+                flags.append({"type": "GENERATION_UNAVAILABLE", "instruction": "La asistencia generativa está temporalmente indisponible."})
     return {
         "section": "S02", "field": req.field,
         "territory": identity,
@@ -349,9 +357,9 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         "review_flags": flags,
         "requires_approval": True,
         "claim_status": "INSUFFICIENT_EVIDENCE",
-        "note": ("Los pasajes fueron extraídos de un PDF institucional con página y huella. "
+        "note": ("Se recuperaron pasajes documentales con localizador y huella. "
                  "Las afirmaciones e interpretaciones siguen sujetas a revisión humana."
-                 if docs else
+                 if docs or live_passages else
                  "Sin pasajes primarios recuperados para este campo. "
                  "Se ofrece orientación de formulación sin inventar datos.")
     }
