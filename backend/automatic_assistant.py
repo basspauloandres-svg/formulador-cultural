@@ -187,6 +187,26 @@ _PUBLIC_DOC_LOCK = asyncio.Lock()
 _PUBLIC_DOC_TTL = 3600
 _PUBLIC_DOC_MAX = 128
 
+_PUBLIC_DOC_INFLIGHT = {}
+_PUBLIC_DOC_DOWNLOADS = asyncio.Semaphore(4)
+
+async def _load_public_document(key, record, field):
+    try:
+        async with _PUBLIC_DOC_DOWNLOADS:
+            doc = await _fetch_document(record, field)
+        if doc:
+            public_data = {k: doc[k] for k in ("document_sha256", "passages", "status")}
+            async with _PUBLIC_DOC_LOCK:
+                _PUBLIC_DOC_CACHE[key] = (monotonic(), public_data)
+                _PUBLIC_DOC_CACHE.move_to_end(key)
+                while len(_PUBLIC_DOC_CACHE) > _PUBLIC_DOC_MAX:
+                    _PUBLIC_DOC_CACHE.popitem(last=False)
+            return public_data
+        return None
+    finally:
+        async with _PUBLIC_DOC_LOCK:
+            _PUBLIC_DOC_INFLIGHT.pop(key, None)
+
 async def fetch_document(record: dict, field: str) -> dict | None:
     validate_pdf_url(record["url"])
     key = (record["url"], field, record.get("municipality", ""))
@@ -195,21 +215,18 @@ async def fetch_document(record: dict, field: str) -> dict | None:
         if cached and monotonic() - cached[0] < _PUBLIC_DOC_TTL:
             _PUBLIC_DOC_CACHE.move_to_end(key)
             return {**record, **cached[1]}
-    doc = await _fetch_document(record, field)
-    if doc:
-        public_data = {k: doc[k] for k in ("document_sha256", "passages", "status")}
-        async with _PUBLIC_DOC_LOCK:
-            _PUBLIC_DOC_CACHE[key] = (monotonic(), public_data)
-            _PUBLIC_DOC_CACHE.move_to_end(key)
-            while len(_PUBLIC_DOC_CACHE) > _PUBLIC_DOC_MAX:
-                _PUBLIC_DOC_CACHE.popitem(last=False)
-    return doc
+        task = _PUBLIC_DOC_INFLIGHT.get(key)
+        if task is None:
+            task = asyncio.create_task(_load_public_document(key, record, field))
+            _PUBLIC_DOC_INFLIGHT[key] = task
+    public_data = await asyncio.shield(task)
+    return {**record, **public_data} if public_data else None
 
 async def guide(req: GuidedRequest, bearer: str) -> dict:
     if req.section != "S02" or req.field not in GUIDANCE:
         raise HTTPException(422, "La asistencia automática está limitada a S02.")
     # research() verifica sesión y consume únicamente la cuota de investigación.
-    search_text = req.text.strip() or ("Información territorial de " + req.context)
+    search_text = req.text.strip() if len(req.text.strip()) >= 10 else ("Información territorial de " + req.context)
     found = await research(ResearchRequest(section="S02", field=req.field,
         text=search_text, context=req.context, include_web=req.include_web), bearer)
     territorial_result = await resolve_territory(req.context)
@@ -285,7 +302,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
                 f"{passage['locator']}; Extracto: {passage['excerpt']}"
             )
         evidence = "\n".join(excerpts)[:1400] if excerpts else None
-        if not req.text.strip() and not evidence:
+        if len(req.text.strip()) < 10 and not evidence:
             blocked = True
             flags.append({"type": "NO_RECOVERED_EVIDENCE", "status": "INSUFFICIENT_EVIDENCE",
                           "instruction": "La búsqueda no recuperó pasajes pertinentes. Revisa las fuentes candidatas antes de formular afirmaciones."})
