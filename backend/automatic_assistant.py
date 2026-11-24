@@ -136,7 +136,9 @@ def passages_from_pdf(content: bytes, field: str, municipality: str = "") -> lis
                 passage = " ".join((before, line, after)).strip()[:470]
                 if len(passage) < 35:
                     continue
-                local = bool(municipality and clean_text(municipality) in clean_text(passage))
+                local = bool(municipality and re.search(r"\b" + re.escape(clean_text(municipality)) + r"\b", clean_text(passage)))
+                if municipality and not local:
+                    continue
                 specificity = sum(term in clean_text(passage) for term in terms)
                 matches.append((local, specificity, page_num, passage))
         matches.sort(key=lambda item: (-int(item[0]), -item[1], item[2]))
@@ -236,7 +238,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     docs = []
     for record in INSTITUTIONAL_DOCUMENTS.get(key, []):
         if req.field in record["topics"]:
-            doc = await fetch_document(record, req.field)
+            doc = await fetch_document({**record, "municipality": identity["municipality"]}, req.field)
             if doc:
                 docs.append(doc)
     # Recuperación acotada de candidatos PDF en dominios explícitamente autorizados.
