@@ -21,6 +21,7 @@ from assistant_pilot import AssistantRequest, assist
 from source_research import ResearchRequest, research
 from source_verifier import validate_pdf_url, MAX_PDF_BYTES, MAX_PAGES
 from municipal_sources import municipal_passages
+from national_sources import cultural_registry
 from territory_registry import resolve_territory, normalized as territory_normalized
 
 # Registro provisional de documentos institucionales identificados por municipio.
@@ -235,6 +236,9 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     identity = territorial_result.get("identity")
     key = ((territory_normalized(identity["municipality"]),
             territory_normalized(identity["department"])) if identity else None)
+    national_records = None
+    if identity and req.field == "caracteristicas_culturales":
+        national_records = await cultural_registry(identity["divipola"])
     docs = []
     for record in INSTITUTIONAL_DOCUMENTS.get(key, []):
         if req.field in record["topics"]:
@@ -349,6 +353,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         "territory_context": req.context,
         "guidance": list(GUIDANCE[req.field]),
         "sources": docs,
+        "national_records": national_records,
         "municipal_references": local_references,
         "evidence_input_status": ("LIVE_PASSAGES_AVAILABLE" if live_passages or docs
                                   else "NO_LIVE_PASSAGES"),
