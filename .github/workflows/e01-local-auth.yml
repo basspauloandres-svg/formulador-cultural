@@ -1,0 +1,41 @@
+name: E01 isolated authentication
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  local-auth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.39.2
+      - name: Start temporary Supabase outside repository
+        run: |
+          mkdir -p "$RUNNER_TEMP/vertice-e01"
+          cd "$RUNNER_TEMP/vertice-e01"
+          supabase init
+          supabase start
+      - name: Install candidate dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Verify real local authentication
+        env:
+          VERTICE_AUTH_MODE: isolated
+          VERTICE_TEST_SUPABASE_URL: http://127.0.0.1:54321
+          PYTHONPATH: backend
+        run: |
+          cd "$RUNNER_TEMP/vertice-e01"
+          export VERTICE_TEST_SUPABASE_PUBLIC_KEY="$(supabase status -o json | python -c 'import json,sys; print(json.load(sys.stdin)["ANON_KEY"])')"
+          cd "$GITHUB_WORKSPACE"
+          python scripts/e01_local_auth.py
+      - name: Stop temporary Supabase
+        if: always()
+        run: |
+          cd "$RUNNER_TEMP/vertice-e01"
+          supabase stop --no-backup
