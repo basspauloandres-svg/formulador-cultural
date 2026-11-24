@@ -32,7 +32,7 @@ function mount(){
    if(!host||host.querySelector('.vt-evidence-audit'))return;
    const panel=node('div','','vt-evidence-audit');
    panel.dataset.reviewField=field.dataset.field;
-   const button=node('button','Investigar y preparar redacción');
+   const button=node('button',active==='S02'?'Investigar y generar propuesta':'Investigar y preparar redacción');
    button.type='button';button.dataset.reviewAction='verify';
    const status=node('p','','vt-evidence-audit-status');status.setAttribute('role','status');
    const results=node('div','','vt-evidence-audit-results');results.hidden=true;
@@ -61,22 +61,23 @@ function mount(){
      const context=territory(),input=field.value.trim(),request=++seq;
      results.hidden=true;results.replaceChildren();proposal.hidden=true;
      if(!context){status.textContent='Completa el municipio en S01 para contextualizar la revisión.';return}
-     if(!input){status.textContent='Escribe una observación o afirmación en este campo para contrastarla.';return}
+     if(!input&&active!=='S02'){status.textContent='Escribe una observación o afirmación en este campo para contrastarla.';return}
      button.disabled=true;status.textContent='Contrastando afirmaciones y preparando un borrador editable...';
      try{
        const sessionResult=await sb.auth.getSession();
        const token=sessionResult?.data?.session?.access_token;
        if(!token){status.textContent='Inicia sesión para revisar fuentes.';return}
-       const response=await fetch(API+'/assistant/section/review',{
+       const isS02=active==='S02';
+       const response=await fetch(API+(isS02?'/assistant/s02/guide':'/assistant/section/review'),{
          method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-         body:JSON.stringify({section:active,field:field.dataset.field,text:input,context,include_web:true,compose:true})
+         body:JSON.stringify({section:active,field:field.dataset.field,text:input,context,include_web:true,compose:true,generate:true})
        });
        const data=await response.json();
        if(!response.ok){status.textContent=String(data.detail||'No se pudo completar la revisión.').slice(0,220);return}
        if(request!==seq||active!==data.section||field.value.trim()!==input||territory()!==context)return;
        const claims=Array.isArray(data.claims)?data.claims:[];
        results.appendChild(node('strong','Afirmaciones detectadas · evaluación preliminar'));
-       if(!claims.length)results.appendChild(node('p','No se identificaron oraciones completas; amplía la descripción.'));
+       if(!claims.length&&!isS02)results.appendChild(node('p','No se identificaron oraciones completas; amplía la descripción.'));
        const list=node('ul');
        claims.slice(0,10).forEach(claim=>{
          const li=node('li');
@@ -88,7 +89,7 @@ function mount(){
        if(data.conflicting_municipalities?.length){
          results.appendChild(node('p','El texto menciona otro municipio: '+data.conflicting_municipalities.join(', ')+'. Comprueba si es una comparación o un dato heredado.','vt-evidence-detail'));
        }
-       const primary=Array.isArray(data.primary_passages)?data.primary_passages:[];
+       const primary=isS02?[...(data.municipal_references||[]),...(data.sources||[]).flatMap(doc=>(doc.passages||[]).map(pass=>({...doc,...pass,locator:'Página '+pass.page,passage_status:'EXCERPT_FOUND_CLAIM_UNVERIFIED'})))]:Array.isArray(data.primary_passages)?data.primary_passages:[];
        if(primary.length){
          results.appendChild(node('strong','Referencias institucionales localizadas'));
          primary.slice(0,4).forEach(source=>{
@@ -98,7 +99,7 @@ function mount(){
              a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';
              wrapper.appendChild(a);
            }
-           const indexed=source.passage_status==='INDEXED_INSTITUTIONAL_REFERENCE_UNVERIFIED';
+           const indexed=source.passage_status!=='EXCERPT_FOUND_CLAIM_UNVERIFIED';
            wrapper.appendChild(node('p',String(source.excerpt||''),'vt-evidence-detail'));
            wrapper.appendChild(node('p',
              indexed
@@ -125,7 +126,7 @@ function mount(){
        else if(!primary.length)results.appendChild(node('p','No se localizaron fuentes institucionales pertinentes en esta consulta. La afirmación continúa sin respaldo documental.','vt-evidence-detail'));
        results.appendChild(node('p','Los pasajes institucionales identifican fragmentos consultables, pero su coincidencia temática no equivale a corroboración. Las afirmaciones y las observaciones siguen diferenciadas.','vt-evidence-detail'));
        results.hidden=false;
-       const suggestion=typeof data.suggestion==='string'?data.suggestion.trim():'';
+       const suggestion=!data.blocked_for_evidence&&typeof data.suggestion==='string'?data.suggestion.trim():'';
        if(suggestion){
          sourceValue=field.value;sourceContext=context;
          proposalText.value=suggestion;
@@ -136,7 +137,7 @@ function mount(){
              ' advertencia(s) sobre contenido generado o inferencias. Revisa antes de aprobar.','vt-evidence-detail'));
          }
        }else{
-         status.textContent='Se completó la revisión documental, pero la IA no produjo un borrador utilizable. Conservamos el texto original.';
+         status.textContent=data.blocked_for_evidence?'Evidencia insuficiente para formular una propuesta sustentada. Revisa las fuentes disponibles.':'La consulta no produjo un borrador utilizable. El campo permanece intacto.';
        }
      }catch{status.textContent='La consulta no respondió. El texto original sigue intacto.'}
      finally{button.disabled=false}
