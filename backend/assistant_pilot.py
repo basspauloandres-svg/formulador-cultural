@@ -65,11 +65,19 @@ async def verified_user(bearer: str) -> str:
     token = bearer[7:].strip()
     if not token or token.startswith("sb_"):
         raise HTTPException(401, "Se requiere una sesión autenticada.")
+    auth_url = SUPABASE_URL
+    auth_key = SUPABASE_PUBLIC_KEY
+    if os.getenv("VERTICE_AUTH_MODE") == "isolated":
+        auth_url = os.getenv("VERTICE_TEST_SUPABASE_URL", "").rstrip("/")
+        auth_key = os.getenv("VERTICE_TEST_SUPABASE_PUBLIC_KEY", "")
+        # The isolated runner must never fall back to hosted production auth.
+        if auth_url not in {"http://127.0.0.1:54321", "http://localhost:54321"} or not auth_key:
+            raise HTTPException(503, "Autenticación aislada no configurada.")
     try:
         async with httpx.AsyncClient(timeout=8) as client:
             response = await client.get(
-                SUPABASE_URL + "/auth/v1/user",
-                headers={"Authorization": "Bearer " + token, "apikey": SUPABASE_PUBLIC_KEY},
+                auth_url + "/auth/v1/user",
+                headers={"Authorization": "Bearer " + token, "apikey": auth_key},
             )
     except httpx.RequestError:
         raise HTTPException(503, "No se pudo comprobar la sesión.") from None
