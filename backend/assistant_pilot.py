@@ -18,8 +18,8 @@ SUPABASE_PUBLIC_KEY = "sb_publishable_YYXIMlsNUfi5RhZfhevMJw_6DovU9RK"
 GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 logger = logging.getLogger("uvicorn.error")
 WINDOW_SECONDS = 3600
-PER_USER_HOURLY = 8
-MAX_GLOBAL_HOURLY = 160
+PER_USER_HOURLY = int(os.getenv("VERTICE_AI_USER_HOURLY", "8"))
+MAX_GLOBAL_HOURLY = int(os.getenv("VERTICE_AI_GLOBAL_HOURLY", "160"))
 _times: dict[str, deque[float]] = defaultdict(deque)
 _lock = Lock()
 
@@ -117,7 +117,7 @@ async def assist(request: AssistantRequest, bearer: str, evidence: str | None = 
                    "No inventes referencias ni páginas. "
                    "No presentes causalidad, impacto o cifras sin apoyo textual. "
                    "Si el extracto no sirve, no introduzcas datos ajenos al texto del participante.")
-    model = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
+    model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
     payload = {
         "model": model,
         "temperature": 0.2,
