@@ -22,6 +22,21 @@ class ResearchFirstTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(result["suggestion"] is None, expected)
             self.assertIn("[M1]", assist.await_args.kwargs["evidence"])
 
+    def test_pdf_requires_explicit_municipality(self):
+        from unittest.mock import Mock
+        page = Mock()
+        page.extract_text.return_value = (
+            "En Chinchiná se realizaron talleres de música durante 2020."
+        )
+        with patch.object(aa, "PdfReader", return_value=Mock(pages=[page])):
+            self.assertEqual(aa.passages_from_pdf(b"", "caracteristicas_culturales", "Neira"), [])
+            page.extract_text.return_value = (
+                "En Neira se realizaron talleres de música durante 2020."
+            )
+            result = aa.passages_from_pdf(b"", "caracteristicas_culturales", "Neira")
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0]["page"], 1)
+
     async def test_forty_equivalent_downloads(self):
         aa._PUBLIC_DOC_CACHE.clear()
         aa._PUBLIC_DOC_INFLIGHT.clear()
