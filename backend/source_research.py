@@ -16,8 +16,8 @@ WIKIPEDIA_URL = "https://es.wikipedia.org/w/api.php"
 ALLOWED_FIELDS = {"territorio_o_lugar_de_intervencion", "caracteristicas_culturales",
                   "principales_dinamicas_sociales", "antecedentes"}
 RESEARCH_WINDOW_SECONDS = 3600
-RESEARCH_PER_USER_HOURLY = 20
-RESEARCH_GLOBAL_HOURLY = 300
+RESEARCH_PER_USER_HOURLY = int(os.getenv("VERTICE_RESEARCH_USER_HOURLY", "20"))
+RESEARCH_GLOBAL_HOURLY = int(os.getenv("VERTICE_RESEARCH_GLOBAL_HOURLY", "300"))
 _research_times: dict[str, deque[float]] = defaultdict(deque)
 _research_lock = Lock()
 
