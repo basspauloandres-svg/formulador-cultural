@@ -11,6 +11,17 @@ class ResearchFirstTests(unittest.IsolatedAsyncioTestCase):
             self.assertIsNone(result["suggestion"])
             assist.assert_not_awaited()
 
+    async def test_empty_field_requires_recovered_citation(self):
+        passage = {"passage_status": "EXCERPT_FOUND_CLAIM_UNVERIFIED", "sha256": "test", "excerpt": "Registro de talleres musicales en 2020.", "publisher": "Fuente de prueba", "title": "Informe", "url": "https://example.org", "locator": "p. 1"}
+        with patch.object(aa, "research", AsyncMock(return_value={"sources": [], "errors": []})), patch.object(aa, "resolve_territory", AsyncMock(return_value={"identity": None, "status": "UNRESOLVED"})), patch.object(aa, "municipal_passages", AsyncMock(return_value=[passage])), patch.object(aa, "assist", AsyncMock()) as assist:
+            req = aa.GuidedRequest(field="antecedentes", context="Manizales, Caldas")
+            for proposal, expected in [("Talleres en 2020 [M1].", False), ("Talleres en 2020.", True), ("Talleres en 2020 [M2].", True)]:
+                assist.return_value = {"suggestion": proposal}
+                result = await aa.guide(req, "Bearer test")
+                self.assertEqual(result["blocked_for_evidence"], expected)
+                self.assertEqual(result["suggestion"] is None, expected)
+            self.assertIn("[M1]", assist.await_args.kwargs["evidence"])
+
     async def test_forty_equivalent_downloads(self):
         aa._PUBLIC_DOC_CACHE.clear()
         aa._PUBLIC_DOC_INFLIGHT.clear()
