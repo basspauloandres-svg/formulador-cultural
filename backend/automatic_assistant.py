@@ -8,6 +8,9 @@ from __future__ import annotations
 from hashlib import sha256
 from io import BytesIO
 import re
+import asyncio
+from time import monotonic
+from collections import OrderedDict
 
 import httpx
 from fastapi import HTTPException
@@ -150,7 +153,7 @@ def passages_from_pdf(content: bytes, field: str, municipality: str = "") -> lis
     except Exception:
         return []
 
-async def fetch_document(record: dict, field: str) -> dict | None:
+async def _fetch_document(record: dict, field: str) -> dict | None:
     url = record["url"]
     validate_pdf_url(url)
     try:
@@ -177,6 +180,30 @@ async def fetch_document(record: dict, field: str) -> dict | None:
     return {**record, "document_sha256": sha256(data).hexdigest(),
             "passages": passages, "status": "PASSAGES_EXTRACTED_CLAIMS_UNVERIFIED"}
 
+
+# Caché acotada de documentos públicos; nunca almacena aportes ni borradores.
+_PUBLIC_DOC_CACHE = OrderedDict()
+_PUBLIC_DOC_LOCK = asyncio.Lock()
+_PUBLIC_DOC_TTL = 3600
+_PUBLIC_DOC_MAX = 128
+
+async def fetch_document(record: dict, field: str) -> dict | None:
+    validate_pdf_url(record["url"])
+    key = (record["url"], field, record.get("municipality", ""))
+    async with _PUBLIC_DOC_LOCK:
+        cached = _PUBLIC_DOC_CACHE.get(key)
+        if cached and monotonic() - cached[0] < _PUBLIC_DOC_TTL:
+            _PUBLIC_DOC_CACHE.move_to_end(key)
+            return {**record, **cached[1]}
+    doc = await _fetch_document(record, field)
+    if doc:
+        public_data = {k: doc[k] for k in ("document_sha256", "passages", "status")}
+        async with _PUBLIC_DOC_LOCK:
+            _PUBLIC_DOC_CACHE[key] = (monotonic(), public_data)
+            _PUBLIC_DOC_CACHE.move_to_end(key)
+            while len(_PUBLIC_DOC_CACHE) > _PUBLIC_DOC_MAX:
+                _PUBLIC_DOC_CACHE.popitem(last=False)
+    return doc
 
 async def guide(req: GuidedRequest, bearer: str) -> dict:
     if req.section != "S02" or req.field not in GUIDANCE:
