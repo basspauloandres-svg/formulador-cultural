@@ -50,6 +50,8 @@ TERRITORIAL_IDENTITIES = {
 }
 
 TOPIC_KEYWORDS = {
+    "territorio_o_lugar_de_intervencion": ("municipio", "territorio", "vereda", "ubicacion", "ordenamiento"),
+    "principales_dinamicas_sociales": ("comunidad", "poblacion", "participacion", "convivencia", "educacion"),
     "caracteristicas_culturales": (
         "banda", "musica", "musical", "fiesta", "festival", "danza",
         "teatro", "biblioteca", "museo", "artesania", "escuela de arte",
@@ -105,7 +107,7 @@ def clean_text(value: str) -> str:
     return "".join(c for c in value if not unicodedata.combining(c))
 
 
-def passages_from_pdf(content: bytes, field: str) -> list[dict]:
+def passages_from_pdf(content: bytes, field: str, municipality: str = "") -> list[dict]:
     """Extrae fragmentos coherentes y concretos, evita renglones sueltos.
 
     Busca expresiones de práctica cultural; una referencia genérica al
@@ -131,7 +133,7 @@ def passages_from_pdf(content: bytes, field: str) -> list[dict]:
                 passage = " ".join((before, line, after)).strip()[:470]
                 if len(passage) < 35:
                     continue
-                local = "neira" in clean_text(passage)
+                local = bool(municipality and clean_text(municipality) in clean_text(passage))
                 specificity = sum(term in clean_text(passage) for term in terms)
                 matches.append((local, specificity, page_num, passage))
         matches.sort(key=lambda item: (-int(item[0]), -item[1], item[2]))
@@ -169,7 +171,7 @@ async def fetch_document(record: dict, field: str) -> dict | None:
     data = bytes(content)
     if not data.startswith(b"%PDF"):
         return None
-    passages = passages_from_pdf(data, field)
+    passages = passages_from_pdf(data, field, record.get("municipality", ""))
     if not passages:
         return None
     return {**record, "document_sha256": sha256(data).hexdigest(),
@@ -193,6 +195,24 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             doc = await fetch_document(record, req.field)
             if doc:
                 docs.append(doc)
+    # Recuperación acotada de candidatos PDF en dominios explícitamente autorizados.
+    # Un candidato sin acceso o sin pasajes sigue siendo únicamente un candidato.
+    if identity and not docs:
+        attempted = 0
+        for candidate in found["sources"]:
+            url = candidate.get("url", "")
+            try:
+                validate_pdf_url(url)
+            except HTTPException:
+                continue
+            if attempted >= 2:
+                break
+            attempted += 1
+            record = {**candidate, "municipality": identity["municipality"], "year": None}
+            doc = await fetch_document(record, req.field)
+            if doc:
+                docs.append(doc)
+                break
     # Rutas municipales HTML: las referencias preindexadas se muestran, pero
     # jamás se inyectan como pruebas en el prompt generativo.
     text_normalized = clean_text(req.text)
