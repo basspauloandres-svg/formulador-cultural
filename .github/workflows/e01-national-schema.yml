@@ -1,0 +1,19 @@
+name: E01 national schema
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  national-schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install HTTP client
+        run: pip install httpx==0.28.1
+      - name: Inspect official dataset metadata
+        run: python scripts/e01_national_schema.py
