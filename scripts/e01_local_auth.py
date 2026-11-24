@@ -40,6 +40,54 @@ async def main():
             raise AssertionError("Invalid session accepted")
     print("E01 missing and invalid sessions rejected: PASS")
 
+    # No provider credential in this run: exercise live retrieval and abstention,
+    # without allowing a model call or reading any participant data.
+    os.environ.pop("GROQ_API_KEY", None)
+    from automatic_assistant import GuidedRequest, guide
+    from unittest.mock import patch
+    import re
+
+    bearer = "Bearer " + token
+    positive = False
+    for context, field, code in (
+        ("Neira, Caldas", "caracteristicas_culturales", "17486"),
+        ("Villamaría, Caldas", "territorio_o_lugar_de_intervencion", "17873"),
+        ("Villamaría, Caldas", "caracteristicas_culturales", "17873"),
+    ):
+        result = await guide(GuidedRequest(field=field, context=context,
+                                          text="", include_web=False, generate=False), bearer)
+        identity = result.get("territory")
+        print(f"E01 retrieval {code}/{field}: {result['territory_resolution']} / {result['evidence_input_status']}")
+        if result["evidence_input_status"] != "LIVE_PASSAGES_AVAILABLE":
+            continue
+        assert identity and identity["divipola"] == code
+        assert result["suggestion"] is None
+        assert result["claim_status"] == "INSUFFICIENT_EVIDENCE"
+        for doc in result["sources"]:
+            assert re.fullmatch(r"[0-9a-f]{64}", doc["document_sha256"])
+            assert doc["passages"] and all(p["page"] >= 1 and p["excerpt"] for p in doc["passages"])
+        for passage in result["municipal_references"]:
+            if passage["passage_status"] == "EXCERPT_FOUND_CLAIM_UNVERIFIED":
+                assert re.fullmatch(r"[0-9a-f]{64}", passage["sha256"])
+                assert passage["locator"] and passage["excerpt"]
+        positive = True
+    # A deliberately nonexistent territory tests the actual negative path.
+    # The spy fails immediately if a model call is attempted.
+    with patch("automatic_assistant.assist", side_effect=AssertionError("Model invoked without evidence")) as model:
+        negative = await guide(GuidedRequest(field="antecedentes",
+                               context="Municipio inexistente E01 00000", text="",
+                               include_web=False, generate=True), bearer)
+        assert negative["evidence_input_status"] == "NO_LIVE_PASSAGES"
+        assert negative["blocked_for_evidence"] is True
+        assert negative["suggestion"] is None
+        assert any(f["type"] == "NO_RECOVERED_EVIDENCE" for f in negative["review_flags"])
+        model.assert_not_called()
+    print("E01 real negative path: PASS")
+    if not positive:
+        raise RuntimeError("E01 INSUFFICIENT_EVIDENCE: no live positive document recovered")
+    print("E01 live positive retrieval: PASS (semantic support and model inference not assessed)")
+
+
 
 if __name__ == "__main__":
     asyncio.run(main())
