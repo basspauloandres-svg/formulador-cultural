@@ -15,12 +15,16 @@ from automatic_assistant import GuidedRequest, guide
 from section_review import SectionReviewRequest, review_section
 from territory_registry import resolve_territory
 
+from request_limits import ResourceLimits
+
 app = FastAPI(title="Formulador Cultural API", version="0.3.0")
+app.add_middleware(ResourceLimits)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://basspauloandres-svg.github.io",
         "https://www.vtcultural.com",
+        "https://vtcultural.com",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "http://localhost:5500",
@@ -29,6 +33,7 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
+    expose_headers=["Retry-After"],
 )
 repo = InMemoryProjectRepository()
 
