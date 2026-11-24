@@ -292,12 +292,23 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
                         + ", pero el municipio registrado es " + req.context
                         + ". Confirma si se trata de una comparación o de contenido anterior.")
     }] if conflicts else [])
+    # El registro nacional aporta únicamente el hecho de que existen filas
+    # asociadas al código; no se transmiten textos externos ni conteos totales.
+    national_evidence = None
+    if (national_records and national_records["status"] == "RECORDS_RETRIEVED"
+            and national_records.get("records") and national_records.get("response_sha256")):
+        national_evidence = (
+            "[N1] El conjunto administrativo eenq-ga7s de Datos Abiertos Colombia "
+            "contiene registros de organizaciones y entidades del sector Cultura "
+            f"asociados al código DIVIPOLA {identity['divipola']}. "
+            "Este registro no demuestra actividad actual, cantidad total ni prácticas culturales."
+        )
     # Los resultados de catálogo permanecen sin verificar y no ingresan al prompt.
     suggestion = None
     blocked = False
     flags = list(territory_flags)
     if req.generate:
-        excerpts = []
+        excerpts = [national_evidence] if national_evidence else []
         for doc in docs[:1]:
             for passage in doc["passages"][:3]:
                 excerpts.append(f"[F1, p.{passage['page']}] {passage['excerpt']}")
@@ -332,8 +343,11 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             indexed_citations = re.findall(r"\[M(\d+)\]", suggestion or "")
             invalid_municipal = any(int(n) not in allowed_municipal
                                     for n in indexed_citations)
-            if (invalid_municipal or any(page not in allowed_pages for page in cited_pages)
-                    or (len(req.text.strip()) < 10 and suggestion and not (cited_pages or indexed_citations))):
+            national_citations = re.findall(r"\[N(\d+)\]", suggestion or "")
+            invalid_national = any(n != "1" or not evidence or not evidence.startswith("[N1]")
+                                   for n in national_citations)
+            if (invalid_national or invalid_municipal or any(page not in allowed_pages for page in cited_pages)
+                    or (len(req.text.strip()) < 10 and suggestion and not (cited_pages or indexed_citations or national_citations))):
                 suggestion = None
                 blocked = True
                 flags.append({"type": "UNVERIFIED_CITATION",
@@ -354,8 +368,10 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         "guidance": list(GUIDANCE[req.field]),
         "sources": docs,
         "national_records": national_records,
+        "national_evidence": national_evidence,
         "municipal_references": local_references,
         "evidence_input_status": ("LIVE_PASSAGES_AVAILABLE" if live_passages or docs
+                                  else "NATIONAL_RECORDS_AVAILABLE" if national_evidence
                                   else "NO_LIVE_PASSAGES"),
         "candidate_sources": found["sources"],
         "errors": found["errors"],
@@ -367,6 +383,8 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         "note": ("Se recuperaron pasajes documentales con localizador y huella. "
                  "Las afirmaciones e interpretaciones siguen sujetas a revisión humana."
                  if docs or live_passages else
+                 "Registro administrativo nacional recuperado; alcance limitado y revisión humana requerida."
+                 if national_evidence else
                  "Sin pasajes primarios recuperados para este campo. "
                  "Se ofrece orientación de formulación sin inventar datos.")
     }
