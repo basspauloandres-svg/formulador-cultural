@@ -196,7 +196,12 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     # Rutas municipales HTML: las referencias preindexadas se muestran, pero
     # jamás se inyectan como pruebas en el prompt generativo.
     text_normalized = clean_text(req.text)
-    topics = set()
+    topics = {
+        "territorio_o_lugar_de_intervencion": {"TERRITORIO"},
+        "caracteristicas_culturales": {"PRACTICAS_MUSICALES", "GASTRONOMIA"},
+        "principales_dinamicas_sociales": {"PRACTICAS_MUSICALES"},
+        "antecedentes": {"PRACTICAS_MUSICALES"},
+    }[req.field].copy()
     if re.search(r"manizales|cerca|ubicad|territor|l[ií]mite|casco", text_normalized):
         topics.add("TERRITORIO")
     if re.search(r"gastronom|plato|culinari", text_normalized):
@@ -221,7 +226,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     suggestion = None
     blocked = False
     flags = list(territory_flags)
-    if req.generate and len(req.text.strip()) >= 10:
+    if req.generate:
         excerpts = []
         for doc in docs[:1]:
             for passage in doc["passages"][:3]:
@@ -233,7 +238,13 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
                 f"{passage['locator']}; Extracto: {passage['excerpt']}"
             )
         evidence = "\n".join(excerpts)[:1400] if excerpts else None
+        if not req.text.strip() and not evidence:
+            blocked = True
+            flags.append({"type": "NO_RECOVERED_EVIDENCE", "status": "INSUFFICIENT_EVIDENCE",
+                          "instruction": "La búsqueda no recuperó pasajes pertinentes. Revisa las fuentes candidatas antes de formular afirmaciones."})
         try:
+            if blocked:
+                raise HTTPException(503, "Sin evidencia recuperada")
             generative = await assist(AssistantRequest(section="S02", field=req.field,
                 text=req.text, context=req.context, action="redactar"), bearer,
                 evidence=evidence)
@@ -265,7 +276,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         "guidance": list(GUIDANCE[req.field]),
         "sources": docs,
         "municipal_references": local_references,
-        "evidence_input_status": ("LIVE_PASSAGES_AVAILABLE" if live_passages
+        "evidence_input_status": ("LIVE_PASSAGES_AVAILABLE" if live_passages or docs
                                   else "NO_LIVE_PASSAGES"),
         "candidate_sources": found["sources"],
         "errors": found["errors"],
