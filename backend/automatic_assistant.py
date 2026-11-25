@@ -22,6 +22,7 @@ from source_research import ResearchRequest, research
 from source_verifier import validate_pdf_url, MAX_PDF_BYTES, MAX_PAGES
 from municipal_sources import municipal_passages
 from national_sources import cultural_registry
+from citation_audit import audit_citations
 from territory_registry import resolve_territory, normalized as territory_normalized
 
 # Registro provisional de documentos institucionales identificados por municipio.
@@ -308,6 +309,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     blocked = False
     flags = list(territory_flags)
     evidence_manifest = []
+    claim_audit = []
     if req.generate:
         excerpts = [national_evidence] if national_evidence else []
         provenance = []
@@ -376,6 +378,11 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             suggestion = None
             if not blocked:
                 flags.append({"type": "GENERATION_UNAVAILABLE", "instruction": "La asistencia generativa está temporalmente indisponible."})
+    claim_audit = audit_citations(suggestion, evidence_manifest)
+    if any(c["status"] == "INVALID_PROVENANCE" for c in claim_audit):
+        suggestion = None
+        blocked = True
+        flags.append({"type":"INVALID_PROVENANCE","instruction":"Una cita carece de procedencia íntegra."})
     return {
         "section": "S02", "field": req.field,
         "territory": identity,
@@ -388,6 +395,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         "national_evidence": national_evidence,
         "evidence_manifest": evidence_manifest,
         "semantic_support_status": "NOT_ASSESSED",
+        "claim_audit": claim_audit,
         "municipal_references": local_references,
         "evidence_input_status": ("LIVE_PASSAGES_AVAILABLE" if live_passages or docs
                                   else "NATIONAL_RECORDS_AVAILABLE" if national_evidence
