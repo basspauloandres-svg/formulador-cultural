@@ -102,7 +102,8 @@ async def main():
             assert result["territory"]["divipola"] == code
             assert result["requires_approval"] is True
             assert result["claim_status"] == "INSUFFICIENT_EVIDENCE"
-            if result["suggestion"] and not result["blocked_for_evidence"]:
+            if (result["suggestion"] and not result["blocked_for_evidence"] and
+                    result.get("suggestion_origin") == "MODEL_DRAFT_UNVERIFIED"):
                 assert re.search(r"\[(?:N1|M[12]|F1,\s*p\.\d+)\]", result["suggestion"])
                 print(f"E01 real inference {code}: PASS_STRUCTURAL_ONLY")
                 return
