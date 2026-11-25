@@ -13,7 +13,7 @@ from fastapi import HTTPException
 from assistant_pilot import configured, groq_key, reserve, GROQ_ENDPOINT
 from generative_grounding import guard_generated_claims
 from claim_audit import qualify_claims
-from prompt_boundary import BOUNDARY, data_message, safe_model_content
+from prompt_boundary import BOUNDARY, data_message, safe_model_content, quarantine_directives, quarantine_flag, contains_directive
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -36,7 +36,16 @@ async def compose_section_draft(*, section: str, field: str, text: str,
                                 territory: str, claims: list[dict],
                                 passages: list[dict], user_id: str) -> dict:
     """Genera y controla una propuesta; tolera falta de proveedor o cuota."""
-    evidence, used = live_context(passages)
+    text, text_flag = quarantine_directives(text)
+    territory, territory_flag = quarantine_directives(territory)
+    clean_claims = [c for c in claims if not contains_directive(c.get("statement",""))]
+    clean_passages = [p for p in passages if not any(contains_directive(str(p.get(k,""))) for k in ("title","publisher","excerpt","locator"))]
+    quarantine = text_flag or territory_flag or len(clean_claims)!=len(claims) or len(clean_passages)!=len(passages)
+    claims = clean_claims
+    evidence, used = live_context(clean_passages)
+    if quarantine and not text.strip() and not evidence:
+        return {"suggestion":None,"draft_status":"UNTRUSTED_DIRECTIVE_QUARANTINED",
+                "review_flags":[quarantine_flag()],"evidence_used":used}
     if not configured():
         return {"suggestion": None, "draft_status": "MODEL_NOT_CONFIGURED",
                 "review_flags": [], "evidence_used": used}
@@ -91,6 +100,11 @@ async def compose_section_draft(*, section: str, field: str, text: str,
         draft, flags = guard_generated_claims(raw.strip()[:1600], text, evidence)
         draft, causal_flags = qualify_claims(draft)
         flags.extend(causal_flags)
+        if quarantine:
+            flags.insert(0, quarantine_flag())
+        if contains_directive(draft):
+            return {"suggestion":None,"draft_status":"UNTRUSTED_DIRECTIVE_QUARANTINED",
+                    "review_flags":[quarantine_flag()],"evidence_used":used}
         # Referencias no presentes, incluso en frases sin adiciones léxicas,
         # no se podrán aprobar como una supuesta fuente.
         identifiers = re.findall(r"\[E(\d+)\]", draft)
