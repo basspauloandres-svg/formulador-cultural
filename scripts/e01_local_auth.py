@@ -42,6 +42,7 @@ async def main():
 
     # No provider credential in this run: exercise live retrieval and abstention,
     # without allowing a model call or reading any participant data.
+    isolated_model_key = os.environ.pop("VERTICE_E01_GROQ_KEY", "").strip()
     os.environ.pop("GROQ_API_KEY", None)
     from automatic_assistant import GuidedRequest, guide
     from unittest.mock import patch
@@ -86,6 +87,28 @@ async def main():
     if not positive:
         raise RuntimeError("E01 INSUFFICIENT_EVIDENCE: no live positive document recovered")
     print("E01 live positive retrieval: PASS (semantic support and model inference not assessed)")
+    # Explicitly separate real inference from synthetic and retrieval-only evidence.
+    if not isolated_model_key:
+        print("E01 real inference: NOT_RUN_NO_ISOLATED_CREDENTIAL")
+        return
+    os.environ["GROQ_API_KEY"] = isolated_model_key
+    try:
+        for context, code in (("Medellín, Antioquia", "05001"), ("Bogotá, Bogotá D.C.", "11001")):
+            result = await guide(GuidedRequest(field="caracteristicas_culturales",
+                                  context=code, text="", include_web=False, generate=True), bearer)
+            if not result.get("national_evidence"):
+                continue
+            assert result["territory"]["divipola"] == code
+            assert result["requires_approval"] is True
+            assert result["claim_status"] == "INSUFFICIENT_EVIDENCE"
+            if result["suggestion"] and not result["blocked_for_evidence"]:
+                assert re.search(r"\[(?:N1|M[12]|F1,\s*p\.\d+)\]", result["suggestion"])
+                print(f"E01 real inference {code}: PASS_STRUCTURAL_ONLY")
+                return
+        raise RuntimeError("E01 real inference did not return a reviewable cited draft")
+    finally:
+        os.environ.pop("GROQ_API_KEY", None)
+
 
 
 
