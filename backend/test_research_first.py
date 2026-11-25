@@ -12,14 +12,20 @@ class ResearchFirstTests(unittest.IsolatedAsyncioTestCase):
             assist.assert_not_awaited()
 
     async def test_empty_field_requires_recovered_citation(self):
-        passage = {"passage_status": "EXCERPT_FOUND_CLAIM_UNVERIFIED", "sha256": "test", "excerpt": "Registro de talleres musicales en 2020.", "publisher": "Fuente de prueba", "title": "Informe", "url": "https://example.org", "locator": "p. 1"}
-        with patch.object(aa, "research", AsyncMock(return_value={"sources": [], "errors": []})), patch.object(aa, "resolve_territory", AsyncMock(return_value={"identity": None, "status": "UNRESOLVED"})), patch.object(aa, "municipal_passages", AsyncMock(return_value=[passage])), patch.object(aa, "assist", AsyncMock()) as assist:
+        passage = {"passage_status": "EXCERPT_FOUND_CLAIM_UNVERIFIED", "sha256": "a"*64, "excerpt": "Registro de talleres musicales en 2020.", "publisher": "Fuente de prueba", "title": "Informe", "url": "https://example.org", "locator": "p. 1"}
+        with patch.object(aa, "research", AsyncMock(return_value={"sources": [], "errors": []})), patch.object(aa, "resolve_territory", AsyncMock(return_value={"identity": {"municipality":"Manizales","department":"Caldas","divipola":"17001"}, "status": "FOUND"})), patch.object(aa, "municipal_passages", AsyncMock(return_value=[passage])), patch.object(aa, "assist", AsyncMock()) as assist:
             req = aa.GuidedRequest(field="antecedentes", context="Manizales, Caldas")
             for proposal, expected in [("Talleres en 2020 [M1].", False), ("Talleres en 2020.", True), ("Talleres en 2020 [M2].", True)]:
                 assist.return_value = {"suggestion": proposal}
                 result = await aa.guide(req, "Bearer test")
                 self.assertEqual(result["blocked_for_evidence"], expected)
                 self.assertEqual(result["suggestion"] is None, expected)
+                manifest = result["evidence_manifest"]
+                self.assertEqual(len(manifest), 1)
+                self.assertEqual(manifest[0]["citation"], "M1")
+                self.assertEqual(manifest[0]["divipola"], "17001")
+                self.assertEqual(manifest[0]["sha256"], "a"*64)
+                self.assertEqual(result["semantic_support_status"], "NOT_ASSESSED")
             self.assertIn("[M1]", assist.await_args.kwargs["evidence"])
 
     def test_pdf_requires_explicit_municipality(self):
