@@ -29,6 +29,7 @@ jobs:
           VERTICE_AUTH_MODE: isolated
           VERTICE_TEST_SUPABASE_URL: http://127.0.0.1:54321
           PYTHONPATH: backend
+          VERTICE_E01_GROQ_KEY: ${{ secrets.VERTICE_E01_GROQ_KEY }}
         run: |
           cd "$RUNNER_TEMP/vertice-e01"
           export VERTICE_TEST_SUPABASE_PUBLIC_KEY="$(supabase status -o json | python -c 'import json,sys; print(json.load(sys.stdin)["ANON_KEY"])')"
