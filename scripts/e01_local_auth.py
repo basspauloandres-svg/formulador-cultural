@@ -93,11 +93,13 @@ async def main():
         return
     os.environ["GROQ_API_KEY"] = isolated_model_key
     try:
-        for code in ("05001", "11001"):
+        registry_pass = False
+        model_pass = False
+        for code in ("05001", "11001", "17486", "17873"):
             result = await guide(GuidedRequest(field="caracteristicas_culturales",
                                   context=code, text="", include_web=False, generate=True), bearer)
             print(f"E01 inference {code}: territory={result['territory_resolution']} evidence={result['evidence_input_status']} draft={bool(result['suggestion'])} blocked={result['blocked_for_evidence']} flags={[f.get('type') for f in result['review_flags']]}")
-            if not result.get("national_evidence"):
+            if not result.get("evidence_manifest"):
                 continue
             assert result["territory"]["divipola"] == code
             assert result["requires_approval"] is True
@@ -106,8 +108,14 @@ async def main():
                     result.get("suggestion_origin") == "MODEL_DRAFT_UNVERIFIED"):
                 assert re.search(r"\[(?:N1|M[12]|F1,\s*p\.\d+)\]", result["suggestion"])
                 print(f"E01 real inference {code}: PASS_STRUCTURAL_ONLY")
-                return
-        raise RuntimeError("E01 real inference did not return a reviewable cited draft")
+                model_pass = True
+            if result.get("national_evidence") and result["suggestion"] and not result["blocked_for_evidence"] and all(c["status"] == "REGISTRY_FACT_REVIEW_REQUIRED" for c in result["claim_audit"]):
+                registry_pass = True
+                print(f"E02 scoped registry output {code}: PASS ({result[\'suggestion_origin\']})")
+            if model_pass and registry_pass:
+                break
+        if not model_pass or not registry_pass:
+            raise RuntimeError(f"E01/E02 acceptance incomplete: genuine_model={model_pass}, scoped_registry={registry_pass}")
     finally:
         os.environ.pop("GROQ_API_KEY", None)
 
