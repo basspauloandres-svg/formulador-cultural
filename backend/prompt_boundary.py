@@ -28,7 +28,7 @@ def safe_model_content(message, *, credential=""):
         raise ValueError("Empty model response")
     # Detect explicit protocol delimiters and credential echo without logging.
     normalized = unicodedata.normalize("NFKC", raw).casefold()
-    if re.search(r"<\|(?:im_start|im_end|start_header_id|end_header_id|system|assistant|tool|start|end|channel|message)\|>|\[/?INST\]|<<\s*/?SYS\s*>>|</?fuentes_extraidas\s*>", normalized):
+    if re.search(r"<\|(?:im_start|im_end|start_header_id|end_header_id|system|assistant|tool|start|end|channel|message)\|>|\[/?inst\]|<<\s*/?sys\s*>>|</?fuentes_extraidas\s*>", normalized):
         raise ValueError("Unexpected protocol markers")
     if credential and credential in raw:
         raise ValueError("Credential echo")
