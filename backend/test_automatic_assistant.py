@@ -239,3 +239,6 @@ def test_national_record_citations_require_actual_retrieval():
             assert result["evidence_input_status"] == "NATIONAL_RECORDS_AVAILABLE"
             assert result["claim_status"] == "INSUFFICIENT_EVIDENCE"
             assert "[N1]" in model.await_args.kwargs["evidence"]
+            if not blocked:
+                assert result["claim_audit"][0]["status"] == "INSUFFICIENT_EVIDENCE"
+                assert result["evidence_manifest"][0]["scope"] == "RECORD_EXISTENCE_ONLY"
