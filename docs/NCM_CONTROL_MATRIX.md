@@ -74,3 +74,11 @@ Autorizado por el investigador después del hito del 25 %. Se incorpora la skill
 
 ## Ejecución por hitos con comunicación mínima
 Se incorpora VÉRTICE Milestone Execution v1.0.0 en .agents/skills/vertice-milestone-execution/SKILL.md (2143ddd) y AGENTS.md (113c1af). Objetivo vigente: 30 %. Partida: 27 % estimado, 25 % aceptado. Criterio operativo intermedio propuesto: S01 aprobado (42 permisos/RLS, A/B CRUD/upsert con integridad y negaciones verificadas), regresiones esenciales y checkpoint exacto. No sustituye los criterios NCM ni modifica hitos 25/50/75/100. No se atribuye avance porcentual a incorporar la skill. S01 sigue activo. Registrar avance y limitaciones; informar al cierre o si la ejecución debe interrumpirse. Producción sin cambios.
+
+
+## Hito intermedio 30 % — S01 aceptado en entorno aislado
+Fecha local 2026-11-24. Candidato exacto ee54c87a5a25a81dbe3e5bd0b99227115e834386; checkpoint checkpoint/2026-11-24-security-30.
+- S01 run 45536014174: 42 permisos efectivos, RLS en 3 tablas y 110 comprobaciones A/B con sesiones reales, CRUD/upsert, listado exclusivo de recursos propios, rechazo de accesos cruzados, anónimos y tokens inválidos. Integridad de datos sintéticos confirmada. PASS.
+- Regresiones del mismo candidato: Python 176 aprobadas (19 advertencias), run 45536014240; navegador 12 aprobadas, run 45536014291; cobertura y esquema nacional 45536014195/45536014179 PASS; autenticación aislada, tres controles semánticos y flujo real 45536014201 PASS. Inferencia real de Neira: PASS_STRUCTURAL_ONLY. Se conserva el fallo previo 45535606876 por abstención no confirmada; no se declara precisión semántica general.
+- S01: ACCEPTED_ISOLATED_TESTED_SCOPE. Advertencia de protección de contraseñas comprometidas y restauración siguen pendientes; cualquier cambio de configuración alojada requiere autorización específica. Aislamiento probado en entorno local reproducible, no mediante modificación de proyectos reales. Sin fusión ni despliegue. Base main c9839baa.
+- Objetivo intermedio 30 % satisfecho; detener bloque. Siguiente control S02 (inyección de instrucciones y herramientas) cuando se autorice continuar. Se mantienen hitos 50/75/100.
