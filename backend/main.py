@@ -54,7 +54,7 @@ class SectionUpdate(BaseModel):
 class VesterInput(BaseModel):
     source: str
     target: str
-    score: int = Field(ge=0, le=3)
+    score: int = Field(ge=0, le=3, strict=True)
     justification: str = Field(min_length=1)
 
 def current_user(x_user_id: str | None) -> UUID:
@@ -159,8 +159,12 @@ def document_pdf(payload: dict) -> StreamingResponse:
 
 @app.post("/vester/calculate")
 def vester_calculate(payload: list[VesterInput]) -> dict:
-    relations = [VesterRelation(**item.model_dump()) for item in payload]
-    return {"result": calculate_vester(relations), "note": "Cálculo determinístico; la valoración 0–3 es decisión humana."}
+    try:
+        relations = [VesterRelation(**item.model_dump()) for item in payload]
+        result = calculate_vester(relations)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    return {"result": result, "note": "Cálculo determinístico; la valoración 0–3 es decisión humana."}
 
 def serialize(project: Project) -> dict:
     return {
