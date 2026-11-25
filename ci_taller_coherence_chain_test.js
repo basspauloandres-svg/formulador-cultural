@@ -102,3 +102,27 @@ snapshot.sections.S04={evidencia_disponible:'REGISTRO QA simulado'};
 
 assert.strictEqual(report().score,100,'Regresar a conexiones válidas debe restaurar coherencia');
 console.log('PASS coherencia sintética: cadena válida + 8 perturbaciones dirigidas + recuperación del diagnóstico');
+
+snapshot.derived.results.push({id:'R2',objectiveId:'INVALID',confirmed:true,text:'Resultado huérfano'});
+assert.strictEqual(check('Objetivos → resultados').status,'REQUIERE AJUSTE');
+snapshot=project();
+snapshot.derived.activities.push({id:'A2',resultId:'INVALID',confirmed:true,text:'Actividad huérfana'});
+assert.strictEqual(check('Resultados → actividades').status,'REQUIERE AJUSTE');
+snapshot=project();
+snapshot.derived.objectives.items[1].sourceText='CAUSA DISTINTA';
+assert.strictEqual(check('Causas directas → objetivos específicos').status,'REQUIERE AJUSTE');
+snapshot=project();
+snapshot.derived.risks[0].owner='';
+assert.strictEqual(check('Riesgos prioritarios con respuesta').status,'REQUIERE AJUSTE');
+snapshot=project();
+snapshot.derived.results=[];
+snapshot.derived.activities=[];
+snapshot.derived.indicators=[];
+snapshot.derived.schedule=[];
+snapshot.derived.budget=[];
+assert(report().score<100);
+assert.strictEqual(report().structuralComplete,false);
+snapshot=project();
+assert.strictEqual(report().structuralComplete,true);
+assert.strictEqual(report().qualityValidated,false);
+console.log('PASS Q02: orphan links, cause mapping, risk ownership and incomplete score');
