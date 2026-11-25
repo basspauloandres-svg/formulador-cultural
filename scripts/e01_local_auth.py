@@ -93,6 +93,8 @@ async def main():
         return
     os.environ["GROQ_API_KEY"] = isolated_model_key
     try:
+        # Separate quota identity for S02; actual S02 assist uses real bearer.
+        # Run after E01/E02 acceptance in this same isolated job.
         # Test known semantic relationships against a synthetic public-style
         # passage. No participant information; no fallback may count as PASS.
         from semantic_review import review_one
@@ -133,6 +135,12 @@ async def main():
                 break
         if not model_pass or not registry_pass:
             raise RuntimeError(f"E01/E02 acceptance incomplete: genuine_model={model_pass}, scoped_registry={registry_pass}")
+        from s02_live_controls import run_s02_controls
+        # Clear only this process-local synthetic integration quota, never hosted limits.
+        from assistant_pilot import _times, _lock
+        with _lock:
+            _times.clear()
+        await run_s02_controls(bearer, user, isolated_model_key)
     finally:
         os.environ.pop("GROQ_API_KEY", None)
 
