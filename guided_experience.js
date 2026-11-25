@@ -65,7 +65,7 @@ function state(c){
   if(c==='S13'){const xs=d.schedule_state?.items||[],acts=(data('S11').completion_state?.items||[]).filter(x=>x.confirmed);if(acts.length&&xs.filter(x=>x.confirmed).length>=acts.length)return 'complete';return xs.length?'progress':'missing'}
   if(c==='S14'){const b=d.budget_state||{},ass=b.activityStatus||{},items=b.items||[],acts=(data('S11').completion_state?.items||[]).filter(x=>x.confirmed);const ok=acts.filter(a=>{const st=ass[a.id];if(st==='nocost')return true;if(st==='cost'||st==='inkind'){const xs=items.filter(x=>x.activityId===a.id);return xs.length>0&&xs.every(x=>x.confirmed)}return false}).length;if(acts.length&&ok===acts.length)return 'complete';return items.length||Object.keys(ass).length?'progress':'missing'}
   if(c==='S15'){const r=d.risk_state||{},ass=r.assessments||{},targets=(r.targets||[]),items=r.items||[];const complete=targets.length&&targets.every(t=>{const a=ass[t.id];if(a==='no')return true;if(a==='yes')return !!items.find(x=>x.targetId===t.id&&x.confirmed);return false});if(complete)return 'complete';return items.length||Object.keys(ass).length?'progress':'missing'}
-  if(c==='S16'){const rv=d.review_state||{},prior=stages.flatMap(s=>s.items.map(i=>i[0])).filter(x=>x!=='S16');if(prior.some(x=>state(x)!=='complete'))return has(rv)?'progress':'missing';return rv.confirmed?'complete':has(rv)?'progress':'missing'}
+  if(c==='S16'){const rv=d.review_state||{},prior=stages.flatMap(s=>s.items.map(i=>i[0])).filter(x=>x!=='S16');if(prior.some(x=>state(x)!=='complete'))return has(rv)?'progress':'missing';return rv.confirmed&&window.fcReviewApprovalCurrent?.()===true?'complete':has(rv)?'progress':'missing'}
  }catch{}
  return fieldsStatus(c)
 }
