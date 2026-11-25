@@ -279,7 +279,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         topics.add("GASTRONOMIA")
     if re.search(r"music|banda|orquesta|agrupacion", text_normalized):
         topics.add("PRACTICAS_MUSICALES")
-    local_references = await municipal_passages(key, topics) if topics else []
+    local_references = await municipal_passages(key, topics) if key and topics else []
     live_passages = [p for p in local_references
                     if p.get("passage_status") == "EXCERPT_FOUND_CLAIM_UNVERIFIED"
                     and p.get("sha256") and p.get("excerpt")]
