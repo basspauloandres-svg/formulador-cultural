@@ -93,6 +93,23 @@ async def main():
         return
     os.environ["GROQ_API_KEY"] = isolated_model_key
     try:
+        # Test known semantic relationships against a synthetic public-style
+        # passage. No participant information; no fallback may count as PASS.
+        from semantic_review import review_one
+        from assistant_pilot import GROQ_ENDPOINT
+        excerpt="En 2024, el municipio organizó cinco talleres de música."
+        cases=[
+            ("Durante 2024 se realizaron cinco talleres musicales.","MODEL_ENTAILMENT_REVIEW_REQUIRED"),
+            ("En 2024 el municipio no organizó talleres de música.","MODEL_CONTRADICTION_REVIEW_REQUIRED"),
+            ("Los talleres mejoraron la convivencia de los participantes.","INSUFFICIENT_EVIDENCE"),
+        ]
+        for claim, expected in cases:
+            result=await review_one({"claim":claim,"citation":"F1,P.1","excerpt":excerpt},
+                isolated_model_key,os.getenv("GROQ_MODEL","openai/gpt-oss-120b"),GROQ_ENDPOINT)
+            print(f"E02 semantic control: expected={expected} observed={result['status']} method={result['method']}")
+            if result["status"] != expected or result["method"] != "MODEL_REVIEW":
+                raise RuntimeError("E02 live semantic control not satisfied")
+        os.environ["VERTICE_SEMANTIC_REVIEW"]="1"
         registry_pass = False
         model_pass = False
         for code in ("05001", "11001", "17486", "17873"):
