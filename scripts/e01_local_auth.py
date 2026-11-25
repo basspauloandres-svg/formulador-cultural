@@ -93,7 +93,7 @@ async def main():
         return
     os.environ["GROQ_API_KEY"] = isolated_model_key
     try:
-        for context, code in (("Medellín, Antioquia", "05001"), ("Bogotá, Bogotá D.C.", "11001")):
+        for code in ("05001", "11001"):
             result = await guide(GuidedRequest(field="caracteristicas_culturales",
                                   context=code, text="", include_web=False, generate=True), bearer)
             if not result.get("national_evidence"):
