@@ -84,3 +84,11 @@ def test_national_registry_does_not_authorize_new_counts():
         draft, flags = guard_generated_claims(statement, "", evidence)
         assert not draft
         assert any("cifras_nuevas_sin_fuente" in f.get("concepts", []) for f in flags)
+
+
+def test_pdf_locator_does_not_introduce_a_numeric_claim():
+    draft, flags = guard_generated_claims(
+        "La banda realiza actividades musicales [F1, p.37].", "",
+        "[F1, p.37] La banda realiza actividades musicales.")
+    assert "[F1, p.37]" in draft
+    assert not flags
