@@ -67,3 +67,20 @@ def test_numeric_citations_do_not_trigger_new_population_values():
         "[M1] Extracto: La banda musical participa en festividades.")
     assert "[M1]" in draft
     assert not flags
+
+
+def test_national_registry_identifier_is_not_a_population_claim():
+    evidence = "[N1] El registro contiene organizaciones asociadas al código DIVIPOLA 05001."
+    draft, flags = guard_generated_claims(
+        "Existen registros asociados al código DIVIPOLA 05001 [N1].", "", evidence)
+    assert "05001 [N1]" in draft
+    assert not flags
+
+
+def test_national_registry_does_not_authorize_new_counts():
+    evidence = "[N1] El registro contiene organizaciones asociadas al código DIVIPOLA 05001."
+    for statement in ("Existen 500 organizaciones [N1].",
+                      "Existen registros del código DIVIPOLA 11001 [N1]."):
+        draft, flags = guard_generated_claims(statement, "", evidence)
+        assert not draft
+        assert any("cifras_nuevas_sin_fuente" in f.get("concepts", []) for f in flags)
