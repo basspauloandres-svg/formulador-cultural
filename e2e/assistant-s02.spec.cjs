@@ -11,6 +11,8 @@ test('S02 integra una sola consulta, propuesta y aprobación',async({page})=>{
       section:req.section,field:req.field,territory_context:req.context,
       claims:[{statement:req.text,evidence_status:'INSUFFICIENT_EVIDENCE',note:'Requiere fuente original'}],
       sources:[],municipal_references:[],candidate_sources:[],conflicting_municipalities:[],
+      evidence_manifest:[{citation:'M1',kind:'municipal_html',divipola:'17873',url:'https://www.villamaria-caldas.gov.co/',prompt_excerpt:'Extracto sintético de prueba',sha256:'a'.repeat(64),excerpt_sha256:'b'.repeat(64)}],
+      claim_audit:[{fragment:'Afirmación sintética',status:'INSUFFICIENT_EVIDENCE'}],
       suggestion:'Según la información preliminar del formador, se describen encuentros musicales. [POR VERIFICAR]',
       review_flags:[{type:'USER_ASSERTIONS_UNVERIFIED'}],
       draft_status:'EDITABLE_UNVERIFIED',errors:[]
@@ -37,6 +39,10 @@ test('S02 integra una sola consulta, propuesta y aprobación',async({page})=>{
   const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('formulador-cultural-prototipo-v1')).S02.evidence_review_state.fields.caracteristicas_culturales);
   expect(stored.context).toBe('Villamaría, Caldas');
   expect(stored.status).toBe('ACCEPTED_UNVERIFIED');
+  expect(stored.manifest[0].divipola).toBe('17873');
+  expect(stored.claim_audit[0].status).toBe('INSUFFICIENT_EVIDENCE');
+  await card.getByText('Fuentes del borrador anteriormente incorporado').click();
+  await expect(card.getByText('Extracto sintético de prueba').last()).toBeVisible();
   await expect(card).toContainText('Borrador incorporado');
   await field.fill('Texto editado posteriormente.');
   await expect(card).toContainText('Texto modificado después de la revisión');
