@@ -358,7 +358,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
                 text=req.text, context=req.context, action="redactar"), bearer,
                 evidence=evidence)
             suggestion = generative["suggestion"] or None
-            suggestion_origin = "MODEL_DRAFT_UNVERIFIED" if suggestion else None
+            suggestion_origin = generative.get("suggestion_origin", "MODEL_DRAFT_UNVERIFIED") if suggestion else None
             blocked = generative.get("blocked_for_evidence", False)
             flags.extend(generative.get("review_flags", []))
             # Solo se permiten localizadores de las páginas recuperadas.
