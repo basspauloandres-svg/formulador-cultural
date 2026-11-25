@@ -54,14 +54,14 @@ def guard_generated_claims(generated: str, original: str,
         # Nunca introducir cifras o años que el formador no aportó y que
         # tampoco aparecen en un extracto obtenido durante esta petición.
         de_cited = re.sub(r"\[(?:F\d+,\s*p\.\d+|M\d+|N\d+)\]", "", normalized, flags=re.I)
-        numbers = set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)*(?!\w)", de_cited))
-        known = set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)*(?!\w)", authorized))
-        # A national registry locator is not a numeric claim. Only its explicit
-        # territorial identifier can be repeated; no counts are authorized.
+        # The identifier is exempt only in a labelled DIVIPOLA position.
+        # Reusing the same digits as an attendance count is still a new claim.
         if re.search(r"\[n1\]", normalized):
             national = re.search(r"^\[N1\].*?DIVIPOLA (\d{5})\.", live_evidence or "", re.M)
             if national:
-                known.add(national.group(1))
+                de_cited = re.sub(r"\bdivipola\s+" + re.escape(national.group(1)) + r"\b", "divipola", de_cited)
+        numbers = set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)*(?!\w)", de_cited))
+        known = set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)*(?!\w)", authorized))
         if numbers - known:
             novel.append("cifras_nuevas_sin_fuente")
         if novel:
