@@ -45,13 +45,23 @@ function mount(){
    const discard=node('button','Descartar redacción');discard.type='button';
    discard.dataset.reviewAction='discard';
    proposal.append(proposalTitle,proposalText,approve,discard);
-   panel.append(button,status,results,proposal);
+   const savedReview=node('p','','vt-evidence-detail');savedReview.hidden=true;
+   panel.append(button,status,savedReview,results,proposal);
    host.appendChild(panel);
-   let seq=0,lastContext=territory(),sourceValue='',sourceContext='',sourceSection='',sourceDraft='',needsReview=false;
+   let seq=0,lastContext=territory(),sourceValue='',sourceContext='',sourceSection='',sourceDraft='',needsReview=false,pendingAudit=null;
+   function showSavedReview(){
+     const record=draft?.S02?.evidence_review_state?.fields?.[field.dataset.field];
+     if(active!=='S02'||!record){savedReview.hidden=true;return;}
+     savedReview.hidden=false;
+     savedReview.textContent=record.context!==territory()?'Cotejo anterior de otro territorio. Investiga de nuevo.':record.accepted_text!==field.value?'Texto modificado después de la revisión. Requiere nuevo cotejo.':'Borrador incorporado el '+String(record.accepted_at||'').slice(0,10)+'; '+(record.status==='EDITED_UNREVIEWED'?'edición posterior a la auditoría.':'afirmaciones pendientes de cotejo.')+' Fuentes registradas: '+String(record.manifest?.length||0)+'.';
+   }
+   field.addEventListener('input',showSavedReview);
+   showSavedReview();
    function clearIfChanged(){
      const now=territory();
+     showSavedReview();
      if(now===lastContext)return false;
-     lastContext=now;seq+=1;results.hidden=true;results.replaceChildren();proposal.hidden=true;proposalText.value='';sourceValue='';sourceContext='';sourceDraft='';needsReview=false;
+     lastContext=now;seq+=1;results.hidden=true;results.replaceChildren();proposal.hidden=true;proposalText.value='';sourceValue='';sourceContext='';sourceDraft='';needsReview=false;pendingAudit=null;
      status.textContent='Cambió el municipio. Se descartó la revisión anterior.';
      return true;
    }
@@ -158,6 +168,9 @@ function mount(){
        results.hidden=false;
        const suggestion=!data.blocked_for_evidence&&typeof data.suggestion==='string'?data.suggestion.trim():'';
        if(suggestion){
+         pendingAudit=isS02?{context,divipola:data.territory?.divipola||null,
+           origin:data.suggestion_origin||'UNKNOWN',manifest,claim_audit:audited,
+           reviewed_text:suggestion}:null;
          sourceValue=field.value;sourceContext=context;sourceSection=requestedSection;sourceDraft=suggestion;needsReview=isS02;
          proposalText.value=suggestion;
          proposal.hidden=false;
@@ -181,6 +194,14 @@ function mount(){
      const edited=proposalText.value.trim();
      if(!edited){status.textContent='La propuesta está vacía. Conservamos tu texto.';return}
      if(needsReview&&!window.confirm(edited!==sourceDraft?'Editaste la propuesta después de la auditoría. Las nuevas afirmaciones no se han evaluado. ¿Incorporar como borrador pendiente de cotejo?':'La propuesta contiene afirmaciones pendientes de cotejo. ¿Incorporar como borrador sin declarar los hechos verificados?'))return;
+     if(needsReview&&pendingAudit){
+       const acceptedAt=new Date().toISOString();
+       draft.S02=draft.S02||{};
+       const previous=draft.S02.evidence_review_state||{};
+       draft.S02.evidence_review_state={updatedAt:acceptedAt,fields:{...previous.fields,
+         [field.dataset.field]:{...pendingAudit,accepted_text:edited,accepted_at:acceptedAt,
+           status:edited===sourceDraft?'ACCEPTED_UNVERIFIED':'EDITED_UNREVIEWED'}}};
+     }
      field.value=edited;
      field.dispatchEvent(new Event('input',{bubbles:true}));
      field.dispatchEvent(new Event('change',{bubbles:true}));
@@ -189,7 +210,7 @@ function mount(){
      const save=document.getElementById('save');if(save)save.click();
    };
    discard.onclick=()=>{
-     proposal.hidden=true;
+     proposal.hidden=true;pendingAudit=null;
      status.textContent='Propuesta descartada. El texto original continúa intacto.';
    };
  });
