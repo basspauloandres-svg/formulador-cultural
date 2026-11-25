@@ -31,10 +31,14 @@ def audit_citations(draft, manifest):
             continue
         refs = [canonical(x) for x in CITATION.findall(fragment)]
         body = normalize(CITATION.sub("", fragment))
-        status = "INSUFFICIENT_EVIDENCE"
-        if refs and all(ref in lookup for ref in refs):
-            # Only literal excerpt correspondence, not a paraphrase verdict.
-            for ref in refs:
+        support = []
+        malformed = re.findall(r"\[(?:F|M|N)\d[^\]\n]*\]", fragment, flags=re.I)
+        malformed = [ref for ref in malformed if not CITATION.fullmatch(ref)]
+        for ref in dict.fromkeys(refs):
+            status = "INSUFFICIENT_EVIDENCE"
+            if ref not in lookup:
+                status = "INVALID_PROVENANCE"
+            else:
                 for item in lookup[ref]:
                     if item.get("kind") == "administrative_registry":
                         expected = normalize("El conjunto administrativo eenq-ga7s de Datos Abiertos Colombia contiene registros de organizaciones y entidades del sector Cultura asociados al código DIVIPOLA " + str(item.get("divipola", "")))
@@ -45,7 +49,14 @@ def audit_citations(draft, manifest):
                     excerpt = excerpt.split("Extracto:", 1)[-1] if item["kind"] == "municipal_html" else CITATION.sub("", excerpt, count=1)
                     if len(body.split()) >= 5 and body in [normalize(part) for part in re.split(r"(?<=[.!?])\s+|\n+", excerpt)]:
                         status = "LITERAL_MATCH_REVIEW_REQUIRED"
-        if refs and any(ref not in lookup for ref in refs):
+            support.append({"citation":ref,"status":status})
+        statuses = {item["status"] for item in support}
+        if malformed or "INVALID_PROVENANCE" in statuses:
             status = "INVALID_PROVENANCE"
-        claims.append({"fragment":fragment,"citations":refs,"status":status})
+        elif not support or "INSUFFICIENT_EVIDENCE" in statuses or len(statuses) != 1:
+            status = "INSUFFICIENT_EVIDENCE"
+        else:
+            status = next(iter(statuses))
+        claims.append({"fragment":fragment,"citations":refs,"status":status,
+                       "citation_support":support,"malformed_citations":malformed})
     return claims
