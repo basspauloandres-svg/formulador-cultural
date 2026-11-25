@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from assistant_pilot import configured, groq_key, reserve, GROQ_ENDPOINT
 from generative_grounding import guard_generated_claims
 from claim_audit import qualify_claims
+from prompt_boundary import BOUNDARY, data_message, safe_model_content
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -63,21 +64,19 @@ async def compose_section_draft(*, section: str, field: str, text: str,
         "puedes citarlos con [E1], [E2], [E3] según identificadores realmente presentes. "
         "No inventes páginas ni citas. Máximo 170 palabras. No incluyas explicaciones."
     )
-    message = (
-        f"Sección {section}, campo {field}. Municipio declarado: {territory}.\n"
-        f"Texto original: {text}\nAfirmaciones identificadas:\n{claim_description}\n"
-        + (f"Extractos realmente descargados:\n{evidence}\n" if evidence else
-           "Sin extractos documentales descargados. No atribuyas verificación.\n")
-    )
+    system += BOUNDARY
+    message = data_message(section=section, field=field, territory=territory,
+                           participant_text=text, claim_descriptions=claim_description[:2200],
+                           recovered_evidence=evidence or "")
     model = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
     payload = {"model": model, "temperature": 0.1, "max_completion_tokens": 600,
                "messages": [{"role": "system", "content": system},
-                            {"role": "user", "content": message[:4300]}]}
+                            {"role": "user", "content": message}]}
     if model.startswith("openai/gpt-oss-"):
         payload["reasoning_effort"] = "low"
         payload["include_reasoning"] = False
     try:
-        async with httpx.AsyncClient(timeout=18) as client:
+        async with httpx.AsyncClient(timeout=18, follow_redirects=False) as client:
             response = await client.post(
                 GROQ_ENDPOINT,
                 headers={"Authorization": "Bearer " + groq_key(),
@@ -86,7 +85,7 @@ async def compose_section_draft(*, section: str, field: str, text: str,
             logger.info("section_draft_upstream_status=%s", response.status_code)
             return {"suggestion": None, "draft_status": "MODEL_UNAVAILABLE",
                     "review_flags": [], "evidence_used": used}
-        raw = response.json()["choices"][0]["message"].get("content", "")
+        raw = safe_model_content(response.json()["choices"][0]["message"], credential=groq_key())
         if not isinstance(raw, str) or not raw.strip():
             raise ValueError("Empty model response")
         draft, flags = guard_generated_claims(raw.strip()[:1600], text, evidence)
