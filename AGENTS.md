@@ -5,3 +5,5 @@ Para cualquier tarea de ingeniería, seguridad, metodología, validación o publ
 La skill local es un procedimiento versionado del repositorio. Su uso no equivale a instalar una skill global de ChatGPT ni garantiza carga automática en todos los clientes. Si el agente no detecta skills del repositorio, abrir el archivo explícitamente. Si hay diferencias entre registros históricos y el último checkpoint de NCM, usar el registro más reciente y conservar la historia.
 
 No fusionar, desplegar, modificar datos o esquemas de producción ni ampliar permisos sin autorización específica. Usar pruebas aisladas y checkpoint verificable. Nunca tratar resultados generativos como evidencia primaria. No declarar hitos completos sin criterios satisfechos.
+
+Cuando el investigador indique avanzar hasta un porcentaje, continuar o trabajar sin comentarios, leer también [VÉRTICE Milestone Execution](.agents/skills/vertice-milestone-execution/SKILL.md). Mantener el objetivo vigente y agrupar la comunicación hasta el cierre verificable, con las excepciones de seguridad y las limitaciones de ejecución descritas.
