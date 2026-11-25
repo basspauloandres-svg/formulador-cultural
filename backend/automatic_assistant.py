@@ -12,6 +12,7 @@ import asyncio
 import os
 from time import monotonic
 from collections import OrderedDict
+from copy import deepcopy
 
 import httpx
 from fastapi import HTTPException
@@ -196,10 +197,18 @@ _PUBLIC_DOC_MAX = 128
 
 _PUBLIC_DOC_INFLIGHT = {}
 _PUBLIC_DOC_DOWNLOADS = asyncio.Semaphore(4)
+_PUBLIC_DOC_STATS = dict(hits=0, misses=0, joined=0, downloads=0, failures=0, evictions=0)
+_PUBLIC_DOC_MAX_INFLIGHT = 32
+
+def public_document_cache_stats():
+    """Aggregate process-local counters; no URLs, context or participant data."""
+    return {**_PUBLIC_DOC_STATS, "entries": len(_PUBLIC_DOC_CACHE),
+            "inflight": len(_PUBLIC_DOC_INFLIGHT)}
 
 async def _load_public_document(key, record, field):
     try:
         async with _PUBLIC_DOC_DOWNLOADS:
+            _PUBLIC_DOC_STATS["downloads"] += 1
             doc = await _fetch_document(record, field)
         if doc:
             public_data = {k: doc[k] for k in ("document_sha256", "passages", "status")}
@@ -208,8 +217,13 @@ async def _load_public_document(key, record, field):
                 _PUBLIC_DOC_CACHE.move_to_end(key)
                 while len(_PUBLIC_DOC_CACHE) > _PUBLIC_DOC_MAX:
                     _PUBLIC_DOC_CACHE.popitem(last=False)
+                    _PUBLIC_DOC_STATS["evictions"] += 1
             return public_data
+        _PUBLIC_DOC_STATS["failures"] += 1
         return None
+    except Exception:
+        _PUBLIC_DOC_STATS["failures"] += 1
+        raise
     finally:
         async with _PUBLIC_DOC_LOCK:
             _PUBLIC_DOC_INFLIGHT.pop(key, None)
@@ -221,13 +235,23 @@ async def fetch_document(record: dict, field: str) -> dict | None:
         cached = _PUBLIC_DOC_CACHE.get(key)
         if cached and monotonic() - cached[0] < _PUBLIC_DOC_TTL:
             _PUBLIC_DOC_CACHE.move_to_end(key)
-            return {**record, **cached[1]}
+            _PUBLIC_DOC_STATS["hits"] += 1
+            return {**record, **deepcopy(cached[1])}
+        if cached:
+            _PUBLIC_DOC_CACHE.pop(key, None)
         task = _PUBLIC_DOC_INFLIGHT.get(key)
         if task is None:
-            task = asyncio.create_task(_load_public_document(key, record, field))
+            if len(_PUBLIC_DOC_INFLIGHT) >= _PUBLIC_DOC_MAX_INFLIGHT:
+                return None
+            _PUBLIC_DOC_STATS["misses"] += 1
+            # Never pass arbitrary caller metadata into shared background work.
+            public_record = {"url": record["url"], "municipality": record.get("municipality", "")}
+            task = asyncio.create_task(_load_public_document(key, public_record, field))
             _PUBLIC_DOC_INFLIGHT[key] = task
+        else:
+            _PUBLIC_DOC_STATS["joined"] += 1
     public_data = await asyncio.shield(task)
-    return {**record, **public_data} if public_data else None
+    return {**record, **deepcopy(public_data)} if public_data else None
 
 async def guide(req: GuidedRequest, bearer: str) -> dict:
     if req.section != "S02" or req.field not in GUIDANCE:
