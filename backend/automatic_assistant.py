@@ -312,6 +312,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     flags = list(territory_flags)
     evidence_manifest = []
     claim_audit = []
+    suggestion_origin = None
     if req.generate:
         excerpts = [national_evidence] if national_evidence else []
         provenance = []
@@ -357,6 +358,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
                 text=req.text, context=req.context, action="redactar"), bearer,
                 evidence=evidence)
             suggestion = generative["suggestion"] or None
+            suggestion_origin = "MODEL_DRAFT_UNVERIFIED" if suggestion else None
             blocked = generative.get("blocked_for_evidence", False)
             flags.extend(generative.get("review_flags", []))
             # Solo se permiten localizadores de las páginas recuperadas.
@@ -383,6 +385,19 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             if not blocked:
                 flags.append({"type": "GENERATION_UNAVAILABLE", "instruction": "La asistencia generativa está temporalmente indisponible."})
     claim_audit = audit_citations(suggestion, evidence_manifest)
+    # A registry-only input supports one narrow administrative proposition.
+    # Retain the model output only if it exactly matches that proposition;
+    # otherwise offer a deterministic statement, never attributed to the model.
+    if (suggestion and not blocked and len(req.text.strip()) < 10 and
+            evidence_manifest and all(item["kind"] == "administrative_registry" for item in evidence_manifest) and
+            any(item["status"] == "INSUFFICIENT_EVIDENCE" for item in claim_audit) and
+            not any(item["status"] == "INVALID_PROVENANCE" for item in claim_audit)):
+        fact = national_evidence.split(". ", 1)[0].removeprefix("[N1] ")
+        suggestion = fact + " [N1]."
+        suggestion_origin = "DETERMINISTIC_REGISTRY_FACT"
+        flags.append({"type":"REGISTRY_SCOPE_REPLACEMENT","status":"INSUFFICIENT_EVIDENCE",
+                      "instruction":"La propuesta del modelo excedió el alcance verificable del registro. Se ofrece únicamente el hecho administrativo recuperado."})
+        claim_audit = audit_citations(suggestion, evidence_manifest)
     if any(item["status"] == "INSUFFICIENT_EVIDENCE" for item in claim_audit):
         flags.append({"type":"CLAIM_SUPPORT_UNRESOLVED","status":"INSUFFICIENT_EVIDENCE",
                       "instruction":"Revisa cada afirmación sin correspondencia documental suficiente antes de incorporarla al proyecto."})
@@ -411,6 +426,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         "candidate_sources": found["sources"],
         "errors": found["errors"],
         "suggestion": suggestion,
+        "suggestion_origin": suggestion_origin if suggestion else None,
         "blocked_for_evidence": blocked,
         "review_flags": flags,
         "requires_approval": True,
