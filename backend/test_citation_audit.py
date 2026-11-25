@@ -35,3 +35,15 @@ def test_unknown_provenance_kind():
 def test_uncited_sentence_remains_insufficient():
     out=audit_citations("El municipio realizó cinco talleres de música [F1, p.1]. Existen efectos positivos.",[entry()])
     assert [c["status"] for c in out]==["LITERAL_MATCH_REVIEW_REQUIRED","INSUFFICIENT_EVIDENCE"]
+
+
+def test_each_citation_requires_independent_support():
+    sources=[entry(),entry("M1","[M1] Extracto: Hay otros programas en la localidad.","municipal_html")]
+    result=audit_citations("El municipio realizó cinco talleres de música [F1, p.1] [M1].",sources)[0]
+    assert result["status"]=="INSUFFICIENT_EVIDENCE"
+    assert [c["status"] for c in result["citation_support"]]==["LITERAL_MATCH_REVIEW_REQUIRED","INSUFFICIENT_EVIDENCE"]
+
+def test_malformed_reference_cannot_hide_behind_valid_one():
+    result=audit_citations("El municipio realizó cinco talleres de música [F1, p.1] [N99 extra].",[entry()])[0]
+    assert result["status"]=="INVALID_PROVENANCE"
+    assert result["malformed_citations"]==["[N99 extra]"]
