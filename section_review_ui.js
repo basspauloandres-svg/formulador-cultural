@@ -46,7 +46,7 @@ function mount(){
    discard.dataset.reviewAction='discard';
    proposal.append(proposalTitle,proposalText,approve,discard);
    const savedReview=node('p','','vt-evidence-detail');savedReview.hidden=true;
-   const savedSources=node('details');savedSources.hidden=true;
+   const savedSources=node('details','','vt-saved-evidence');savedSources.hidden=true;
    let renderedManifest='';
    panel.append(button,status,savedReview,savedSources,results,proposal);
    host.appendChild(panel);
