@@ -1,7 +1,6 @@
 """S01: real two-user REST/RLS isolation. Run only against a disposable local stack."""
 import os
 import secrets
-import uuid
 import httpx
 
 URL = os.environ["VERTICE_TEST_SUPABASE_URL"]
@@ -76,14 +75,25 @@ def main():
             anonymous={"apikey":KEY,"Prefer":"return=representation"}
             deny(select(c,anonymous,table,oid),"anonymous cannot read "+table)
             deny(req(c,anonymous,"DELETE",table,{"id":"eq."+oid}),"anonymous cannot delete "+table)
+            update={"title":"anonymous"} if table=="projects" else ({"data":{"anonymous":True}} if table=="sections" else {"text":"anonymous"})
+            deny(req(c,anonymous,"PATCH",table,{"id":"eq."+oid},update),"anonymous cannot update "+table)
+            payload={"title":"anonymous"} if table=="projects" else ({"project_id":owned["A"]["projects"],"code":"S03"} if table=="sections" else {"project_id":owned["A"]["projects"],"source_kind":"observation","text":"anonymous"})
+            deny(req(c,anonymous,"POST",table,data=payload),"anonymous cannot insert "+table)
             invalid={**anonymous,"Authorization":"Bearer invalid-synthetic-token"}
             deny(select(c,invalid,table,oid),"invalid token denied "+table)
         # Verify foreign writes did not mutate or remove the other user's rows.
-        for label,h in (("A",ha),("B",hb)):
+        for label,user,h in (("A",a,ha),("B",b,hb)):
             for table in ("evidence","sections","projects"):
                 oid=owned[label][table]
                 r=select(c,h,table,oid)
                 check(r.status_code==200 and len(r.json())==1,label+" row intact "+table)
+                item=r.json()[0]
+                check(item["user_id"]==user,label+" ownership intact "+table)
+                if table=="projects":
+                    check(item["title"]=="updated",label+" project content intact")
+                else:
+                    check(item["project_id"]==owned[label]["projects"],label+" parent intact "+table)
+                    check(item["data"]=={"synthetic":"updated"} if table=="sections" else item["text"]=="updated",label+" child content intact "+table)
                 r=req(c,h,"DELETE",table,{"id":"eq."+oid})
                 check(r.status_code==200 and len(r.json())==1,label+" delete own "+table)
     print("S01 REAL A/B ISOLATION PASS")
