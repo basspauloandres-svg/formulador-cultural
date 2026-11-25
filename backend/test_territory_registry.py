@@ -93,3 +93,12 @@ def test_registry_preserves_a_complete_cached_snapshot_on_network_failure():
     finally:
         registry._REGISTRY=saved
         registry._REFRESHED_AT=refreshed
+
+
+def test_explicit_conflicts_preserve_homonyms_and_numbers():
+    records=[registry.parse_row(row("05010","GRANADA","ANTIOQUIA","05")),
+             registry.parse_row(row("50313","GRANADA","META","50"))]
+    assert registry.explicit_conflicts("Granada y 50313 asistentes", "05010", records)==[]
+    assert registry.explicit_conflicts("En Granada, Meta", "05010", records)[0]["divipola"]=="50313"
+    assert registry.explicit_conflicts("Código DANE 50313", "05010", records)[0]["divipola"]=="50313"
+    assert registry.explicit_conflicts("En Granada, Antioquia", "05010", records)==[]
