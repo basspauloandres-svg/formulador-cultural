@@ -337,6 +337,8 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             )
         selected = []
         for excerpt, source in zip(excerpts, provenance, strict=True):
+            if not re.fullmatch(r"[0-9a-f]{64}", source.get("sha256") or ""):
+                continue
             if len("\n".join(selected + [excerpt])) <= 1400:
                 selected.append(excerpt)
                 evidence_manifest.append({**source, "prompt_excerpt":excerpt,
