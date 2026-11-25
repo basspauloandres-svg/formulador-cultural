@@ -1,4 +1,5 @@
 """Read-only national structured evidence. Registry records are not current facts."""
+import asyncio
 import hashlib
 import json
 import re
@@ -24,8 +25,16 @@ async def cultural_registry(code: str) -> dict:
               "scope": "Registros del conjunto publicado; no acredita actividad vigente ni exhaustividad."}
     try:
         async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
-            response = await client.get(URL, params=query)
-            response.raise_for_status()
+            for attempt in range(3):
+                try:
+                    response = await client.get(URL, params=query)
+                    response.raise_for_status()
+                    break
+                except (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPStatusError) as exc:
+                    transient = not isinstance(exc, httpx.HTTPStatusError) or exc.response.status_code in (429, 500, 502, 503, 504)
+                    if not transient or attempt == 2:
+                        raise
+                    await asyncio.sleep(0.5 * (2 ** attempt))
             if len(response.content) > 500_000:
                 raise ValueError("Response too large")
             rows = response.json()
