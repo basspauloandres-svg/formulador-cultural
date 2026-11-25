@@ -161,7 +161,7 @@ function mount(){
          sourceValue=field.value;sourceContext=context;sourceSection=requestedSection;sourceDraft=suggestion;needsReview=isS02;
          proposalText.value=suggestion;
          proposal.hidden=false;
-         status.textContent='Redacción preparada. Verifica los datos y aprueba para incorporarla al campo y guardarla.';
+         status.textContent=data.suggestion_origin==='DETERMINISTIC_REGISTRY_FACT'?'Propuesta construida directamente a partir del registro administrativo; no corresponde a una redacción del modelo. Revisa su alcance antes de incorporar.':'Redacción preparada. Verifica los datos y aprueba para incorporarla al campo y guardarla.';
          if(Array.isArray(data.review_flags)&&data.review_flags.length){
            data.review_flags.slice(0,10).forEach(flag=>results.appendChild(node('p',String(flag.instruction||'Requiere revisión.'),'vt-evidence-detail')));
            results.appendChild(node('p','El borrador contiene '+data.review_flags.length+
