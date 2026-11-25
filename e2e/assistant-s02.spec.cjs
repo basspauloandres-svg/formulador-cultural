@@ -42,7 +42,7 @@ test('S02 integra una sola consulta, propuesta y aprobación',async({page})=>{
   expect(stored.manifest[0].divipola).toBe('17873');
   expect(stored.claim_audit[0].status).toBe('INSUFFICIENT_EVIDENCE');
   await card.getByText('Fuentes del borrador anteriormente incorporado').click();
-  await expect(card.getByText('Extracto sintético de prueba').last()).toBeVisible();
+  await expect(card.locator('details').filter({has:card.getByText('Fuentes del borrador anteriormente incorporado',{exact:true})}).getByText('Extracto sintético de prueba',{exact:true})).toBeVisible();
   await expect(card).toContainText('Borrador incorporado');
   await field.fill('Texto editado posteriormente.');
   await expect(card).toContainText('Texto modificado después de la revisión');
