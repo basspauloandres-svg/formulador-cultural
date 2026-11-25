@@ -165,10 +165,16 @@ function mount(){
        if(isS02&&audited.length){
          results.appendChild(node('strong','Revisión de las afirmaciones propuestas'));
          const labels={LITERAL_MATCH_REVIEW_REQUIRED:'Correspondencia textual; requiere cotejo',REGISTRY_FACT_REVIEW_REQUIRED:'Registro administrativo de alcance limitado; requiere revisión',INSUFFICIENT_EVIDENCE:'Respaldo insuficiente',INVALID_PROVENANCE:'Procedencia inválida'};
+         const semanticLabels={MODEL_ENTAILMENT_REVIEW_REQUIRED:'Evaluación del modelo: posible apoyo textual',MODEL_CONTRADICTION_REVIEW_REQUIRED:'Evaluación del modelo: posible contradicción',INSUFFICIENT_EVIDENCE:'Evaluación semántica insuficiente'};
          audited.forEach(item=>{
            const p=node('div','','vt-evidence-passages');
            p.appendChild(node('p',String(item.fragment||'')));
            p.appendChild(node('p',labels[item.status]||'Pendiente de evaluación','vt-evidence-detail'));
+           const judgment=item.semantic_review;
+           if(judgment){
+             p.appendChild(node('p',(semanticLabels[judgment.status]||'Evaluación no disponible')+'. Requiere cotejo humano; no valida el hecho.','vt-evidence-detail'));
+             if(judgment.quote)p.appendChild(node('blockquote',String(judgment.quote),'vt-evidence-detail'));
+           }
            results.appendChild(p);
          });
        }
@@ -189,7 +195,7 @@ function mount(){
        const suggestion=!data.blocked_for_evidence&&typeof data.suggestion==='string'?data.suggestion.trim():'';
        if(suggestion){
          pendingAudit=isS02?{context,divipola:data.territory?.divipola||null,
-           origin:data.suggestion_origin||'UNKNOWN',manifest,claim_audit:audited,
+           origin:data.suggestion_origin||'UNKNOWN',manifest,claim_audit:audited,semantic_support_status:data.semantic_support_status||'NOT_ASSESSED',
            reviewed_text:suggestion}:null;
          sourceValue=field.value;sourceContext=context;sourceSection=requestedSection;sourceDraft=suggestion;needsReview=isS02;
          proposalText.value=suggestion;
