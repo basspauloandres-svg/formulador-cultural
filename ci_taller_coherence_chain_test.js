@@ -148,3 +148,32 @@ assert.strictEqual(mixed.summary.total,12000);
 assert.strictEqual(mixed.summary.monetary,6000);
 assert.strictEqual(mixed.summary.inKind,6000);
 console.log('PASS Q03: budget arithmetic, unknown versus zero, partial totals and funding');
+
+
+// M01: independent targeted controls; no live project data.
+snapshot=project();
+snapshot.derived.indicators[0].lineaBase=0;
+assert.strictEqual(check('Fichas técnicas de indicadores').status,'COHERENTE');
+snapshot.derived.indicators.push({...snapshot.derived.indicators[0],id:'I-ORPHAN',linkedId:'UNKNOWN'});
+assert.strictEqual(check('Indicadores vinculados').status,'REQUIERE AJUSTE');
+snapshot=project();
+assert.strictEqual(check('Indicadores vinculados').status,'COHERENTE');
+const scheduleAudit=context.window.fcAuditSchedule;
+const a={activityId:'A1',startDate:'2026-11-25',endDate:'2026-11-26',responsible:'Equipo',dependencyIds:[]};
+const b={activityId:'A2',startDate:'2026-11-27',endDate:'2026-11-28',responsible:'Equipo',dependencyIds:['A1']};
+const auditSchedule=items=>scheduleAudit({items});
+assert.strictEqual(auditSchedule([a,b]).length,0);
+assert.strictEqual(auditSchedule([a,b]).length,0,'Cálculo repetible');
+for(const [patch,pattern] of [
+ [{endDate:''},/cierre ausente/],
+ [{endDate:'2026-02-30'},/cierre ausente/],
+ [{endDate:'2026-11-24'},/cierre anterior/],
+ [{dependencyIds:['MISSING']},/dependencia ausente/],
+ [{dependencyIds:['A2']},/ciclo/],
+ [{responsible:'[POR DEFINIR]'},/falta responsable/],
+ [{startDate:'2026-11-25'},/inicia antes/]
+])assert(auditSchedule([a,{...b,...patch}]).some(x=>pattern.test(x)),String(pattern));
+assert(auditSchedule([{...a,dependencyIds:['A2']},b]).some(x=>/ciclo/.test(x)));
+assert(auditSchedule([a,{...a}]).some(x=>/duplicada/.test(x)));
+const before=JSON.stringify([a,b]);auditSchedule([a,b]);assert.strictEqual(JSON.stringify([a,b]),before);
+console.log('PASS M01: indicator zero and orphan, calendar validity, dependencies, cycles and repeatability');
