@@ -379,6 +379,9 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             if not blocked:
                 flags.append({"type": "GENERATION_UNAVAILABLE", "instruction": "La asistencia generativa está temporalmente indisponible."})
     claim_audit = audit_citations(suggestion, evidence_manifest)
+    if any(item["status"] == "INSUFFICIENT_EVIDENCE" for item in claim_audit):
+        flags.append({"type":"CLAIM_SUPPORT_UNRESOLVED","status":"INSUFFICIENT_EVIDENCE",
+                      "instruction":"Revisa cada afirmación sin correspondencia documental suficiente antes de incorporarla al proyecto."})
     if any(c["status"] == "INVALID_PROVENANCE" for c in claim_audit):
         suggestion = None
         blocked = True
