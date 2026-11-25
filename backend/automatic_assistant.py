@@ -9,6 +9,7 @@ from hashlib import sha256
 from io import BytesIO
 import re
 import asyncio
+import os
 from time import monotonic
 from collections import OrderedDict
 
@@ -17,12 +18,13 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field
 from pypdf import PdfReader
 
-from assistant_pilot import AssistantRequest, assist
+from assistant_pilot import AssistantRequest, assist, groq_key, reserve, verified_user, GROQ_ENDPOINT
 from source_research import ResearchRequest, research
 from source_verifier import validate_pdf_url, MAX_PDF_BYTES, MAX_PAGES
 from municipal_sources import municipal_passages
 from national_sources import cultural_registry
 from citation_audit import audit_citations
+from semantic_review import packet, review_one
 from territory_registry import resolve_territory, normalized as territory_normalized, cached_explicit_conflicts
 
 # Registro provisional de documentos institucionales identificados por municipio.
@@ -398,6 +400,27 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         flags.append({"type":"REGISTRY_SCOPE_REPLACEMENT","status":"INSUFFICIENT_EVIDENCE",
                       "instruction":"La propuesta del modelo excedió el alcance verificable del registro. Se ofrece únicamente el hecho administrativo recuperado."})
         claim_audit = audit_citations(suggestion, evidence_manifest)
+    semantic_review_status = "NOT_ASSESSED"
+    if (suggestion and suggestion_origin == "MODEL_DRAFT_UNVERIFIED" and
+            not any(c["status"] == "INVALID_PROVENANCE" for c in claim_audit)
+            and os.getenv("VERTICE_SEMANTIC_REVIEW") == "1" and groq_key()):
+        # One bounded extra call, charged to the existing user/global quota.
+        for item in claim_audit:
+            review_input = packet(item, evidence_manifest)
+            if not review_input:
+                continue
+            user = await verified_user(bearer)
+            if not reserve(user):
+                semantic_review_status = "QUOTA_UNAVAILABLE"
+                break
+            judgment = await review_one(review_input, groq_key(),
+                os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"), GROQ_ENDPOINT)
+            item["semantic_review"] = judgment
+            semantic_review_status = "MODEL_REVIEW_ONLY"
+            if judgment["status"] == "MODEL_CONTRADICTION_REVIEW_REQUIRED":
+                flags.append({"type":"MODEL_CONTRADICTION_REVIEW_REQUIRED","status":"INSUFFICIENT_EVIDENCE",
+                              "instruction":"Una segunda evaluación detectó posible contradicción con el extracto. Revisa la cita antes de incorporar."})
+            break
     if any(item["status"] == "INSUFFICIENT_EVIDENCE" for item in claim_audit):
         flags.append({"type":"CLAIM_SUPPORT_UNRESOLVED","status":"INSUFFICIENT_EVIDENCE",
                       "instruction":"Revisa cada afirmación sin correspondencia documental suficiente antes de incorporarla al proyecto."})
@@ -417,7 +440,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         "national_records": national_records,
         "national_evidence": national_evidence,
         "evidence_manifest": evidence_manifest,
-        "semantic_support_status": "NOT_ASSESSED",
+        "semantic_support_status": semantic_review_status,
         "claim_audit": claim_audit,
         "municipal_references": local_references,
         "evidence_input_status": ("LIVE_PASSAGES_AVAILABLE" if live_passages or docs
