@@ -46,15 +46,34 @@ function mount(){
    discard.dataset.reviewAction='discard';
    proposal.append(proposalTitle,proposalText,approve,discard);
    const savedReview=node('p','','vt-evidence-detail');savedReview.hidden=true;
-   panel.append(button,status,savedReview,results,proposal);
+   const savedSources=node('details');savedSources.hidden=true;
+   let renderedManifest='';
+   panel.append(button,status,savedReview,savedSources,results,proposal);
    host.appendChild(panel);
    let seq=0,lastContext=territory(),sourceValue='',sourceContext='',sourceSection='',sourceDraft='',needsReview=false,pendingAudit=null;
    function showSavedReview(){
      const record=draft?.S02?.evidence_review_state?.fields?.[field.dataset.field];
-     if(active!=='S02'||!record){savedReview.hidden=true;return;}
+     if(active!=='S02'||!record){savedReview.hidden=true;savedSources.hidden=true;return;}
      savedReview.hidden=false;
      const message=record.context!==territory()?'Cotejo anterior de otro territorio. Investiga de nuevo.':record.accepted_text!==field.value?'Texto modificado después de la revisión. Requiere nuevo cotejo.':'Borrador incorporado el '+String(record.accepted_at||'').slice(0,10)+'; '+(record.status==='EDITED_UNREVIEWED'?'edición posterior a la auditoría.':'afirmaciones pendientes de cotejo.')+' Fuentes registradas: '+String(record.manifest?.length||0)+'.';
      if(savedReview.textContent!==message)savedReview.textContent=message;
+     const evidence=Array.isArray(record.manifest)?record.manifest:[];
+     savedSources.hidden=!evidence.length;
+     const signature=JSON.stringify(evidence);
+     if(signature!==renderedManifest){
+       renderedManifest=signature;
+       savedSources.replaceChildren(node('summary','Fuentes del borrador anteriormente incorporado'));
+       evidence.forEach(item=>{
+         const wrapper=node('div','','vt-evidence-passages');
+         wrapper.appendChild(node('strong','['+String(item.citation||'')+'] · DIVIPOLA '+String(item.divipola||'')));
+         if(typeof item.url==='string'&&item.url.startsWith('https://')){
+           const link=node('a','Consultar fuente original');link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';wrapper.appendChild(link);
+         }
+         wrapper.appendChild(node('p',String(item.prompt_excerpt||''),'vt-evidence-detail'));
+         wrapper.appendChild(node('p','SHA-256 del documento: '+String(item.sha256||'')+' · SHA-256 del extracto: '+String(item.excerpt_sha256||''),'vt-evidence-detail'));
+         savedSources.appendChild(wrapper);
+       });
+     }
    }
    field.addEventListener('input',showSavedReview);
    showSavedReview();
@@ -86,7 +105,7 @@ function mount(){
        const data=await response.json();
        if(request!==seq||active!==requestedSection||!field.isConnected||field.value.trim()!==input||territory()!==context)return;
        if(!response.ok){status.textContent=String(data.detail||'No se pudo completar la revisión.').slice(0,220);return}
-       if(data.section!==requestedSection||(isS02&&data.territory_context!==context)){status.textContent='La respuesta no corresponde al campo o territorio solicitado. Repite la consulta.';return;}
+       if(data.section!==requestedSection||(isS02&&(data.territory_context!==context||data.field!==field.dataset.field))){status.textContent='La respuesta no corresponde al campo o territorio solicitado. Repite la consulta.';return;}
        const claims=Array.isArray(data.claims)?data.claims:[];
        results.appendChild(node('strong','Afirmaciones detectadas · evaluación preliminar'));
        if(!claims.length&&!isS02)results.appendChild(node('p','No se identificaron oraciones completas; amplía la descripción.'));
@@ -175,7 +194,7 @@ function mount(){
          sourceValue=field.value;sourceContext=context;sourceSection=requestedSection;sourceDraft=suggestion;needsReview=isS02;
          proposalText.value=suggestion;
          proposal.hidden=false;
-         status.textContent=data.suggestion_origin==='DETERMINISTIC_REGISTRY_FACT'?'Propuesta construida directamente a partir del registro administrativo; no corresponde a una redacción del modelo. Revisa su alcance antes de incorporar.':'Redacción preparada. Verifica los datos y aprueba para incorporarla al campo y guardarla.';
+         status.textContent=data.suggestion_origin==='DETERMINISTIC_REGISTRY_FACT'?'Propuesta construida directamente a partir del registro administrativo; no corresponde a una redacción del modelo. Revisa su alcance antes de incorporar.':data.suggestion_origin==='USER_TEXT_FALLBACK'?'Se conserva el aporte original porque el modelo añadió contenido sin respaldo.':'Redacción preparada. Verifica los datos y aprueba para incorporarla al campo y guardarla.';
          if(Array.isArray(data.review_flags)&&data.review_flags.length){
            data.review_flags.slice(0,10).forEach(flag=>results.appendChild(node('p',String(flag.instruction||'Requiere revisión.'),'vt-evidence-detail')));
            results.appendChild(node('p','El borrador contiene '+data.review_flags.length+
