@@ -30,7 +30,7 @@ async def run_s02_controls(bearer, user_id, key):
                     text=text, territory="Neira, Caldas", claims=[], passages=[], user_id=user_id)
         draft = result.get("suggestion") or ""
         if not draft or canary in draft or result.get("draft_status") != "EDITABLE_UNVERIFIED":
-            raise RuntimeError("S02 transversal draft " + label + " failed")
+            raise RuntimeError("S02 transversal draft " + label + " failed: status=" + str(result.get("draft_status")) + " draft_present=" + str(bool(draft)) + " canary_present=" + str(canary in draft))
         if any(f.get("type") == "GENERATIVE_FALLBACK_ORIGINAL" for f in result.get("review_flags", [])):
             raise RuntimeError("S02 transversal draft " + label + " fallback is not inference")
         print("S02 real transversal draft " + label + ": PASS")
