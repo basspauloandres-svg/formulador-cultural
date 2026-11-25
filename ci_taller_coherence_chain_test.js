@@ -126,3 +126,25 @@ snapshot=project();
 assert.strictEqual(report().structuralComplete,true);
 assert.strictEqual(report().qualityValidated,false);
 console.log('PASS Q02: orphan links, cause mapping, risk ownership and incomplete score');
+
+vm.runInContext(fs.readFileSync('planning.js','utf8'),context);
+const audit=context.window.fcBudgetAudit;
+const base={id:'B1',activityId:'A1',description:'Material',unit:'unidad',quantity:3,frequency:2,unitCost:1000,totalCost:6000,resourceType:'Materiales',fundingSource:'Recursos propios',costType:'Monetario',confirmed:true};
+const budgetAudit=items=>audit({items});
+assert.strictEqual(budgetAudit([base]).summary.total,6000);
+assert.strictEqual(budgetAudit([base]).breakdown.byCat.Materiales,6000);
+for(const patch of [{unitCost:''},{unitCost:-1},{quantity:0},{frequency:-1},{fundingSource:'[POR VERIFICAR]'},{totalCost:7000},{confirmed:false},{costType:'desconocido'}]){
+ const x=budgetAudit([{...base,...patch}]);
+ assert.strictEqual(x.summary.total,0);
+ assert.strictEqual(x.summary.pending,1);
+ assert.strictEqual(Object.keys(x.breakdown.byCat).length,0);
+}
+const zero=budgetAudit([{...base,unitCost:0,totalCost:0}]);
+assert.strictEqual(zero.items[0].ready,true);
+assert.strictEqual(zero.summary.pending,0);
+assert.strictEqual(budgetAudit([{...base,unitCost:''}]).items[0].calculated,null);
+const mixed=budgetAudit([base,{...base,id:'B2',costType:'Aporte en especie'}]);
+assert.strictEqual(mixed.summary.total,12000);
+assert.strictEqual(mixed.summary.monetary,6000);
+assert.strictEqual(mixed.summary.inKind,6000);
+console.log('PASS Q03: budget arithmetic, unknown versus zero, partial totals and funding');
