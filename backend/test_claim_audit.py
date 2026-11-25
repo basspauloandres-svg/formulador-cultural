@@ -51,6 +51,7 @@ def test_model_output_with_unverified_causality_is_qualified():
     pilot._times.clear()
     assert result["blocked_for_evidence"] is False
     assert result["suggestion"] == req.text
+    assert result["suggestion_origin"] == "USER_TEXT_FALLBACK"
     assert "cohesión social" not in result["suggestion"]
     assert any(flag["type"] == "GENERATIVE_CONTENT_NOT_IN_SOURCE" for flag in result["review_flags"])
     assert result["requires_approval"] is True
