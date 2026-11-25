@@ -33,3 +33,28 @@ def safe_model_content(message, *, credential=""):
     if credential and credential in raw:
         raise ValueError("Credential echo")
     return raw
+
+
+# Conservative quarantine for explicit instructions addressed to the model.
+# Preserve the original in the source/UI; do not silently treat it as evidence.
+_DIRECTIVE = re.compile(
+    r"\b(?:ignora|ignore|olvida|forget|desobedece|disregard)\b.{0,100}\b(?:instrucci[oó]n(?:es)?|tarea|instructions?|task|prompt|sistema|system)\b"
+    r"|\b(?:devuelve|responde|imprime|output|return|print)\s+(?:solo|solamente|exclusivamente|only|exactly)\b"
+    r"|<\|(?:im_start|im_end|start_header_id|end_header_id|system|assistant|tool)\|>|\[/?inst\]|<<\s*/?sys\s*>>|</?fuentes_extraidas\s*>",
+    re.I,
+)
+
+def quarantine_directives(value):
+    """Remove whole suspicious sentences, never interpret them as commands."""
+    parts = re.split(r"(?<=[.!?])\s+|\n+", value or "")
+    rejected = [p for p in parts if _DIRECTIVE.search(unicodedata.normalize("NFKC", p))]
+    if not rejected:
+        return value or "", False
+    return " ".join(p for p in parts if p not in rejected).strip(), True
+
+def contains_directive(value):
+    return quarantine_directives(value)[1]
+
+def quarantine_flag():
+    return {"type":"UNTRUSTED_DIRECTIVE_QUARANTINED","status":"INSUFFICIENT_EVIDENCE",
+            "instruction":"Se excluyó contenido con instrucciones dirigidas al modelo. El material original requiere revisión humana."}
