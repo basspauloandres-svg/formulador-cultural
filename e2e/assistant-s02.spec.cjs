@@ -12,7 +12,8 @@ test('S02 integra una sola consulta, propuesta y aprobación',async({page})=>{
       claims:[{statement:req.text,evidence_status:'INSUFFICIENT_EVIDENCE',note:'Requiere fuente original'}],
       sources:[],municipal_references:[],candidate_sources:[],conflicting_municipalities:[],
       evidence_manifest:[{citation:'M1',kind:'municipal_html',divipola:'17873',url:'https://www.villamaria-caldas.gov.co/',prompt_excerpt:'Extracto sintético de prueba',sha256:'a'.repeat(64),excerpt_sha256:'b'.repeat(64)}],
-      claim_audit:[{fragment:'Afirmación sintética',status:'INSUFFICIENT_EVIDENCE'}],
+      claim_audit:[{fragment:'Afirmación sintética',status:'INSUFFICIENT_EVIDENCE',semantic_review:{status:'MODEL_CONTRADICTION_REVIEW_REQUIRED',method:'MODEL_REVIEW',quote:'Extracto sintético de prueba'}}],
+      semantic_support_status:'MODEL_REVIEW_ONLY',
       suggestion:'Según la información preliminar del formador, se describen encuentros musicales. [POR VERIFICAR]',
       review_flags:[{type:'USER_ASSERTIONS_UNVERIFIED'}],
       draft_status:'EDITABLE_UNVERIFIED',errors:[]
@@ -29,6 +30,8 @@ test('S02 integra una sola consulta, propuesta y aprobación',async({page})=>{
   await expect(card).toHaveCount(1);
   await card.getByRole('button',{name:'Investigar y generar propuesta'}).click();
   await expect(card.locator('.vt-evidence-draft')).toBeVisible();
+  await expect(card).toContainText('Evaluación del modelo: posible contradicción');
+  await expect(card).toContainText('no valida el hecho');
   await expect(field).toHaveValue('Se describen encuentros musicales en la comunidad.');
   await card.getByRole('button',{name:'Descartar redacción'}).click();
   await expect(field).toHaveValue('Se describen encuentros musicales en la comunidad.');
@@ -41,6 +44,8 @@ test('S02 integra una sola consulta, propuesta y aprobación',async({page})=>{
   expect(stored.status).toBe('ACCEPTED_UNVERIFIED');
   expect(stored.manifest[0].divipola).toBe('17873');
   expect(stored.claim_audit[0].status).toBe('INSUFFICIENT_EVIDENCE');
+  expect(stored.claim_audit[0].semantic_review.status).toBe('MODEL_CONTRADICTION_REVIEW_REQUIRED');
+  expect(stored.semantic_support_status).toBe('MODEL_REVIEW_ONLY');
   await card.getByText('Fuentes del borrador anteriormente incorporado').click();
   await expect(card.locator('details').filter({has:card.getByText('Fuentes del borrador anteriormente incorporado',{exact:true})}).getByText('Extracto sintético de prueba',{exact:true})).toBeVisible();
   await expect(card).toContainText('Borrador incorporado');
