@@ -177,3 +177,19 @@ assert(auditSchedule([{...a,dependencyIds:['A2']},b]).some(x=>/ciclo/.test(x)));
 assert(auditSchedule([a,{...a}]).some(x=>/duplicada/.test(x)));
 const before=JSON.stringify([a,b]);auditSchedule([a,b]);assert.strictEqual(JSON.stringify([a,b]),before);
 console.log('PASS M01: indicator zero and orphan, calendar validity, dependencies, cycles and repeatability');
+
+
+const coverage=context.window.fcAuditBudgetCoverage,active=[{id:'A1',confirmed:true}];
+assert(coverage({activityStatus:{A1:'cost'},items:[base]},active).ok);
+assert(coverage({activityStatus:{A1:'nocost'},items:[]},active).ok);
+for(const [st,items,kind] of [
+ ['cost',[],'SIN_RUBROS'],['nocost',[base],'SIN_COSTO_CON_RUBROS'],
+ ['cost',[{...base,totalCost:7000}],'RUBRO_INCOMPLETO_O_INCONSISTENTE'],
+ ['inkind',[base],'TIPO_INCOMPATIBLE'],['pending',[],'TRATAMIENTO_PENDIENTE'],
+ ['cost',[base,{...base}],'RUBRO_DUPLICADO_O_SIN_ID']
+]){const r=coverage({activityStatus:{A1:st},items},active);assert(!r.ok);assert(r.issues.some(x=>x.kind===kind),kind)}
+snapshot=project();snapshot.derived.budget=[];snapshot.derived.budget_state.activityStatus={A1:'nocost'};
+assert.strictEqual(check('Rubros vinculados a actividades').status,'COHERENTE');
+snapshot.derived.budget_state.activityStatus={A1:'cost'};
+assert.strictEqual(check('Rubros vinculados a actividades').status,'AÚN NO EVALUABLE');
+console.log('PASS M01: budget coverage and explicit no-cost distinction');
