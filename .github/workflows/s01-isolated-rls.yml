@@ -1,0 +1,47 @@
+name: S01 isolated RLS
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  rls-ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.39.2
+      - name: Start disposable local Supabase
+        run: |
+          mkdir -p "$RUNNER_TEMP/vertice-s01"
+          cd "$RUNNER_TEMP/vertice-s01"
+          supabase init
+          supabase start
+      - name: Install isolated probe dependencies
+        run: pip install httpx==0.28.1
+      - name: Load repository schema and verify effective privileges
+        run: |
+          cd "$RUNNER_TEMP/vertice-s01"
+          DB_URL="$(supabase status -o json | python -c 'import json,sys; print(json.load(sys.stdin)["DB_URL"])')"
+          python -c 'import sys,urllib.parse; u=urllib.parse.urlparse(sys.argv[1]); assert u.hostname in ("127.0.0.1","localhost") and u.port==54322' "$DB_URL"
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/backend/schema.sql"
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/scripts/s01_privileges.sql"
+      - name: Test real authenticated sessions A and B
+        env:
+          VERTICE_AUTH_MODE: isolated
+          VERTICE_TEST_SUPABASE_URL: http://127.0.0.1:54321
+        run: |
+          cd "$RUNNER_TEMP/vertice-s01"
+          export VERTICE_TEST_SUPABASE_PUBLIC_KEY="$(supabase status -o json | python -c 'import json,sys; print(json.load(sys.stdin)["ANON_KEY"])')"
+          cd "$GITHUB_WORKSPACE"
+          python scripts/s01_isolation.py
+      - name: Destroy isolated environment
+        if: always()
+        run: |
+          cd "$RUNNER_TEMP/vertice-s01"
+          supabase stop --no-backup
