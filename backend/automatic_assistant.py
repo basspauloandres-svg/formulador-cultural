@@ -23,7 +23,7 @@ from source_verifier import validate_pdf_url, MAX_PDF_BYTES, MAX_PAGES
 from municipal_sources import municipal_passages
 from national_sources import cultural_registry
 from citation_audit import audit_citations
-from territory_registry import resolve_territory, normalized as territory_normalized
+from territory_registry import resolve_territory, normalized as territory_normalized, cached_explicit_conflicts
 
 # Registro provisional de documentos institucionales identificados por municipio.
 # La existencia de una URL no implica accesibilidad ni validez de su contenido.
@@ -287,6 +287,8 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     conflicts = [TERRITORIAL_IDENTITIES[other]["municipality"]
                  for other in TERRITORIAL_IDENTITIES
                  if other != key and re.search(r"\b" + other[0] + r"\b", text_normalized)]
+    national_conflicts = cached_explicit_conflicts(req.text, identity['divipola']) if identity else []
+    conflicts = list(dict.fromkeys(conflicts + [r['municipality']+', '+r['department'] for r in national_conflicts]))
     territory_flags = ([{
         "type": "TERRITORY_MISMATCH", "status": "INSUFFICIENT_EVIDENCE",
         "instruction": ("El texto menciona " + ", ".join(conflicts)
@@ -394,6 +396,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         "territory_resolution": territorial_result["status"],
         "territory_candidates": territorial_result.get("candidates", []),
         "territory_context": req.context,
+        "territory_conflicts": national_conflicts,
         "guidance": list(GUIDANCE[req.field]),
         "sources": docs,
         "national_records": national_records,
