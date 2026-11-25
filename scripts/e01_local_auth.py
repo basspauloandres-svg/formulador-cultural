@@ -96,6 +96,7 @@ async def main():
         for code in ("05001", "11001"):
             result = await guide(GuidedRequest(field="caracteristicas_culturales",
                                   context=code, text="", include_web=False, generate=True), bearer)
+            print(f"E01 inference {code}: territory={result['territory_resolution']} evidence={result['evidence_input_status']} draft={bool(result['suggestion'])} blocked={result['blocked_for_evidence']} flags={[f.get('type') for f in result['review_flags']]}")
             if not result.get("national_evidence"):
                 continue
             assert result["territory"]["divipola"] == code
