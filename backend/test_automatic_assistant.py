@@ -29,7 +29,9 @@ def isolated_national_divipola():
             "url":"https://www.datos.gov.co/Mapas-Nacionales/DIVIPOLA-C-digos-municipios/gdxc-w37w",
             "status":"ADMINISTRATIVE_REGISTRY_MATCH",
         }}
-    with patch.object(guided,"resolve_territory",new=fake_resolve):
+    with patch.object(guided,"resolve_territory",new=fake_resolve), \
+         patch.object(guided,"cultural_registry",new=AsyncMock(return_value={"status":"NO_RECORDS_RETURNED","records":[]})), \
+         patch.object(guided,"municipal_passages",new=AsyncMock(return_value=[])):
         yield
 
 
@@ -222,3 +224,18 @@ def test_territory_switch_flags_old_neira_text_without_erasing_it():
     assert "Neira" in result["review_flags"][0]["instruction"]
     assert result["suggestion"] is None
     fetch.assert_not_called()
+
+
+def test_national_record_citations_require_actual_retrieval():
+    req=guided.GuidedRequest(field="caracteristicas_culturales",context="Anserma Caldas",text="")
+    record={"status":"RECORDS_RETRIEVED","records":[{"divipola":"17042"}],"response_sha256":"a"*64}
+    with patch.object(guided,"research",new=AsyncMock(return_value=research_result())), \
+         patch.object(guided,"cultural_registry",new=AsyncMock(return_value=record)), \
+         patch.object(guided,"assist",new=AsyncMock()) as model:
+        for citation, blocked in [("[N1]",False),("[N2]",True),("",True)]:
+            model.return_value={"suggestion":"Existen registros asociados al código "+citation}
+            result=asyncio.run(guided.guide(req,"Bearer synthetic"))
+            assert result["blocked_for_evidence"] == blocked
+            assert result["evidence_input_status"] == "NATIONAL_RECORDS_AVAILABLE"
+            assert result["claim_status"] == "INSUFFICIENT_EVIDENCE"
+            assert "[N1]" in model.await_args.kwargs["evidence"]
