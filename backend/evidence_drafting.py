@@ -23,13 +23,21 @@ def live_context(passages: list[dict]) -> tuple[str | None, list[dict]]:
               p.get("passage_status") == "EXCERPT_FOUND_CLAIM_UNVERIFIED"
               and p.get("sha256") and p.get("excerpt") and p.get("locator")
               and p.get("url")]
-    chosen = usable[:3]
-    chunks = [
-        f"[E{i}] Fuente: {p.get('publisher', '')}; {p.get('title', '')}; "
-        f"localizador: {p['locator']}; url: {p['url']}; Extracto: {p['excerpt']}"
-        for i, p in enumerate(chosen, 1)
-    ]
-    return ("\n".join(chunks)[:1250] or None), chosen
+    # Preserve whole passages and contiguous citation IDs within the budget.
+    chosen, chunks = [], []
+    for p in usable:
+        if len(chosen) >= 3:
+            break
+        i = len(chosen) + 1
+        chunk = (
+            f"[E{i}] Fuente: {p.get('publisher', '')}; {p.get('title', '')}; "
+            f"localizador: {p['locator']}; url: {p['url']}; Extracto: {p['excerpt']}"
+        )
+        if len("\n".join(chunks + [chunk])) > 1250:
+            continue
+        chunks.append(chunk)
+        chosen.append(p)
+    return ("\n".join(chunks) or None), chosen
 
 
 async def compose_section_draft(*, section: str, field: str, text: str,
@@ -39,7 +47,7 @@ async def compose_section_draft(*, section: str, field: str, text: str,
     text, text_flag = quarantine_directives(text)
     territory, territory_flag = quarantine_directives(territory)
     clean_claims = [c for c in claims if not contains_directive(c.get("statement",""))]
-    clean_passages = [p for p in passages if not any(contains_directive(str(p.get(k,""))) for k in ("title","publisher","excerpt","locator"))]
+    clean_passages = [p for p in passages if not any(contains_directive(str(p.get(k,""))) for k in ("title","publisher","excerpt","locator","url"))]
     quarantine = text_flag or territory_flag or len(clean_claims)!=len(claims) or len(clean_passages)!=len(passages)
     claims = clean_claims
     evidence, used = live_context(clean_passages)
