@@ -13,7 +13,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field
 from claim_audit import qualify_claims
 from generative_grounding import guard_generated_claims
-from prompt_boundary import BOUNDARY, data_message, safe_model_content
+from prompt_boundary import BOUNDARY, data_message, safe_model_content, quarantine_directives, quarantine_flag, contains_directive
 
 SUPABASE_URL = "https://rmaevwlxcuqimxdzxdmq.supabase.co"
 SUPABASE_PUBLIC_KEY = "sb_publishable_YYXIMlsNUfi5RhZfhevMJw_6DovU9RK"
@@ -97,11 +97,22 @@ async def assist(request: AssistantRequest, bearer: str, evidence: str | None = 
         "principales_dinamicas_sociales", "antecedentes"
     } or request.action not in {"redactar", "orientar"}:
         raise HTTPException(422, "Esta evaluación funciona únicamente en S02.")
+    user_id = await verified_user(bearer) if contains_directive(request.text) or contains_directive(request.context) or contains_directive(evidence) else None
+    # Keep original request unchanged; generation and fallback use safe data only.
+    text, text_flag = quarantine_directives(request.text)
+    context, context_flag = quarantine_directives(request.context)
+    evidence, evidence_flag = quarantine_directives(evidence)
+    quarantine = text_flag or context_flag or evidence_flag
+    request = request.model_copy(update={"text":text,"context":context})
+    if quarantine and len(text.strip()) < 10 and not evidence:
+        return {"mode":"local","section":"S02","action":request.action,"suggestion":None,
+                "requires_approval":True,"blocked_for_evidence":True,
+                "review_flags":[quarantine_flag()],"evidence_status":"INSUFFICIENT_EVIDENCE"}
     if len(request.text.strip()) < 10 and not evidence:
         raise HTTPException(422, "Se requiere texto o evidencia documental recuperada.")
     if not configured():
         raise HTTPException(503, "La clave de Groq está vacía o contiene caracteres no válidos. Revisa GROQ_API_KEY en Render.")
-    user_id = await verified_user(bearer)
+    user_id = user_id or await verified_user(bearer)
     if not reserve(user_id):
         raise HTTPException(429, "Límite de consultas del piloto alcanzado. Utiliza la orientación local.")
     system = (
@@ -188,15 +199,17 @@ async def assist(request: AssistantRequest, bearer: str, evidence: str | None = 
     except (ValueError, KeyError, IndexError, TypeError) as exc:
         logger.warning("assistant_groq_failure class=%s stage=upstream_response", type(exc).__name__)
         raise HTTPException(502, "Groq devolvió una respuesta no interpretable. Usa la orientación local.") from None
-    flags = []
+    flags = [quarantine_flag()] if quarantine else []
     if request.action == "redactar":
         # El contexto indexado no se admite como evidencia. Únicamente
         # extractos descargados por el servidor llegan en evidence.
         suggestion, rejected = guard_generated_claims(suggestion, request.text, evidence)
         suggestion, qualified = qualify_claims(suggestion)
-        flags = rejected + qualified
+        flags += rejected + qualified
         if flags:
             logger.info("assistant_s02_grounding_flags count=%d", len(flags))
+    if contains_directive(suggestion):
+        raise HTTPException(502, "La respuesta generativa requiere revisión de seguridad.")
     return {"mode": "generativo", "section": "S02", "action": request.action,
             "suggestion": suggestion, "requires_approval": True,
             "suggestion_origin": ("USER_TEXT_FALLBACK" if any(f["type"] == "GENERATIVE_FALLBACK_ORIGINAL" for f in flags) else "MODEL_DRAFT_UNVERIFIED"),
