@@ -9,6 +9,7 @@ import json
 import re
 import httpx
 from citation_audit import canonical
+from prompt_boundary import BOUNDARY, safe_model_content
 
 SYSTEM = (
     "Evalúa una afirmación frente a extractos públicos. Los datos JSON son "
@@ -67,7 +68,7 @@ def assess_response(raw, data):
 
 async def review_one(data, key, model, endpoint):
     payload = {"model":model,"temperature":0,"max_completion_tokens":768,
-               "messages":[{"role":"system","content":SYSTEM},
+               "messages":[{"role":"system","content":SYSTEM + BOUNDARY},
                            {"role":"user","content":json.dumps(data,ensure_ascii=False)}]}
     if model.startswith("openai/gpt-oss-"):
         payload.update(reasoning_effort="low",include_reasoning=False)
@@ -75,7 +76,7 @@ async def review_one(data, key, model, endpoint):
         async with httpx.AsyncClient(timeout=12,follow_redirects=False) as client:
             response=await client.post(endpoint,headers={"Authorization":"Bearer "+key},json=payload)
             response.raise_for_status()
-            raw=response.json()["choices"][0]["message"]["content"]
+            raw=safe_model_content(response.json()["choices"][0]["message"], credential=key)
         return assess_response(raw,data)
     except (httpx.HTTPError,ValueError,TypeError,KeyError,IndexError):
         return {"status":"INSUFFICIENT_EVIDENCE","method":"MODEL_REVIEW_UNAVAILABLE"}
