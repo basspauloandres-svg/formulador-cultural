@@ -20,7 +20,8 @@ SYSTEM = (
     "CONTRADICTS exige oposición explícita. Si falta contexto, INSUFFICIENT. "
     "Devuelve solo un objeto JSON con verdict, citation y quote; para ENTAILS o "
     "CONTRADICTS copia una oración completa literalmente de un extracto. "
-    "No uses conocimiento externo ni declares veracidad."
+    "Para INSUFFICIENT devuelve verdict igual a INSUFFICIENT, citation exactamente igual al campo citation del JSON de entrada y quote como cadena vacía, nunca null. "
+    "Usa siempre el identificador literal de entrada para citation. No uses conocimiento externo ni declares veracidad."
 )
 LABELS = {"ENTAILS":"MODEL_ENTAILMENT_REVIEW_REQUIRED",
           "CONTRADICTS":"MODEL_CONTRADICTION_REVIEW_REQUIRED",
