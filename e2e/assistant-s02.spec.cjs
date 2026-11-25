@@ -74,3 +74,37 @@ test('S02 rechaza una respuesta de otro territorio y conserva el texto',async({p
   await expect(card.locator('.vt-evidence-draft')).toBeHidden();
   await expect(field).toHaveValue('Se realizaron encuentros culturales.');
 });
+
+
+test('S02 descarta respuesta tardía después de cambiar municipio',async({page})=>{
+  await page.goto('/',{waitUntil:'domcontentloaded'});
+  await page.evaluate(()=>{sb.auth.getSession=async()=>({data:{session:{access_token:'synthetic-e2e'}}});});
+  let release, started;
+  const pending=new Promise(resolve=>release=resolve);
+  const received=new Promise(resolve=>started=resolve);
+  await page.route('https://formulador-cultural-api.onrender.com/assistant/s02/guide',async route=>{
+    const req=route.request().postDataJSON();started();
+    await pending;
+    await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+      section:req.section,field:req.field,territory_context:req.context,
+      suggestion:'Borrador anterior de Villamaría',sources:[],claim_audit:[]
+    })});
+  });
+  const go=code=>page.locator('#guidedJourney .guided-subsection[data-code="'+code+'"]').click();
+  await go('S01');
+  await page.locator('#fields [data-field="municipio"]').fill('Villamaría');
+  await page.locator('#fields [data-field="departamento"]').fill('Caldas');
+  await go('S02');
+  const field=page.locator('#fields [data-field="antecedentes"]');
+  await field.fill('Observación preliminar.');
+  const card=page.locator('.vt-evidence-audit[data-review-field="antecedentes"]');
+  await card.getByRole('button',{name:'Investigar y generar propuesta'}).click();
+  await received;
+  await go('S01');
+  await page.locator('#fields [data-field="municipio"]').fill('Chinchiná');
+  await go('S02');
+  const response=page.waitForResponse(r=>r.url().endsWith('/assistant/s02/guide'));
+  release();await response;
+  await expect(card.locator('.vt-evidence-draft')).toBeHidden();
+  await expect(field).toHaveValue('Observación preliminar.');
+});
