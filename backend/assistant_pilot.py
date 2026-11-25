@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field
 from claim_audit import qualify_claims
 from generative_grounding import guard_generated_claims
+from prompt_boundary import BOUNDARY, data_message, safe_model_content
 
 SUPABASE_URL = "https://rmaevwlxcuqimxdzxdmq.supabase.co"
 SUPABASE_PUBLIC_KEY = "sb_publishable_YYXIMlsNUfi5RhZfhevMJw_6DovU9RK"
@@ -131,6 +132,7 @@ async def assist(request: AssistantRequest, bearer: str, evidence: str | None = 
                    "No inventes referencias ni páginas. "
                    "No presentes causalidad, impacto o cifras sin apoyo textual. "
                    "Si el extracto no sirve, declara la insuficiencia de evidencia. Si el texto docente está vacío, formula exclusivamente desde los extractos pertinentes y cita cada afirmación factual.")
+    system += BOUNDARY
     model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
     payload = {
         "model": model,
@@ -138,19 +140,17 @@ async def assist(request: AssistantRequest, bearer: str, evidence: str | None = 
         "max_completion_tokens": 1024,
         "messages": [
             {"role": "system", "content": system},
-            {"role": "user", "content": (
-                f"Campo S02: {request.field}. Acción: {request.action}. "
-                f"Contexto registrado (no evidencia adicional): {request.context}\n"
-                f"Aporte opcional del participante: {request.text or 'Sin aporte previo'}" +
-                (f"\n<fuentes_extraidas>\n{evidence[:1400]}\n</fuentes_extraidas>" if evidence else "")
-            )},
+            {"role": "user", "content": data_message(
+                section="S02", field=request.field, action=request.action,
+                context=request.context, participant_text=request.text,
+                recovered_evidence=(evidence or "")[:1400])},
         ],
     }
     if model.startswith("openai/gpt-oss-"):
         payload["reasoning_effort"] = "low"
         payload["include_reasoning"] = False
     try:
-        async with httpx.AsyncClient(timeout=18) as client:
+        async with httpx.AsyncClient(timeout=18, follow_redirects=False) as client:
             response = await client.post(
                 GROQ_ENDPOINT,
                 headers={"Authorization": "Bearer " + groq_key(),
@@ -171,7 +171,7 @@ async def assist(request: AssistantRequest, bearer: str, evidence: str | None = 
         data = response.json()
         choice = data["choices"][0]
         message = choice["message"]
-        raw_content = message.get("content")
+        raw_content = safe_model_content(message, credential=groq_key())
         suggestion = raw_content.strip()[:1600] if isinstance(raw_content, str) else ""
         if not suggestion:
             finish_reason = choice.get("finish_reason")
