@@ -33,20 +33,23 @@ def audit_claims(text: str) -> list[dict]:
     El contexto local examinado evita que un marcador al final de otro
     párrafo «verifique» automáticamente todo el texto.
     """
-    normalized = normalize(text)
     results = []
-    for hit in CLAIM_PATTERN.finditer(normalized):
-        start = max(0, hit.start() - 85)
-        end = min(len(normalized), hit.end() + 75)
-        local_context = normalized[start:end]
-        if HYPOTHESIS_PATTERN.search(local_context):
-            continue
-        results.append({
-            "type": "UNSUPPORTED_CAUSAL_CLAIM",
-            "status": "INSUFFICIENT_EVIDENCE",
-            "fragment": text[max(0, hit.start() - 45):min(len(text), hit.end() + 60)],
-            "instruction": "Reformula como hipótesis y especifica qué relación requiere fuente.",
-        })
+    # A qualification in a different sentence cannot exempt a causal claim.
+    for sentence in re.split(r"(?<=[.!?;])\s+|\n+", text):
+        normalized = normalize(sentence)
+        for hit in CLAIM_PATTERN.finditer(normalized):
+            # Generic modal verbs elsewhere in the sentence are not enough.
+            prefix = normalized[max(0, hit.start()-85):hit.start()]
+            explicit = re.search(r"\b(?:hipotesis|se propone investigar|presuntamente)\b", prefix)
+            modal = re.search(r"\b(?:podria[n]?|puede[n]?|posiblemente)\s+(?:\w+\s+){0,2}$", prefix)
+            if explicit or modal:
+                continue
+            results.append({
+                "type": "UNSUPPORTED_CAUSAL_CLAIM",
+                "status": "INSUFFICIENT_EVIDENCE",
+                "fragment": sentence[:240],
+                "instruction": "Reformula como hipótesis y especifica qué relación requiere fuente.",
+            })
     return results[:5]
 
 
