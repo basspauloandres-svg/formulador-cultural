@@ -53,7 +53,8 @@ function mount(){
      const record=draft?.S02?.evidence_review_state?.fields?.[field.dataset.field];
      if(active!=='S02'||!record){savedReview.hidden=true;return;}
      savedReview.hidden=false;
-     savedReview.textContent=record.context!==territory()?'Cotejo anterior de otro territorio. Investiga de nuevo.':record.accepted_text!==field.value?'Texto modificado después de la revisión. Requiere nuevo cotejo.':'Borrador incorporado el '+String(record.accepted_at||'').slice(0,10)+'; '+(record.status==='EDITED_UNREVIEWED'?'edición posterior a la auditoría.':'afirmaciones pendientes de cotejo.')+' Fuentes registradas: '+String(record.manifest?.length||0)+'.';
+     const message=record.context!==territory()?'Cotejo anterior de otro territorio. Investiga de nuevo.':record.accepted_text!==field.value?'Texto modificado después de la revisión. Requiere nuevo cotejo.':'Borrador incorporado el '+String(record.accepted_at||'').slice(0,10)+'; '+(record.status==='EDITED_UNREVIEWED'?'edición posterior a la auditoría.':'afirmaciones pendientes de cotejo.')+' Fuentes registradas: '+String(record.manifest?.length||0)+'.';
+     if(savedReview.textContent!==message)savedReview.textContent=message;
    }
    field.addEventListener('input',showSavedReview);
    showSavedReview();
