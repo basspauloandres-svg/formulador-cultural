@@ -112,6 +112,35 @@ function mount(){
            results.appendChild(wrapper);
          });
        }
+       const manifest=Array.isArray(data.evidence_manifest)?data.evidence_manifest:[];
+       if(isS02&&manifest.length){
+         const evidenceDetails=node('details');
+         evidenceDetails.appendChild(node('summary','Evidencia exacta entregada al modelo ('+manifest.length+')'));
+         manifest.forEach(item=>{
+           const wrapper=node('div','','vt-evidence-passages');
+           const title=node('strong','['+String(item.citation||'')+'] · DIVIPOLA '+String(item.divipola||''));
+           wrapper.appendChild(title);
+           if(typeof item.url==='string'&&item.url.startsWith('https://')){
+             const link=node('a','Consultar fuente original');link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';wrapper.appendChild(link);
+           }
+           wrapper.appendChild(node('p',String(item.prompt_excerpt||''),'vt-evidence-detail'));
+           wrapper.appendChild(node('p','Localizador: '+String(item.locator||'')+' · Huella SHA-256: '+String(item.sha256||'no disponible'),'vt-evidence-detail'));
+           if(item.scope==='RECORD_EXISTENCE_ONLY')wrapper.appendChild(node('p','El registro acredita la existencia de filas asociadas al territorio. No acredita actividad actual, necesidades ni cantidad total.','vt-evidence-detail'));
+           evidenceDetails.appendChild(wrapper);
+         });
+         results.appendChild(evidenceDetails);
+       }
+       const audited=Array.isArray(data.claim_audit)?data.claim_audit:[];
+       if(isS02&&audited.length){
+         results.appendChild(node('strong','Revisión de las afirmaciones propuestas'));
+         const labels={LITERAL_MATCH_REVIEW_REQUIRED:'Correspondencia textual; requiere cotejo',REGISTRY_FACT_REVIEW_REQUIRED:'Registro administrativo de alcance limitado; requiere revisión',INSUFFICIENT_EVIDENCE:'Respaldo insuficiente',INVALID_PROVENANCE:'Procedencia inválida'};
+         audited.forEach(item=>{
+           const p=node('div','','vt-evidence-passages');
+           p.appendChild(node('p',String(item.fragment||'')));
+           p.appendChild(node('p',labels[item.status]||'Pendiente de evaluación','vt-evidence-detail'));
+           results.appendChild(p);
+         });
+       }
        const candidates=Array.isArray(data.candidate_sources)?data.candidate_sources:[];
        const details=node('details');
        details.appendChild(node('summary','Otros documentos candidatos ('+candidates.length+') · sin comprobación de contenido'));
@@ -123,7 +152,7 @@ function mount(){
        });
        details.appendChild(links);
        if(candidates.length)results.appendChild(details);
-       else if(!primary.length)results.appendChild(node('p','No se localizaron fuentes institucionales pertinentes en esta consulta. La afirmación continúa sin respaldo documental.','vt-evidence-detail'));
+       else if(!primary.length&&!manifest.length)results.appendChild(node('p','No se localizaron fuentes institucionales pertinentes en esta consulta. La afirmación continúa sin respaldo documental.','vt-evidence-detail'));
        results.appendChild(node('p','Los pasajes institucionales identifican fragmentos consultables, pero su coincidencia temática no equivale a corroboración. Las afirmaciones y las observaciones siguen diferenciadas.','vt-evidence-detail'));
        results.hidden=false;
        const suggestion=!data.blocked_for_evidence&&typeof data.suggestion==='string'?data.suggestion.trim():'';
@@ -133,6 +162,7 @@ function mount(){
          proposal.hidden=false;
          status.textContent='Redacción preparada. Verifica los datos y aprueba para incorporarla al campo y guardarla.';
          if(Array.isArray(data.review_flags)&&data.review_flags.length){
+           data.review_flags.slice(0,10).forEach(flag=>results.appendChild(node('p',String(flag.instruction||'Requiere revisión.'),'vt-evidence-detail')));
            results.appendChild(node('p','El borrador contiene '+data.review_flags.length+
              ' advertencia(s) sobre contenido generado o inferencias. Revisa antes de aprobar.','vt-evidence-detail'));
          }
