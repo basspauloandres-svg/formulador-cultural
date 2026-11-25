@@ -13,6 +13,8 @@ def normalize(s):
 def audit_citations(draft, manifest):
     lookup = {}
     for item in manifest:
+        if item.get("kind") not in {"pdf", "municipal_html", "administrative_registry"}:
+            continue
         excerpt = item.get("prompt_excerpt", "")
         if sha256(excerpt.encode()).hexdigest() != item.get("excerpt_sha256"):
             continue
