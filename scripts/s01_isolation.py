@@ -54,8 +54,20 @@ def main():
             s=row(c,h,"sections",{"project_id":p,"code":"S01","data":{"synthetic":label}},label+" create own section")
             e=row(c,h,"evidence",{"project_id":p,"text":"synthetic "+label,"source_kind":"observation"},label+" create own evidence")
             owned[label]={"projects":p,"sections":s,"evidence":e}
+        # The browser uses POST upsert on (project_id, code), not only PATCH.
+        # Check the actual operation with the same authenticated identities.
+        for label,user,h,other in (("A",a,ha,"B"),("B",b,hb,"A")):
+            upsert={**h,"Prefer":"resolution=merge-duplicates,return=representation"}
+            params={"on_conflict":"project_id,code"}
+            own={"project_id":owned[label]["projects"],"code":"S01","data":{"synthetic":label}}
+            r=req(c,upsert,"POST","sections",params,own)
+            check(r.status_code in (200,201) and len(r.json())==1 and r.json()[0]["id"]==owned[label]["sections"],label+" own section upsert")
+            foreign={"project_id":owned[other]["projects"],"code":"S01","data":{"synthetic":"forged"}}
+            deny(req(c,upsert,"POST","sections",params,foreign),label+" cannot upsert foreign section")
         for label,user,h,other,other_user in (("A",a,ha,"B",b),("B",b,hb,"A",a)):
             for table,own in owned[label].items():
+                visible=req(c,h,"GET",table)
+                check(visible.status_code==200 and {r["id"] for r in visible.json()}=={own},label+" list contains only own "+table)
                 foreign=owned[other][table]
                 r=select(c,h,table,own)
                 check(r.status_code==200 and len(r.json())==1,label+" read own "+table)
