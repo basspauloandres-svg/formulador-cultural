@@ -27,3 +27,11 @@ def test_registry_scope():
 
 def test_post_sentence_reference():
     assert audit_citations("El municipio realizó cinco talleres de música. [F1, p.1]",[entry()])[0]["status"]=="LITERAL_MATCH_REVIEW_REQUIRED"
+
+def test_unknown_provenance_kind():
+    m=[entry(kind="untrusted_index")]
+    assert audit_citations("El municipio realizó cinco talleres de música [F1, p.1].",m)[0]["status"]=="INVALID_PROVENANCE"
+
+def test_uncited_sentence_remains_insufficient():
+    out=audit_citations("El municipio realizó cinco talleres de música [F1, p.1]. Existen efectos positivos.",[entry()])
+    assert [c["status"] for c in out]==["LITERAL_MATCH_REVIEW_REQUIRED","INSUFFICIENT_EVIDENCE"]
