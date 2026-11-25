@@ -111,7 +111,7 @@ async def main():
                 model_pass = True
             if result.get("national_evidence") and result["suggestion"] and not result["blocked_for_evidence"] and all(c["status"] == "REGISTRY_FACT_REVIEW_REQUIRED" for c in result["claim_audit"]):
                 registry_pass = True
-                print(f"E02 scoped registry output {code}: PASS ({result[\'suggestion_origin\']})")
+                print(f"E02 scoped registry output {code}: PASS ({result['suggestion_origin']})")
             if model_pass and registry_pass:
                 break
         if not model_pass or not registry_pass:
