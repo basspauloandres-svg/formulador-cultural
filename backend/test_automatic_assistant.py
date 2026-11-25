@@ -245,3 +245,16 @@ def test_national_record_citations_require_actual_retrieval():
             if not blocked:
                 assert result["claim_audit"][0]["status"] == "INSUFFICIENT_EVIDENCE"
                 assert result["evidence_manifest"][0]["scope"] == "RECORD_EXISTENCE_ONLY"
+
+
+def test_unhashed_document_does_not_reach_model_for_empty_field():
+    req=guided.GuidedRequest(field="antecedentes",context="Neira Caldas",text="")
+    doc={**guided.INSTITUTIONAL_DOCUMENTS[("neira","caldas")][0],
+         "passages":[{"page":1,"excerpt":"Documento sin huella válida."}]}
+    with patch.object(guided,"research",new=AsyncMock(return_value=research_result())), \
+         patch.object(guided,"fetch_document",new=AsyncMock(return_value=doc)), \
+         patch.object(guided,"assist",new=AsyncMock()) as model:
+        result=asyncio.run(guided.guide(req,"Bearer synthetic"))
+    model.assert_not_called()
+    assert result["blocked_for_evidence"]
+    assert not result["evidence_manifest"]
