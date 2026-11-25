@@ -307,21 +307,38 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     suggestion = None
     blocked = False
     flags = list(territory_flags)
+    evidence_manifest = []
     if req.generate:
         excerpts = [national_evidence] if national_evidence else []
+        provenance = []
+        if national_evidence:
+            provenance.append({"citation":"N1","kind":"administrative_registry",
+                "url":"https://www.datos.gov.co/resource/eenq-ga7s.json",
+                "sha256":national_records["response_sha256"],"divipola":identity["divipola"],
+                "locator":identity["divipola"],"scope":"RECORD_EXISTENCE_ONLY"})
         for doc in docs[:1]:
             for passage in doc["passages"][:3]:
                 excerpts.append(f"[F1, p.{passage['page']}] {passage['excerpt']}")
+                provenance.append({"citation":f"F1, p.{passage['page']}","kind":"pdf",
+                    "url":doc["url"],"sha256":doc.get("document_sha256"),
+                    "locator":passage["page"],"divipola":identity["divipola"],
+                    "scope":"EXCERPT_UNVERIFIED"})
         for i, passage in enumerate(live_passages[:2], 1):
+            provenance.append({"citation":f"M{i}","kind":"municipal_html",
+                "url":passage["url"],"sha256":passage["sha256"],
+                "locator":passage["locator"],"divipola":identity["divipola"],
+                "scope":"EXCERPT_UNVERIFIED"})
             excerpts.append(
                 f"[M{i}] Fuente: {passage['publisher']}; "
                 f"{passage['title']}; {passage['url']}; "
                 f"{passage['locator']}; Extracto: {passage['excerpt']}"
             )
         selected = []
-        for excerpt in excerpts:
+        for excerpt, source in zip(excerpts, provenance, strict=True):
             if len("\n".join(selected + [excerpt])) <= 1400:
                 selected.append(excerpt)
+                evidence_manifest.append({**source, "prompt_excerpt":excerpt,
+                    "excerpt_sha256":sha256(excerpt.encode("utf-8")).hexdigest()})
         evidence = "\n".join(selected) or None
         if len(req.text.strip()) < 10 and not evidence:
             blocked = True
@@ -369,6 +386,8 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         "sources": docs,
         "national_records": national_records,
         "national_evidence": national_evidence,
+        "evidence_manifest": evidence_manifest,
+        "semantic_support_status": "NOT_ASSESSED",
         "municipal_references": local_references,
         "evidence_input_status": ("LIVE_PASSAGES_AVAILABLE" if live_passages or docs
                                   else "NATIONAL_RECORDS_AVAILABLE" if national_evidence
