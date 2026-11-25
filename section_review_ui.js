@@ -47,18 +47,18 @@ function mount(){
    proposal.append(proposalTitle,proposalText,approve,discard);
    panel.append(button,status,results,proposal);
    host.appendChild(panel);
-   let seq=0,lastContext=territory(),sourceValue='',sourceContext='';
+   let seq=0,lastContext=territory(),sourceValue='',sourceContext='',sourceSection='',sourceDraft='',needsReview=false;
    function clearIfChanged(){
      const now=territory();
      if(now===lastContext)return false;
-     lastContext=now;seq+=1;results.hidden=true;results.replaceChildren();proposal.hidden=true;
+     lastContext=now;seq+=1;results.hidden=true;results.replaceChildren();proposal.hidden=true;proposalText.value='';sourceValue='';sourceContext='';sourceDraft='';needsReview=false;
      status.textContent='Cambió el municipio. Se descartó la revisión anterior.';
      return true;
    }
    panel.vtReviewInvalidate=clearIfChanged;
    button.onclick=async()=>{
      clearIfChanged();
-     const context=territory(),input=field.value.trim(),request=++seq;
+     const context=territory(),input=field.value.trim(),request=++seq,requestedSection=active;
      results.hidden=true;results.replaceChildren();proposal.hidden=true;
      if(!context){status.textContent='Completa el municipio en S01 para contextualizar la revisión.';return}
      if(!input&&active!=='S02'){status.textContent='Escribe una observación o afirmación en este campo para contrastarla.';return}
@@ -67,14 +67,15 @@ function mount(){
        const sessionResult=await sb.auth.getSession();
        const token=sessionResult?.data?.session?.access_token;
        if(!token){status.textContent='Inicia sesión para revisar fuentes.';return}
-       const isS02=active==='S02';
+       const isS02=requestedSection==='S02';
        const response=await fetch(API+(isS02?'/assistant/s02/guide':'/assistant/section/review'),{
          method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-         body:JSON.stringify({section:active,field:field.dataset.field,text:input,context,include_web:true,compose:true,generate:true})
+         body:JSON.stringify({section:requestedSection,field:field.dataset.field,text:input,context,include_web:true,compose:true,generate:true})
        });
        const data=await response.json();
+       if(request!==seq||active!==requestedSection||!field.isConnected||field.value.trim()!==input||territory()!==context)return;
        if(!response.ok){status.textContent=String(data.detail||'No se pudo completar la revisión.').slice(0,220);return}
-       if(request!==seq||active!==data.section||field.value.trim()!==input||territory()!==context)return;
+       if(data.section!==requestedSection||(isS02&&data.territory_context!==context)){status.textContent='La respuesta no corresponde al campo o territorio solicitado. Repite la consulta.';return;}
        const claims=Array.isArray(data.claims)?data.claims:[];
        results.appendChild(node('strong','Afirmaciones detectadas · evaluación preliminar'));
        if(!claims.length&&!isS02)results.appendChild(node('p','No se identificaron oraciones completas; amplía la descripción.'));
@@ -157,7 +158,7 @@ function mount(){
        results.hidden=false;
        const suggestion=!data.blocked_for_evidence&&typeof data.suggestion==='string'?data.suggestion.trim():'';
        if(suggestion){
-         sourceValue=field.value;sourceContext=context;
+         sourceValue=field.value;sourceContext=context;sourceSection=requestedSection;sourceDraft=suggestion;needsReview=isS02;
          proposalText.value=suggestion;
          proposal.hidden=false;
          status.textContent='Redacción preparada. Verifica los datos y aprueba para incorporarla al campo y guardarla.';
@@ -174,11 +175,12 @@ function mount(){
    };
    approve.onclick=()=>{
      if(clearIfChanged())return;
-     if(territory()!==sourceContext||field.value!==sourceValue ){
+     if(proposal.hidden||!field.isConnected||active!==sourceSection||territory()!==sourceContext||field.value!==sourceValue ){
        status.textContent='Cambió el campo o el municipio. Repite la investigación antes de incorporar la redacción.';return;
      }
      const edited=proposalText.value.trim();
      if(!edited){status.textContent='La propuesta está vacía. Conservamos tu texto.';return}
+     if(needsReview&&!window.confirm(edited!==sourceDraft?'Editaste la propuesta después de la auditoría. Las nuevas afirmaciones no se han evaluado. ¿Incorporar como borrador pendiente de cotejo?':'La propuesta contiene afirmaciones pendientes de cotejo. ¿Incorporar como borrador sin declarar los hechos verificados?'))return;
      field.value=edited;
      field.dispatchEvent(new Event('input',{bubbles:true}));
      field.dispatchEvent(new Event('change',{bubbles:true}));
