@@ -70,3 +70,7 @@ Fecha local: 2026-11-24. Candidato exacto: f5c8fbdb5699ad056c5d28628ba5a52f2aeb3
 
 ## Procedimiento transversal de ingeniería — 2026-11-24
 Autorizado por el investigador después del hito del 25 %. Se incorpora la skill de repositorio VÉRTICE Engineering & Validation v1.0.0 en .agents/skills/vertice-engineering-validation/SKILL.md (commit 4d2a2c0) y su instrucción de entrada en AGENTS.md (commit 08bc6b8). Su lectura y aplicación preceden las modificaciones posteriores. Complementa NCM y PROJECT_QUALITY_GATE; no cambia los criterios acordados ni sustituye la skill oficial de Supabase. S01 permanece como control activo. La incorporación documental no incrementa el porcentaje ni constituye validación de seguridad. No modifica producción.
+
+
+## Ejecución por hitos con comunicación mínima
+Se incorpora VÉRTICE Milestone Execution v1.0.0 en .agents/skills/vertice-milestone-execution/SKILL.md (2143ddd) y AGENTS.md (113c1af). Objetivo vigente: 30 %. Partida: 27 % estimado, 25 % aceptado. Criterio operativo intermedio propuesto: S01 aprobado (42 permisos/RLS, A/B CRUD/upsert con integridad y negaciones verificadas), regresiones esenciales y checkpoint exacto. No sustituye los criterios NCM ni modifica hitos 25/50/75/100. No se atribuye avance porcentual a incorporar la skill. S01 sigue activo. Registrar avance y limitaciones; informar al cierre o si la ejecución debe interrumpirse. Producción sin cambios.
