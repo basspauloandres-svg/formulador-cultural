@@ -25,6 +25,7 @@ from municipal_sources import municipal_passages
 from national_sources import cultural_registry
 from citation_audit import audit_citations
 from semantic_review import packet, review_one
+from prompt_boundary import contains_directive, quarantine_flag
 from territory_registry import resolve_territory, normalized as territory_normalized, cached_explicit_conflicts
 
 # Registro provisional de documentos institucionales identificados por municipio.
@@ -342,6 +343,10 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             )
         selected = []
         for excerpt, source in zip(excerpts, provenance, strict=True):
+            # Do not change an excerpt after hashing/manifest creation.
+            if contains_directive(excerpt):
+                flags.append(quarantine_flag())
+                continue
             if not re.fullmatch(r"[0-9a-f]{64}", source.get("sha256") or ""):
                 continue
             if len("\n".join(selected + [excerpt])) <= 1400:
