@@ -199,6 +199,7 @@ async def assist(request: AssistantRequest, bearer: str, evidence: str | None = 
             logger.info("assistant_s02_grounding_flags count=%d", len(flags))
     return {"mode": "generativo", "section": "S02", "action": request.action,
             "suggestion": suggestion, "requires_approval": True,
+            "suggestion_origin": ("USER_TEXT_FALLBACK" if any(f["type"] == "GENERATIVE_FALLBACK_ORIGINAL" for f in flags) else "MODEL_DRAFT_UNVERIFIED"),
             "blocked_for_evidence": False, "review_flags": flags,
             "evidence_status": "INSUFFICIENT_EVIDENCE",
             "source": "Modelo generativo; borrador con control léxico de adiciones, sin verificación factual"}
