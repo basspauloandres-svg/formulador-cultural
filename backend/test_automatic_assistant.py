@@ -109,6 +109,9 @@ def test_pdf_passage_used_as_server_provided_context_not_user_supplied_citation(
     assert result["suggestion"]=="Texto para revisar [F1, p.1]."
     assert result["claim_status"]=="INSUFFICIENT_EVIDENCE"
     assert result["requires_approval"]
+    assert result["evidence_manifest"][0]["sha256"] == "a"*64
+    assert result["evidence_manifest"][0]["prompt_excerpt"] in evidence
+    assert result["claim_audit"][0]["status"] == "INSUFFICIENT_EVIDENCE"
 
 
 def test_generated_causality_remains_blocked():
