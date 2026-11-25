@@ -22,6 +22,7 @@ def audit_citations(draft, manifest):
     claims = []
     # Preserve citation after a sentence and do not split the PDF page locator.
     protected = CITATION.sub(lambda m: m.group().replace(".", "\u2024"), draft or "")
+    protected = re.sub(r"([.!?])\s+(\[(?:F\d+,\s*p\u2024\d+|[MN]\d+)\])", r" \2\1", protected, flags=re.I)
     for fragment in re.split(r"(?<=[.!?])\s+|\n+", protected):
         fragment = fragment.replace("\u2024", ".").strip()
         if not fragment:
@@ -37,7 +38,7 @@ def audit_citations(draft, manifest):
                         continue
                     excerpt = item["prompt_excerpt"]
                     excerpt = excerpt.split("Extracto:", 1)[-1] if item["kind"] == "municipal_html" else CITATION.sub("", excerpt, count=1)
-                    if len(body.split()) >= 5 and body in normalize(excerpt):
+                    if len(body.split()) >= 5 and (" "+body+" ") in (" "+normalize(excerpt)+" "):
                         status = "LITERAL_MATCH_REVIEW_REQUIRED"
         if refs and any(ref not in lookup for ref in refs):
             status = "INVALID_PROVENANCE"
