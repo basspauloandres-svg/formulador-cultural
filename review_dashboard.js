@@ -28,11 +28,12 @@ function snapshot(){
  const incompleteIndicators=indicatorPending.filter(x=>!x.missing.includes('Definición del indicador')).length;
  const orphanResultItems=(current.orphanResults||[]).map(r=>({id:r.id,text:r.text,objectiveText:r.objectiveText||''}));
  const orphanResults=orphanResultItems.length;
- const absenceCount=missing+progress+undefinedIndicators+incompleteIndicators+orphanResults+(current.orphanActivities||[]).length+(current.schedulePending||[]).length+(current.budgetPending||[]).length+(current.highRiskPending||[]).length+(window.fcGetProjectIntegrityReport?.().issues?.length||0);
+ const budgetCoverage=window.fcAuditBudgetCoverage?.({...bsState,items:bud},acts)||{ok:false,issues:[]};
+ const absenceCount=missing+progress+budgetCoverage.issues.length+undefinedIndicators+incompleteIndicators+orphanResults+(current.orphanActivities||[]).length+(current.schedulePending||[]).length+(current.budgetPending||[]).length+(current.highRiskPending||[]).length+(window.fcGetProjectIntegrityReport?.().issues?.length||0);
  const coherenceIssues=(coh.checks||[]).filter(x=>x.status!=='COHERENTE');
  const coherenceOk=coherenceIssues.length===0;
- const ready=complete===codes.length&&absenceCount===0&&coherenceOk&&coh.structuralComplete===true;
- const evidence={verified:ev.filter(x=>x.verification_status==='verificada').length,pending:ev.filter(x=>x.verification_status==='por_verificar').length,discarded:ev.filter(x=>x.verification_status==='descartada').length,total:ev.length};return {reviewFingerprint:window.fcGetReviewFingerprint?.(),states,complete,progress,missing,completion:pct(complete,codes.length),res,acts,inds,sch,bud,risks,bs,coh,obj,riskCounts,evidence,highOpen,undefinedIndicators,incompleteIndicators,indicatorPending,orphanResults,orphanResultItems,absenceCount,coherenceIssues,coherenceOk,ready,coverage:[
+ const ready=complete===codes.length&&absenceCount===0&&coherenceOk&&coh.structuralComplete===true&&budgetCoverage.ok===true;
+ const evidence={verified:ev.filter(x=>x.verification_status==='verificada').length,pending:ev.filter(x=>x.verification_status==='por_verificar').length,discarded:ev.filter(x=>x.verification_status==='descartada').length,total:ev.length};return {reviewFingerprint:window.fcGetReviewFingerprint?.(),states,complete,progress,missing,completion:pct(complete,codes.length),res,acts,inds,sch,bud,risks,bs,coh,obj,riskCounts,evidence,highOpen,undefinedIndicators,incompleteIndicators,indicatorPending,orphanResults,orphanResultItems,absenceCount,budgetCoverage,coherenceIssues,coherenceOk,ready,coverage:[
   ['Objetivos con resultados',pct(obj.filter(x=>resObj.has(x.id)).length,obj.length)],
   ['Resultados con actividades',pct(res.filter(x=>actRes.has(x.id)).length,res.length)],
   ['Actividades con indicadores',pct(acts.filter(x=>indAct.has(x.id)).length,acts.length)],
