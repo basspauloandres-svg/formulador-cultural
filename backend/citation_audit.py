@@ -35,6 +35,9 @@ def audit_citations(draft, manifest):
             for ref in refs:
                 for item in lookup[ref]:
                     if item.get("kind") == "administrative_registry":
+                        expected = normalize("El conjunto administrativo eenq-ga7s de Datos Abiertos Colombia contiene registros de organizaciones y entidades del sector Cultura asociados al código DIVIPOLA " + str(item.get("divipola", "")))
+                        if re.fullmatch(r"\d{5}", str(item.get("divipola",""))) and body == expected:
+                            status = "REGISTRY_FACT_REVIEW_REQUIRED"
                         continue
                     excerpt = item["prompt_excerpt"]
                     excerpt = excerpt.split("Extracto:", 1)[-1] if item["kind"] == "municipal_html" else CITATION.sub("", excerpt, count=1)
