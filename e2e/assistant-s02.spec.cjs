@@ -47,7 +47,7 @@ test('S02 integra una sola consulta, propuesta y aprobación',async({page})=>{
   expect(stored.claim_audit[0].semantic_review.status).toBe('MODEL_CONTRADICTION_REVIEW_REQUIRED');
   expect(stored.semantic_support_status).toBe('MODEL_REVIEW_ONLY');
   await card.getByText('Fuentes del borrador anteriormente incorporado').click();
-  await expect(card.locator('details').filter({has:card.getByText('Fuentes del borrador anteriormente incorporado',{exact:true})}).getByText('Extracto sintético de prueba',{exact:true})).toBeVisible();
+  await expect(card.locator('.vt-saved-evidence').getByText('Extracto sintético de prueba',{exact:true})).toBeVisible();
   await expect(card).toContainText('Borrador incorporado');
   await field.fill('Texto editado posteriormente.');
   await expect(card).toContainText('Texto modificado después de la revisión');
