@@ -39,3 +39,13 @@ Run 45499879221, job 138820029086, candidato 781165c7ddaec051d1b7feaee3baa9c42f2
 
 ## Puerta de calidad transversal obligatoria
 Adoptar docs/PROJECT_QUALITY_GATE.md Q01–Q07 como parte de M01/V01/P01. No declarar listo para presentar por CI verde, exportación o puntaje automático. Revisar coherencia integral, presupuesto, indicadores y términos de convocatoria. Pruebas representativas y revisión humana independiente requeridas. E01 sigue activo; CI general run 45515205808 PASS, cobertura run 45515205825 FAIL en 08001 SOURCE_UNAVAILABLE_OR_INVALID tras resolver 1122 identidades. Preservar auditoría previa exitosa y registrar variabilidad; causa exacta de fallo aún desconocida. Reintentos acotados commit fdf6d1a pendientes de verificación.
+
+
+### E01–E04 — registro de verificación y limitaciones
+- Inferencia real anterior: 24e62c4 / run 45517441145 (Medellín) y e906f93 / run 45517914536 (Bogotá), PASS_STRUCTURAL_ONLY. No prueba apoyo semántico.
+- Candidato 4f03fe1: run 45520580441, 168 pruebas aprobadas; QA navegador 45520580414 PASS; cobertura 45520580460 PASS; esquema 45520580534 PASS para fuentes operativas eenq-ga7s y gdxc-w37w. p9n3-av9n permanece INSUFFICIENT_EVIDENCE, fuera del motor.
+- Run 45520580472: autenticación, recuperación y abstención PASS; inferencia revisable FAIL tras reemplazar propuestas nacionales fuera de alcance. El reemplazo determinista NO cuenta como inferencia. Candidato e34969d: 169 pruebas aprobadas, run 45522305590; cobertura, esquema y QA PASS; inferencia pendiente al registrar.
+- E02: manifiesto con huellas del documento y extracto efectivamente enviado, cita/localizador y DIVIPOLA. Auditoría literal conservadora por cita; paráfrasis y relaciones semánticas no demostradas quedan INSUFFICIENT_EVIDENCE. No es un verificador de entailment general. El registro administrativo solo permite afirmar presencia de filas asociadas al código. Las fuentes exploratorias sin esquema no ingresan al prompt.
+- E03: resolver homónimos con municipio/departamento o código; detectar menciones explícitas incompatibles sin deducir identidad por coincidencia parcial. Interfaz comprueba sección, contexto, texto y solicitud antes de mostrar y aplicar borrador; rechazo de respuesta territorial discordante en prueba de navegador. Sigue pendiente caso de cambio territorial durante consulta, y persistencia de vínculo entre evidencia y borrador aprobado.
+- E04: banderas de causalidad por oración y aceptación explícita de borrador sin cotejo; edición posterior a auditoría requiere nueva revisión. Diferenciar resultado del modelo y texto determinista. No certifica afirmaciones verdaderas.
+- Estado: bloque epistémico ABIERTO. Sin publicar ni fusionar PR #135; main c9839baa permanece intacto.
