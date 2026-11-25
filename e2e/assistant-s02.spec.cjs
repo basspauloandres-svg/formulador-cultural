@@ -34,6 +34,12 @@ test('S02 integra una sola consulta, propuesta y aprobación',async({page})=>{
   page.once('dialog',dialog=>dialog.accept());
   await card.getByRole('button',{name:'Incorporar y guardar redacción'}).click();
   await expect(field).toHaveValue(/Según la información preliminar del formador/);
+  const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('formulador-cultural-prototipo-v1')).S02.evidence_review_state.fields.caracteristicas_culturales);
+  expect(stored.context).toBe('Villamaría, Caldas');
+  expect(stored.status).toBe('ACCEPTED_UNVERIFIED');
+  await expect(card).toContainText('Borrador incorporado');
+  await field.fill('Texto editado posteriormente.');
+  await expect(card).toContainText('Texto modificado después de la revisión');
 });
 
 test('S02 conserva el original cuando no hay sesión',async({page})=>{
