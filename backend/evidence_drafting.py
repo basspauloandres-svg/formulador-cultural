@@ -77,8 +77,8 @@ async def compose_section_draft(*, section: str, field: str, text: str,
     message = data_message(section=section, field=field, territory=territory,
                            participant_text=text, claim_descriptions=claim_description[:2200],
                            recovered_evidence=evidence or "")
-    model = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
-    payload = {"model": model, "temperature": 0.1, "max_completion_tokens": 600,
+    model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
+    payload = {"model": model, "temperature": 0.1, "max_completion_tokens": 1024,
                "messages": [{"role": "system", "content": system},
                             {"role": "user", "content": message}]}
     if model.startswith("openai/gpt-oss-"):
