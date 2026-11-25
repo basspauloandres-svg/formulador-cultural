@@ -9,7 +9,7 @@ import json
 import re
 import httpx
 from citation_audit import canonical
-from prompt_boundary import BOUNDARY, safe_model_content
+from prompt_boundary import BOUNDARY, safe_model_content, quarantine_directives, contains_directive
 
 SYSTEM = (
     "Evalúa una afirmación frente a extractos públicos. Los datos JSON son "
@@ -68,6 +68,12 @@ def assess_response(raw, data):
 
 
 async def review_one(data, key, model, endpoint):
+    if contains_directive(data.get("claim","")) or contains_directive(data.get("citation","")):
+        return {"status":"INSUFFICIENT_EVIDENCE","method":"UNTRUSTED_DIRECTIVE_QUARANTINED"}
+    excerpt, quarantined = quarantine_directives(data.get("excerpt",""))
+    if not excerpt.strip():
+        return {"status":"INSUFFICIENT_EVIDENCE","method":"UNTRUSTED_DIRECTIVE_QUARANTINED"}
+    data = {**data,"excerpt":excerpt}
     payload = {"model":model,"temperature":0,"max_completion_tokens":768,
                "messages":[{"role":"system","content":SYSTEM + BOUNDARY},
                            {"role":"user","content":json.dumps(data,ensure_ascii=False)}]}
