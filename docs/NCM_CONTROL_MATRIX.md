@@ -1,5 +1,5 @@
 # Matriz maestra NCM — control de ejecución
-Orden obligatorio: 1 epistémico, 2 seguridad, 3 metodología, 4 infraestructura, 5 evaluación, 6 publicación, 7 contingencia. Un proceso activo; hallazgos nuevos se registran sin cambiar el orden. Estado activo: 1, PR #135. Cierre requiere evidencia de prueba y checkpoint.
+Orden obligatorio: 1 epistémico, 2 seguridad, 3 metodología, 4 infraestructura, 5 evaluación, 6 publicación, 7 contingencia. Un proceso activo; hallazgos nuevos se registran sin cambiar el orden. Estado activo: 2 (seguridad), PR #135. Bloque 1 aceptado funcionalmente con alcance limitado y checkpoint; véase cierre al final. Cierre requiere evidencia de prueba y checkpoint.
 
 | ID | Fundamento tecnológico | Código / control | Aceptación | Estado y evidencia |
 |---|---|---|---|---|
@@ -56,3 +56,13 @@ Adoptar docs/PROJECT_QUALITY_GATE.md Q01–Q07 como parte de M01/V01/P01. No dec
 - Autenticación aislada 45522797469: sesión válida, rechazo y abstención, recuperación de documentos reales PASS. Registro nacional Medellín/Bogotá: PASS de hecho administrativo acotado, procedencia determinista. Neira 17486: inferencia real PASS_STRUCTURAL_ONLY; afirmaciones semánticas insuficientes conservadas explícitamente. No confundir inferencia con corroboración.
 - E01: aceptación funcional real obtenida en checkpoint. E02–E04: control conservador de correspondencia textual y procedencia, incertidumbre explícita, rechazo de respuesta territorial discordante/tardía, aprobación de borrador sin cotejo. Persistencia de manifiesto en S02 y recuperación en interfaz son posteriores al checkpoint; pendientes de validación de candidato. La verificación general de paráfrasis/entailment permanece fuera de lo demostrado; no declarar como completada.
 - Decisión operativa: conservar la rama de desarrollo sin merge; el checkpoint no autoriza publicar ni sustituye validación final. 
+
+
+## Hito 25 % — aceptación funcional del bloque epistémico E01–E04
+Fecha local: 2026-11-24. Candidato exacto: f5c8fbdb5699ad056c5d28628ba5a52f2aeb3fc7. Checkpoint: checkpoint/2026-11-24-epistemic-25.
+- Run 45523734694: 176 pruebas Python aprobadas, 19 advertencias; validaciones JavaScript y metodológicas aprobadas.
+- Run 45523734701: 12 pruebas Playwright aprobadas, incluidas aceptación explícita, persistencia de evidencia y evaluación provisional, rechazo de territorio discordante y respuesta tardía.
+- Runs 45523734894 y 45523734830: esquema operativo y cobertura nacional PASS. Fuente exploratoria p9n3-av9n excluida por insuficiencia de evidencia.
+- Run 45523734738: autenticación aislada, recuperación documental, abstención y modelo real PASS. Neira 17486: inferencia real PASS_STRUCTURAL_ONLY. Medellín y Bogotá: hechos administrativos acotados, origen determinista. Tres controles semánticos con proveedor real y pasaje sintético: apoyo, contradicción e insuficiencia, tres resultados esperados.
+- E01: ACCEPTED_FUNCTIONAL. E02: ACCEPTED_BOUNDED_REVIEW. E03: ACCEPTED_TESTED_PATHS. E04: ACCEPTED_CONSERVATIVE_GUARDRAILS. No existe certificación factual ni estimación de precisión semántica general; el evaluador secundario es opt-in mediante VERTICE_SEMANTIC_REVIEW=1, comparte proveedor, evalúa como máximo una afirmación citada por consulta, consume cuota y no modifica el estado de evidencia insuficiente. Revisión humana y evaluación representativa permanecen obligatorias en V01. No habilitar ni publicar en producción por este hito.
+- S01 seguridad es el siguiente proceso autorizado por el orden NCM. Mantener producción main c9839baa sin merge; ningún resultado de pruebas autoriza por sí solo publicación.
