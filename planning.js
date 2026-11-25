@@ -32,10 +32,39 @@ function scheduleState(){
  return s
 }
 function scheduleIssues(s){
- const map=new Map((s.items||[]).map(x=>[x.activityId,x])),out=[];
- for(const x of s.items||[]){if(!x.startDate)out.push(x.activityId+': falta fecha de inicio');if(!x.responsible||/POR VERIFICAR/.test(x.responsible))out.push(x.activityId+': falta responsable');for(const dep of x.dependencyIds||[]){const d=map.get(dep);if(d?.endDate&&x.startDate&&x.startDate<d.endDate)out.push(x.activityId+': inicia antes de terminar '+dep)}}
- return out
+ const items=Array.isArray(s?.items)?s.items:[],map=new Map(items.map(x=>[x.activityId,x])),out=[];
+ const date=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v;
+ const seen=new Set(),visiting=new Set(),finished=new Set();
+ for(const x of items){
+  const id=x.activityId;
+  if(!id||seen.has(id))out.push((id||'Sin ID')+': actividad duplicada o sin identificador');
+  seen.add(id);
+  if(!date(x.startDate))out.push(id+': fecha de inicio ausente o inválida');
+  if(!date(x.endDate))out.push(id+': fecha de cierre ausente o inválida');
+  if(date(x.startDate)&&date(x.endDate)&&x.endDate<x.startDate)out.push(id+': cierre anterior al inicio');
+  if(!String(x.responsible??'').trim()||/POR VERIFICAR|POR DEFINIR|POR REVISAR/i.test(x.responsible))out.push(id+': falta responsable');
+  for(const dep of x.dependencyIds||[]){
+   const d=map.get(dep);
+   if(!d)out.push(id+': dependencia ausente '+dep);
+   else if(date(d.endDate)&&date(x.startDate)&&x.startDate<d.endDate)out.push(id+': inicia antes de terminar '+dep);
+  }
+ }
+ // Iterative traversal avoids recursion depth on long schedules.
+ for(const id of map.keys()){
+  if(finished.has(id))continue;
+  const stack=[{id,exit:false}];
+  while(stack.length){
+   const step=stack.pop(),k=step.id;
+   if(step.exit){visiting.delete(k);finished.add(k);continue}
+   if(visiting.has(k)){out.push(k+': ciclo de dependencias');continue}
+   if(finished.has(k)||!map.has(k))continue;
+   visiting.add(k);stack.push({id:k,exit:true});
+   for(const dep of map.get(k).dependencyIds||[])stack.push({id:dep,exit:false});
+  }
+ }
+ return [...new Set(out)];
 }
+window.fcAuditSchedule=scheduleIssues;
 function ganttHtml(xs){
  const valid=(xs||[]).filter(x=>x.startDate&&x.endDate);if(!valid.length)return '<p class="muted">Completa fechas para ver el cronograma gráfico.</p>';
  const start=Math.min(...valid.map(x=>Date.parse(x.startDate))),end=Math.max(...valid.map(x=>Date.parse(x.endDate))),span=Math.max(86400000,end-start+86400000);
