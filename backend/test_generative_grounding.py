@@ -92,3 +92,10 @@ def test_pdf_locator_does_not_introduce_a_numeric_claim():
         "[F1, p.37] La banda realiza actividades musicales.")
     assert "[F1, p.37]" in draft
     assert not flags
+
+
+def test_registry_identifier_reused_as_count_is_rejected():
+    evidence = "[N1] El registro contiene organizaciones asociadas al código DIVIPOLA 05001."
+    draft, flags = guard_generated_claims("Existen 05001 asistentes en DIVIPOLA 05001 [N1].", "", evidence)
+    assert not draft
+    assert any("cifras_nuevas_sin_fuente" in f.get("concepts", []) for f in flags)
