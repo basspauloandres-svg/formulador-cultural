@@ -117,6 +117,23 @@ function budgetItemReady(i){return !!String(i.description||'').trim()&&!!String(
 function recalc(i){i.totalCost=validBudgetNumber(i.quantity,true)&&validBudgetNumber(i.frequency,true)&&validBudgetNumber(i.unitCost)&&Number.isFinite(Number(i.quantity)*Number(i.frequency)*Number(i.unitCost))?Math.round(Number(i.quantity)*Number(i.frequency)*Number(i.unitCost)*100)/100:null}
 function confirmedBudgetItems(s){return (s.items||[]).filter(x=>x.confirmed&&budgetItemReady(x)&&['Monetario','Aporte en especie'].includes(x.costType)&&x.totalCost!=null&&Number.isFinite(Number(x.totalCost))&&Math.abs(Number(x.totalCost)-Math.round(Number(x.quantity)*Number(x.frequency)*Number(x.unitCost)*100)/100)<0.005)}
 function budgetSummary(s){const items=s.items||[],valid=confirmedBudgetItems(s),sum=t=>Math.round(valid.filter(x=>!t||x.costType===t).reduce((a,b)=>a+Number(b.totalCost),0)*100)/100;return {total:sum(),monetary:sum('Monetario'),inKind:sum('Aporte en especie'),count:items.length,pending:items.length-valid.length}}
+function budgetCoverageAudit(s,activities){
+ const rows=Array.isArray(s?.items)?s.items:[],status=s?.activityStatus||{},active=new Set((activities||[]).filter(a=>a.confirmed).map(a=>a.id)),valid=new Set(confirmedBudgetItems({items:rows})),issues=[];
+ const add=(activityId,kind)=>issues.push({activityId,kind});
+ for(const row of rows)if(!active.has(row.activityId))add(row.activityId,'RUBRO_HUERFANO');
+ const ids=new Set();
+ for(const row of rows){if(!row.id||ids.has(row.id))add(row.activityId,'RUBRO_DUPLICADO_O_SIN_ID');ids.add(row.id)}
+ for(const id of active){
+  const items=rows.filter(x=>x.activityId===id),st=status[id];
+  if(st==='nocost'){if(items.length)add(id,'SIN_COSTO_CON_RUBROS');continue}
+  if(!['cost','inkind'].includes(st)){add(id,'TRATAMIENTO_PENDIENTE');continue}
+  if(!items.length){add(id,'SIN_RUBROS');continue}
+  if(items.some(x=>!valid.has(x)))add(id,'RUBRO_INCOMPLETO_O_INCONSISTENTE');
+  if(items.some(x=>x.costType!==(st==='inkind'?'Aporte en especie':'Monetario')))add(id,'TIPO_INCOMPATIBLE');
+ }
+ return {ok:active.size>0&&issues.length===0,issues};
+}
+window.fcAuditBudgetCoverage=budgetCoverageAudit;
 function budgetBreakdown(s){
  const byCat={},byAct={};for(const x of confirmedBudgetItems(s)){byCat[x.resourceType||'Otros']=(byCat[x.resourceType||'Otros']||0)+(Number(x.totalCost)||0);byAct[x.activityId]=(byAct[x.activityId]||0)+(Number(x.totalCost)||0)}
  return {byCat,byAct}
