@@ -40,6 +40,7 @@ jobs:
           export VERTICE_TEST_SUPABASE_PUBLIC_KEY="$(supabase status -o json | python -c 'import json,sys; print(json.load(sys.stdin)["ANON_KEY"])')"
           cd "$GITHUB_WORKSPACE"
           python scripts/s01_isolation.py
+          python scripts/p01_project_roundtrip.py
       - name: Destroy isolated environment
         if: always()
         run: |
