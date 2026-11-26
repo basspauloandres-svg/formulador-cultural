@@ -5,6 +5,9 @@ on:
     paths:
       - index.html
       - guided_experience.js
+      - deliverables.js
+      - export_completion.js
+      - ci_qa_integrated_export_execution_test.js
       - workspace_preview.css
       - e2e/workspace-preview.spec.cjs
       - .github/workflows/workspace-preview.yml
@@ -30,6 +33,8 @@ jobs:
           python-version: '3.12'
       - name: Install existing document generator dependencies
         run: pip install -r backend/requirements.txt
+      - name: Check document status across export formats
+        run: node ci_qa_integrated_export_execution_test.js
       - name: Run existing browser regression and workspace tests
         run: |
           python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/workspace-preview.log 2>&1 &
