@@ -129,7 +129,7 @@ console.log('PASS Q02: orphan links, cause mapping, risk ownership and incomplet
 
 vm.runInContext(fs.readFileSync('planning.js','utf8'),context);
 const audit=context.window.fcBudgetAudit;
-const base={id:'B1',activityId:'A1',description:'Material',unit:'unidad',quantity:3,frequency:2,unitCost:1000,totalCost:6000,resourceType:'Materiales',fundingSource:'Recursos propios',costType:'Monetario',confirmed:true};
+const base={id:'B1',activityId:'A1',description:'Material',unit:'unidad',quantity:3,frequency:2,unitCost:1000,totalCost:6000,resourceType:'Materiales',fundingSource:'Recursos propios',priceSource:'Cotización sintética QA 01',priceDate:'2025-01-01',priceStatus:'quote',costType:'Monetario',confirmed:true};
 const budgetAudit=items=>audit({items});
 assert.strictEqual(budgetAudit([base]).summary.total,6000);
 assert.strictEqual(budgetAudit([base]).breakdown.byCat.Materiales,6000);
@@ -193,3 +193,16 @@ assert.strictEqual(check('Rubros vinculados a actividades').status,'COHERENTE');
 snapshot.derived.budget_state.activityStatus={A1:'cost'};
 assert.strictEqual(check('Rubros vinculados a actividades').status,'AÚN NO EVALUABLE');
 console.log('PASS M01: budget coverage and explicit no-cost distinction');
+
+const rateReady=context.window.fcRateEvidenceReady;
+assert(rateReady(base));
+for(const patch of [{priceSource:''},{priceDate:'2025-02-30'},{priceDate:'9999-01-01'},{priceStatus:'pending'},{priceStatus:'declared_zero'},{priceSource:'[POR VERIFICAR]'}]){
+ const item={...base,...patch};
+ assert(!rateReady(item));
+ const c=coverage({activityStatus:{A1:'cost'},items:[item]},active);
+ assert(!c.ok&&c.issues.some(x=>x.kind==='TARIFA_SIN_PROCEDENCIA'));
+ assert.strictEqual(budgetAudit([item]).summary.total,6000,'La estimación aritmética se conserva sin certificar la tarifa');
+}
+assert(rateReady({...base,priceStatus:'declared_zero',unitCost:0,totalCost:0,priceSource:'Declaración sintética de disponibilidad'}));
+assert(!rateReady({...base,priceStatus:'declared_zero',unitCost:'',totalCost:null}));
+console.log('PASS Q03: provenance blocks final review without discarding estimated arithmetic');
