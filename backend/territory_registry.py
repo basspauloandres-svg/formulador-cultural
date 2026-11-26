@@ -86,19 +86,24 @@ def parse_dataset(raw: Any) -> list[dict]:
 
 async def fetch_registry() -> list[dict]:
     async with httpx.AsyncClient(timeout=13, follow_redirects=False) as client:
-        response = await client.get(
+        response, count = await asyncio.gather(client.get(
             SOURCE_API,
             params={"$select": "cod_dpto,dpto,cod_mpio,nom_mpio,tipo_municipio",
                     "$order": "cod_mpio", "$limit": 1500},
             headers={"Accept": "application/json", "User-Agent": "VerticeResearchAssistant/0.6"},
-        )
+        ), client.get(SOURCE_API, params={"$select":"count(*) as n"},headers={"Accept":"application/json","User-Agent":"VerticeResearchAssistant/0.6"}))
         response.raise_for_status()
+        count.raise_for_status()
         if "json" not in response.headers.get("content-type", "").lower():
             raise ValueError("DIVIPOLA no respondió JSON")
         # Defensa ante respuestas parcialmente truncadas.
         if len(response.content) > 950_000:
             raise ValueError("DIVIPOLA: respuesta demasiado grande")
-        return parse_dataset(response.json())
+        rows=parse_dataset(response.json())
+        totals=count.json()
+        if not isinstance(totals,list) or len(totals)!=1 or int(totals[0]["n"])!=len(rows):
+            raise ValueError("DIVIPOLA: conteo oficial no coincide con filas recuperadas")
+        return rows
 
 
 async def registry() -> list[dict] | None:
