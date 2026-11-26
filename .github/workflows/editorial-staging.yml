@@ -130,11 +130,11 @@ jobs:
               const frameB=await mobile.locator('#vtIntro canvas').evaluate(c=>c.toDataURL());
               if(frameA===frameB)throw Error('canvas frames did not evolve');
               if(!await mobile.locator('#vtIntro').isVisible())throw Error('cinematic intro ended too early');
-              await mobile.waitForTimeout(4000);
+              await mobile.waitForTimeout(5000);
               if(!await mobile.locator('#vtIntro').isVisible())throw Error('logo hold missing');
               await mobile.locator('#vtIntro').waitFor({state:'hidden',timeout:2800});
               const elapsed=Date.now()-began;
-              if(elapsed<6450||elapsed>8800)throw Error('unexpected cinematic duration: '+elapsed);
+              if(elapsed<7450||elapsed>9800)throw Error('unexpected cinematic duration: '+elapsed);
               console.log('CINEMATIC_INTRO_DURATION_MS',elapsed);
               await mobile.reload({waitUntil:'domcontentloaded'});
               await mobile.locator('#vtIntro').waitFor({state:'visible'});
