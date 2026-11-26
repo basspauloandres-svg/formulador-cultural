@@ -23,7 +23,7 @@ from assistant_pilot import AssistantRequest, assist, groq_key, reserve, verifie
 from source_research import ResearchRequest, research
 from source_verifier import validate_pdf_url, MAX_PDF_BYTES, MAX_PAGES
 from municipal_sources import municipal_passages
-from institutional_sources import has_private_contact
+from institutional_sources import has_private_contact, institutional_passages
 from national_sources import cultural_registry
 from citation_audit import audit_citations
 from semantic_review import packet, review_one
@@ -308,6 +308,9 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     if re.search(r"music|banda|orquesta|agrupacion", text_normalized):
         topics.add("PRACTICAS_MUSICALES")
     local_references = await municipal_passages(key, topics) if key and topics else []
+    if req.include_web and key and req.field in {'caracteristicas_culturales', 'antecedentes'}:
+        regional = await institutional_passages(key, topics, found['sources'])
+        local_references = regional + local_references
     live_passages = [p for p in local_references
                     if p.get("passage_status") == "EXCERPT_FOUND_CLAIM_UNVERIFIED"
                     and p.get("sha256") and p.get("excerpt")]
