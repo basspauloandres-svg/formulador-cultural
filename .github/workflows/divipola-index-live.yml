@@ -1,0 +1,53 @@
+name: Official DIVIPOLA index validation
+on:
+  pull_request:
+    branches: [qa/2026-11-26-s02-structured-territory]
+    paths: [.github/workflows/divipola-index-live.yml]
+permissions:
+  contents: read
+jobs:
+  catalog:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 8cb53da776dcf786a49857a509154bb2b051e33f
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r backend/requirements.txt
+      - name: Verify full official snapshot and index equivalence
+        env:
+          PYTHONPATH: backend
+        run: |
+          python - <<'PY'
+          import asyncio,json,time
+          from collections import Counter
+          from hashlib import sha256
+          from territory_registry import fetch_registry,resolve_indexed,resolve_from_records,DATASET,SOURCE_CUTOFF,SOURCE_DATA_UPDATED
+          async def main():
+              begin=time.perf_counter()
+              rows=await fetch_registry()
+              retrieval=(time.perf_counter()-begin)*1000
+              codes=[r["divipola"] for r in rows]
+              begin=time.perf_counter()
+              resolve_indexed(codes[0],rows)
+              build=(time.perf_counter()-begin)*1000
+              begin=time.perf_counter()
+              scan=[resolve_from_records(c,rows) for c in codes]
+              scan_ms=(time.perf_counter()-begin)*1000
+              begin=time.perf_counter()
+              indexed=[resolve_indexed(c,rows) for c in codes]
+              indexed_ms=(time.perf_counter()-begin)*1000
+              assert scan==indexed
+              assert all(r["status"]=="FOUND" and r["identity"]["divipola"]==c for c,r in zip(codes,indexed))
+              assert len(set(codes))==len(rows)
+              assert all(len(c)==5 and c.isdigit() for c in codes)
+              for q in ["Granada","Granada Meta","Granada Antioquia","Bogotá D.C.","Villamaría Caldas","Neira Caldas","Quibdó Chocó","Leticia Amazonas",""]:
+                  assert resolve_indexed(q,rows)==resolve_from_records(q,rows),q
+              digest=sha256(json.dumps(rows,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
+              print("DIVIPOLA_LIVE_INDEX",json.dumps({"dataset":DATASET,"declared_cutoff":SOURCE_CUTOFF,"declared_data_updated":SOURCE_DATA_UPDATED,"snapshot_sha256":digest,"official_count_matches":True,"rows":len(rows),"types":dict(Counter(r["territory_type"] for r in rows)),"departments":len({r["department_code"] for r in rows}),"exact_code_matches":len(indexed),"retrieval_ms":round(retrieval,3),"index_build_and_first_ms":round(build,3),"scan_all_ms":round(scan_ms,3),"indexed_all_ms":round(indexed_ms,3),"model_calls":0},ensure_ascii=False))
+              print("DIVIPOLA_LIVE_INDEX_PASS")
+          asyncio.run(main())
+          PY
