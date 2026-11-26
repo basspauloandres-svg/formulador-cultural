@@ -125,11 +125,17 @@ jobs:
               await mobile.locator('#vtIntro').waitFor();
               // Verify the extended temporal contract, including continued visibility at 2.2 s.
               const began=Date.now();
-              await mobile.waitForTimeout(2200);
+              await mobile.waitForTimeout(1250);
+              const frameA=await mobile.locator('#vtIntro canvas').evaluate(c=>c.toDataURL());
+              await mobile.waitForTimeout(1200);
+              const frameB=await mobile.locator('#vtIntro canvas').evaluate(c=>c.toDataURL());
+              if(frameA===frameB)throw Error('canvas frames did not evolve');
               if(!await mobile.locator('#vtIntro').isVisible())throw Error('cinematic intro ended too early');
-              await mobile.locator('#vtIntro').waitFor({state:'hidden',timeout:4500});
+              await mobile.waitForTimeout(3000);
+              if(!await mobile.locator('#vtIntro').isVisible())throw Error('logo hold missing');
+              await mobile.locator('#vtIntro').waitFor({state:'hidden',timeout:2800});
               const elapsed=Date.now()-began;
-              if(elapsed<3900||elapsed>6600)throw Error('unexpected cinematic duration: '+elapsed);
+              if(elapsed<5450||elapsed>7800)throw Error('unexpected cinematic duration: '+elapsed);
               console.log('CINEMATIC_INTRO_DURATION_MS',elapsed);
               await mobile.reload({waitUntil:'domcontentloaded'});
               if(await mobile.locator('#vtIntro').isVisible())throw Error('intro repeated in same session');
