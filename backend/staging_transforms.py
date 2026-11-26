@@ -66,7 +66,7 @@ function persistEvidence(){localStorage.setItem(localEvidenceKey,JSON.stringify(
     source=replace_once(source,"note.textContent='La evidencia se guarda en la nube y queda asociada al proyecto autenticado.';try{const p=await currentProject();if(!p){list.innerHTML='<p class=\"evidence-empty\">Primero guarda o sincroniza el proyecto.</p>';return;}const data=await fetchEvidenceRecords();",
         "note.textContent='Registro de evidencia del ensayo, guardado exclusivamente en este navegador.';try{const data=await fetchEvidenceRecords();")
     source=replace_once(source,"const p=await currentProject();if(!p)throw new Error('Guarda o sincroniza primero el proyecto.');const status=",
-        "const p={id:'local-staging'};const status=")
+        "const p={id:window.fcLocalProjectId?.()||'local-staging'};const status=")
     source=replace_once(source,"const {error}=await client.from('evidence').insert(payload);if(error)throw error;",
         """if(payload.source_url&&!/^https?:\\/\\//i.test(payload.source_url))throw new Error('Usa una URL HTTP o HTTPS.');
 payload.id=crypto.randomUUID();payload.created_at=new Date().toISOString();evidenceCache.unshift(payload);persistEvidence();""")
