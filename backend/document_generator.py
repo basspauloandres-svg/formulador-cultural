@@ -130,7 +130,11 @@ def normalized_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "sources": clean(payload.get("sources")),
         "problem": clean(payload.get("problem")),
         "problem_description": clean(payload.get("problem_description")),
-        "document_status": clean(payload.get("document_status") or "Proyecto en revisión"),
+        # The public export endpoint cannot authenticate a browser-side approval.
+        # Preserve the reported internal review, never certify a call-specific status.
+        "document_status": ("Proyecto maestro revisado (según revisión declarada; requiere cotejo de convocatoria)"
+                            if payload.get("document_status") == "Proyecto maestro revisado"
+                            else "Proyecto en revisión"),
         "strategy": clean(payload.get("strategy")),
         "objective_general": clean(payload.get("objective_general")),
         "objectives": rows(payload.get("objectives")),
