@@ -160,3 +160,5 @@ Candidato de integración `ea0e1577f6cea6ab4c76e9cd23103b7b34d22938` (PR #138), 
 | P01 simulacro alojado y contingencia del diplomado | NOT_RUN | Disponibles antecedentes de recuperación local. Falta ensayo integral del taller sobre un candidato alojado en QA. |
 
 Se mantiene 74 % estimado. Hito formal 75 %, objetivo 80 % y habilitación del diplomado pendientes. No se fusionó ni desplegó; main se verificó en `c9839baa`. Se aplicaron los procedimientos del repositorio, incluida la trazabilidad por SHA y el uso de Supabase aislado como alcance de la evidencia I02 existente.
+
+Regresión del SHA integrado: CI 45833566956 completada con éxito. Chromium local 22/22, con 19 casos de regresión y tres recorridos complementarios. Backend 234/234, con 21 advertencias de dependencias y rotulado de ejes. El resultado conserva los límites de aceptación del bloque.
