@@ -2,7 +2,10 @@
 from __future__ import annotations
 import os
 import re
-from collections import defaultdict, deque
+from collections import defaultdict, deque, OrderedDict
+from copy import deepcopy
+from time import monotonic
+import asyncio
 from datetime import datetime, timezone
 from threading import Lock
 import httpx
@@ -176,13 +179,54 @@ def normalize_brave(data: dict) -> list[dict]:
     return results
 
 
+_PUBLIC_SEARCH_CACHE = OrderedDict()
+_PUBLIC_SEARCH_TASKS = {}
+_PUBLIC_SEARCH_LOCK = asyncio.Lock()
+_PUBLIC_SEARCH_TTL = 900
+
 async def research(req: ResearchRequest, authorization: str, *, user_id: str | None = None) -> dict:
     if req.section != "S02" or req.field not in ALLOWED_FIELDS:
         raise HTTPException(422, "La investigación documental se encuentra limitada a S02.")
     query = search_terms(req)
+    trusted_context = user_id is not None
     user_id = user_id or await verified_user(authorization)
     if not reserve_research(user_id):
         raise HTTPException(429, "Límite de búsquedas documentales alcanzado. Intenta más tarde. La cuota de IA es independiente.")
+    # Only the exact-code structured route provides canonical public context.
+    # Do not cache private questions or results containing participant text.
+    if not trusted_context:
+        return await _discover(req,query)
+    key=(query,req.field,req.context,req.include_web,bool(os.environ.get("BRAVE_SEARCH_API_KEY","").strip()))
+    async with _PUBLIC_SEARCH_LOCK:
+        cached=_PUBLIC_SEARCH_CACHE.get(key)
+        if cached and monotonic()-cached[0]<_PUBLIC_SEARCH_TTL:
+            _PUBLIC_SEARCH_CACHE.move_to_end(key)
+            return {**deepcopy(cached[1]),"search_cache":"HIT"}
+        if key in _PUBLIC_SEARCH_TASKS:
+            task=_PUBLIC_SEARCH_TASKS[key]
+        else:
+            if len(_PUBLIC_SEARCH_TASKS)>=16:
+                raise HTTPException(429,"Capacidad de búsqueda temporalmente ocupada.")
+            # Pass only canonical public fields into shared work.
+            public_req=ResearchRequest(field=req.field,context=req.context,text="Consulta territorial pública",include_web=req.include_web)
+            task=asyncio.create_task(_cached_discovery(key,public_req,query))
+            _PUBLIC_SEARCH_TASKS[key]=task
+    return {**deepcopy(await asyncio.shield(task)),"search_cache":"MISS_OR_JOIN"}
+
+async def _cached_discovery(key,req,query):
+    try:
+        result=await _discover(req,query)
+        # Cache positive results, not errors or empty results.
+        if result["sources"] and not result["errors"]:
+            async with _PUBLIC_SEARCH_LOCK:
+                _PUBLIC_SEARCH_CACHE[key]=(monotonic(),deepcopy(result))
+                _PUBLIC_SEARCH_CACHE.move_to_end(key)
+                while len(_PUBLIC_SEARCH_CACHE)>128: _PUBLIC_SEARCH_CACHE.popitem(last=False)
+        return result
+    finally:
+        async with _PUBLIC_SEARCH_LOCK: _PUBLIC_SEARCH_TASKS.pop(key,None)
+
+async def _discover(req,query):
     findings, errors = [], []
     async with httpx.AsyncClient(timeout=12, follow_redirects=False) as client:
         try:
