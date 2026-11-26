@@ -45,6 +45,7 @@ class ResearchRequest(BaseModel):
     text: str = Field(min_length=10, max_length=1800)
     context: str = Field(default="", max_length=200)
     include_web: bool = True
+    question: str = Field(default='', max_length=3000)
 
 
 def search_terms(request: ResearchRequest) -> str:
@@ -59,7 +60,12 @@ def search_terms(request: ResearchRequest) -> str:
         "principales_dinamicas_sociales": "población social",
         "antecedentes": "proyectos culturales"
     }[request.field]
-    return (location + " " + topic)[:100]
+    # Only a controlled vocabulary and years leave VÉRTICE; never send free text.
+    q = normalize_metadata_text(request.question)
+    controlled = ("bandas", "musica", "danza", "teatro", "bibliotecas", "patrimonio", "artesania", "educacion", "poblacion", "demografia", "juventud", "ruralidad", "empleo", "migracion", "pobreza", "plan de desarrollo", "participacion")
+    extras = [word for word in controlled if re.search(r"\\b"+word+r"\\b", q)][:3]
+    years = re.findall(r"\\b(?:19|20)\\d{2}\\b", q)[:2]
+    return (" ".join([location, topic, *extras, *years]))[:140]
 
 
 
@@ -170,11 +176,11 @@ def normalize_brave(data: dict) -> list[dict]:
     return results
 
 
-async def research(req: ResearchRequest, authorization: str) -> dict:
+async def research(req: ResearchRequest, authorization: str, *, user_id: str | None = None) -> dict:
     if req.section != "S02" or req.field not in ALLOWED_FIELDS:
         raise HTTPException(422, "La investigación documental se encuentra limitada a S02.")
     query = search_terms(req)
-    user_id = await verified_user(authorization)
+    user_id = user_id or await verified_user(authorization)
     if not reserve_research(user_id):
         raise HTTPException(429, "Límite de búsquedas documentales alcanzado. Intenta más tarde. La cuota de IA es independiente.")
     findings, errors = [], []
