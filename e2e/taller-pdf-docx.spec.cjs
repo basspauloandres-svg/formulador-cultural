@@ -23,10 +23,26 @@ test('TALLER-EXPORT-02: descargar PDF y DOCX desde botones S16 con motor Python 
   await expect(page.locator('#expPdf')).toBeVisible({ timeout: 15000 });
   await expect(page.locator('#expDocx')).toBeVisible();
 
+  const pdfAttempts = [];
+  await page.route('http://127.0.0.1:8000/documents/pdf', async route => {
+    if (route.request().method() !== 'POST') return route.continue();
+    pdfAttempts.push(route.request().postData());
+    if (pdfAttempts.length > 1) return route.continue();
+    return route.fulfill({
+      status: 429,
+      headers: {
+        'Access-Control-Allow-Origin': 'http://127.0.0.1:5500',
+        'Access-Control-Expose-Headers': 'Retry-After',
+        'Retry-After': '0'
+      },
+      body: 'Capacidad temporalmente ocupada.'
+    });
+  });
+
   for (const kind of ['pdf', 'docx']) {
     const api = page.waitForResponse(r =>
       r.url() === 'http://127.0.0.1:8000/documents/' + kind &&
-      r.request().method() === 'POST',
+      r.request().method() === 'POST' && r.status() !== 429,
     {timeout:65000});
     const download = page.waitForEvent('download', { timeout: 65000 });
     await page.locator(kind === 'pdf' ? '#expPdf' : '#expDocx').click();
@@ -47,5 +63,7 @@ test('TALLER-EXPORT-02: descargar PDF y DOCX desde botones S16 con motor Python 
       expect(bytes.includes(Buffer.from('word/document.xml'))).toBe(true);
     }
   }
+  expect(pdfAttempts).toHaveLength(2);
+  expect(pdfAttempts[1]).toBe(pdfAttempts[0]);
   expect(writes, 'La exportación no necesita escribir en Supabase').toEqual([]);
 });

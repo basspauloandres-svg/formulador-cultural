@@ -167,12 +167,24 @@ async function exportProfessionalDocument(kind,fallback){
  }
  try{
   announceDocumentGenerator({mode:'python',connected:true,message:'Generando documento profesional…'});
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);
-  const response=await fetch(api+'/documents/'+kind,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(professionalDocumentPayload()),signal:controller.signal});
-  clearTimeout(timer);
+  const body=JSON.stringify(professionalDocumentPayload()),baseName=filename();
+  const request=async()=>{
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);
+   try{
+    return await fetch(api+'/documents/'+kind,{method:'POST',headers:{'Content-Type':'application/json'},body,signal:controller.signal});
+   }finally{clearTimeout(timer)}
+  };
+  let response=await request();
+  const retryAfter=response.headers.get('Retry-After');
+  const seconds=retryAfter===null?NaN:Number(retryAfter);
+  if(response.status===429&&Number.isFinite(seconds)&&seconds>=0&&seconds<=10){
+   announceDocumentGenerator({mode:'python',connected:true,message:'El motor está ocupado. Se reintentará la generación en '+seconds+' s.'});
+   await new Promise(resolve=>setTimeout(resolve,seconds*1000));
+   response=await request();
+  }
   if(!response.ok)throw new Error('HTTP '+response.status);
   const blob=await response.blob(),ext=kind==='docx'?'docx':'pdf';
-  download(filename()+'-proyecto-profesional.'+ext,blob);
+  download(baseName+'-proyecto-profesional.'+ext,blob);
   announceDocumentGenerator({mode:'python',connected:true,message:'Documento profesional generado con el motor Python.'});
   return true
  }catch(error){

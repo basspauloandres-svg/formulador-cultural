@@ -103,3 +103,9 @@ body.workspace-preview{
  text-align:left;cursor:pointer
 }
 .workspace-preview .workspace-journey-toggle:hover{background:#e7f1e9}
+
+.workspace-preview .guided-subsection.state-missing,
+.workspace-preview .section-screen-copy > small,
+.workspace-preview .field > .help {
+ color:#3e5549;
+}

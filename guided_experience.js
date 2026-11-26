@@ -39,7 +39,7 @@ function sectionIcon(name){
  return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+(paths[name]||paths.document)+'</svg>'
 }
 function stageDots(stage){
- return '<div class="section-progress-dots" aria-label="Paso '+stage.n+' de '+stages.length+'">'+stages.map(s=>'<span class="'+(s.n<=stage.n?'done':'')+'"></span>').join('')+'</div>'
+ return '<div class="section-progress-dots" role="img" aria-label="Paso '+stage.n+' de '+stages.length+'">'+stages.map(s=>'<span class="'+(s.n<=stage.n?'done':'')+'"></span>').join('')+'</div>'
 }
 
 function code(){try{return typeof active!=='undefined'?active:(($('#counter')?.textContent||'').match(/^S\d{2}/)?.[0]||'S01')}catch{return 'S01'}}
