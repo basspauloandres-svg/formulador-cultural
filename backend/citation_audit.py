@@ -46,7 +46,7 @@ def audit_citations(draft, manifest):
                             status = "REGISTRY_FACT_REVIEW_REQUIRED"
                         continue
                     excerpt = item["prompt_excerpt"]
-                    excerpt = excerpt.split("Extracto:", 1)[-1] if item["kind"] == "municipal_html" else CITATION.sub("", excerpt, count=1)
+                    excerpt = excerpt.split("Extracto:", 1)[-1] if "Extracto:" in excerpt else CITATION.sub("", excerpt, count=1)
                     if len(body.split()) >= 5 and body in [normalize(part) for part in re.split(r"(?<=[.!?])\s+|\n+", excerpt)]:
                         status = "LITERAL_MATCH_REVIEW_REQUIRED"
             support.append({"citation":ref,"status":status})
