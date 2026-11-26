@@ -10,7 +10,7 @@
    const stored=JSON.parse(localStorage.getItem('formulador-cultural-prototipo-v1')||'{}');
    const evidence=JSON.parse(localStorage.getItem('vt-staging-evidence-v1')||'[]');
    const hasContent=v=>typeof v==='string'?!!v.trim():Array.isArray(v)?v.some(hasContent):v&&typeof v==='object'?Object.entries(v).some(([k,x])=>!['updatedAt','createdAt','version','status','confirmed'].includes(k)&&hasContent(x)):typeof v==='number'&&v!==0;
-   return Object.values(stored).some(hasContent)||evidence.length>0;
+   return Object.entries(stored).some(([key,value])=>/^S(?:0[1-9]|1[0-6])$/.test(key)&&hasContent(value))||evidence.length>0;
   } catch {return true}
  };
  const setMode=()=>{const existing=ownData();$('vtNewIdea').hidden=existing;$('vtExistingDraft').hidden=!existing;return existing};
