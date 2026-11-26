@@ -8,7 +8,6 @@ from html.parser import HTMLParser
 import re
 from urllib.parse import urlsplit
 import httpx
-from institutional_sources import institutional_passages
 
 SOURCES = {
     ("villamaria", "caldas"): (
@@ -185,7 +184,7 @@ async def extract_page(source: dict, category: str) -> list[dict]:
 
 
 async def municipal_passages(key: tuple[str, str] | None, categories: set[str]) -> list[dict]:
-    found = await institutional_passages(key, categories)
+    found = []
     if not key or key not in SOURCES:
         return found
     for source in SOURCES[key]:
