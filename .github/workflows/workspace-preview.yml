@@ -4,6 +4,7 @@ on:
     branches: [s02-research-first-20261124]
     paths:
       - index.html
+      - guided_experience.js
       - workspace_preview.css
       - e2e/workspace-preview.spec.cjs
       - .github/workflows/workspace-preview.yml
