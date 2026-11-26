@@ -11,23 +11,36 @@ permissions:
   contents: read
 jobs:
   visual-preview:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - name: Install browser test dependency
         run: |
-          npm install --no-save --no-package-lock @playwright/test@1.56.1
-          npx playwright install --with-deps chromium
+          npm install --no-save --no-package-lock --ignore-scripts @playwright/test@1.56.1
+          npx playwright install chromium
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install existing document generator dependencies
+        run: pip install -r backend/requirements.txt
       - name: Run existing browser regression and workspace tests
         run: |
           python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/workspace-preview.log 2>&1 &
-          SERVER_PID=$!
-          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
-          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8765/ >/dev/null && break; sleep 1; done
+          FRONT_PID=$!
+          python3 -m http.server 5500 --bind 127.0.0.1 > /tmp/workspace-preview-5500.log 2>&1 &
+          ALT_PID=$!
+          (cd backend && python3 -m uvicorn main:app --host 127.0.0.1 --port 8000) > /tmp/workspace-api.log 2>&1 &
+          API_PID=$!
+          trap 'kill "$FRONT_PID" "$ALT_PID" "$API_PID" 2>/dev/null || true' EXIT
+          curl --retry 10 --retry-connrefused --retry-delay 1 --fail --silent --output /dev/null http://127.0.0.1:8765/
+          curl --retry 10 --retry-connrefused --retry-delay 1 --fail --silent --output /dev/null http://127.0.0.1:5500/
+          curl --retry 20 --retry-connrefused --retry-delay 1 --fail --silent --output /dev/null http://127.0.0.1:8000/health
           cat > workspace-test.config.cjs <<'EOF'
           const base=require('./playwright.config.cjs');
           module.exports={...base,testMatch:[...base.testMatch,'**/workspace-preview.spec.cjs'],globalTimeout:240000};
