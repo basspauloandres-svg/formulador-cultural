@@ -1,0 +1,198 @@
+/* VÉRTICE — continuous dark design system for S01–S16.
+   Isolated from the welcome and exported documents. No layout/data/logic changes.
+   Palette roles: background, surface, inset, text, muted, turquoise, warning, danger. */
+body.workspace-preview:not(.vt-welcome-open){
+ --ink:#f0f7f5;--muted:#bed4d8;--line:#45666e;--paper:#112c37;--soft:#173743;
+ --brand:#17675f;--brand-strong:#105c54;--brand-soft:#163e3e;--shadow:none;--shadow-soft:none;
+ --vt-focus:#50e0c3;--vt-text:#f0f7f5;--vt-muted:#bed4d8;--vt-surface:#112c37;
+ --vt-inset:#09212a;--vt-border:#45666e;--vt-card:#173743;--vt-selected:#193e46;
+ color:#f0f7f5;background:radial-gradient(ellipse at 90% 0%,#15414a 0%,transparent 42%),#071b23;
+ color-scheme:dark;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh
+}
+body.workspace-preview > div[role="status"]{background:#102b35!important;color:#d6eeeb!important}
+body.workspace-preview:not(.vt-welcome-open) :where(.hero.app-brand,.auth-card,#guidedJourney,#panel){
+ background:#112c37!important;border-color:#45666e!important;color:#f0f7f5!important;box-shadow:none!important;border-radius:20px
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.hero.app-brand,#guidedJourney){
+ background:#0d2630!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.hero.app-brand){
+ grid-template-columns:auto minmax(0,1fr);border-radius:18px
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.hero.app-brand h1){
+ color:#f3f8f6!important;letter-spacing:.08em
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.app-brand-symbol,.hero.app-brand h1 span){
+ color:#50e0c3!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.hero .progress,.bar-track){
+ background:#27444e!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.hero .progress span,.bar-track i,.gantt-row i){
+ background:#50e0c3!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.guided-stage,.guided-stage header){
+ background:transparent!important;box-shadow:none!important;border-color:#31535c!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.guided-stage){
+ border:1px solid #31535c!important;border-radius:12px
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.guided-stage.current){
+ border-color:#50e0c3!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.guided-journey-head strong,.guided-stage header strong,.section-screen-copy h2,#question,.section-screen-title-row h2,.panel h2,.question,.didactic-question,.vester-core-question,.st-head strong,.indicator-main-question,.indicator-decision-question,.section-screen-title-row h2,.step-kicker,.indicator-step-tag){
+ color:#f3f8f6!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.hero.app-brand .app-brand-meta p,.guided-journey-head p,.guided-subsection small,.section-screen-copy>small,.section-screen-title-row p,.field>.help,.auth-help,.meaning,.help,.counter,.foot,.questions,.guided-section-note span,.guided-tech summary,.step-kicker,.trace-context-grid b,.assistant-lead,.muted,.evidence-item dt,.evidence-head p,.vester-progress,.tree-progress,.st-progress,.sc-progress,.plan-progress,.objective-source,.objective-role,.s08-autosave-note,.didactic-progress,.indicator-step-tag,.indicator-progress-hint,.generator-status,.legend-values,.vt-assist-note,.vt-assist-status,.vt-assist-source,.vt-evidence-audit-status,.vt-evidence-detail,.vt-evidence-audit-results,.activity-link-options button span,.activity-link-empty span,.plan-note p,.plan-alert p,.schedule-order-panel p,.schedule-order-list small,.review-axis small,.review-axis p,.review-guide p,.review-pending-card p,.review-pending-card small,.review-action-grid button span,.coh-review p,.cv-note p,.cv-hint,.cv-card header small,.sc-pair small,.sc-suggestion small,.sc-suggestion p,.st-central-list article p,.st-suggestion p,.st-central-ref small,.st-current small,.st-suggestion small,.st-summary-col article small,.st-summary-col p,.coherence-compact summary small,.coherence-compact .coh-list article p,.coherence-compact .coh-explain,.dg-advice p,.dg-readiness p,.prep-reason,.prep-rule p){
+ color:#bed4d8!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(#panel p,#panel small,#panel label,#panel li,#panel dt,#panel dd,#panel legend,#panel blockquote,#panel strong,#panel h3,#panel h4,#panel span:not(.status-dot)){
+ text-shadow:none
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.field,.evidence-registry,.evidence-item,.evidence-review,.evidence-note,.source,.status,.prep-item,.prep-summary span,.prep-index,.prep-reason,.vt-assist,.vt-assist-proposal,.vt-evidence-audit,.vt-evidence-draft,.vt-territory-check,.vt-assist-references,.problem-choice,.vester-assist,.vester-results article,.result-note,.quadrant-help,.to-s07,.contrast-box,.tree-assist,.tree-intro,.tree-review,.tree-objectives,.tree-checks,.tree-candidate,.tree-node-editor,.tree-visual-node,.tree-custom,.tree-zone,.tree-diagram-level,.tree-diagram-node,.synthesis-source,.synthesis-card,.synthesis-alt,.synthesis-final,.synthesis-checks div,.synthesis-note,.synthesis-alternatives,.synthesis-card blockquote,.synthesis-alt blockquote,.s07-section-head,.s07-state,.s07-output,.s07-stat,.s07-export-review,.objectives-note,.objective-card,.objective-level,.objective-node,.objectives-summary div,.objective-proposals article,.completion-note,.completion-card,.completion-summary,.completion-table th,.indicator-assist-card,.indicator-schedule-reconciliation,.indicator-field-guide,.indicator-status-summary span,.indicator-no-proposal,.indicator-approved-action,.activity-writing-review,.comparison-cards article,.didactic-intro,.didactic-card,.didactic-context,.didactic-suggestion,.writing-help-panel,.writing-source,.writing-proposals article,.indicator-step,.trace-context,.proposal-box,.battery-overview,.viz-panel,.viz-explain,.viz-method,.viz-empty,.vester-plot-wrap,.plan-note,.plan-card,.plan-summary,.schedule-order-panel,.schedule-order-list article,.plan-result,.risk-level,.budget-totals div,.review-axis,.review-hero,.dash-grid article,.exports,.final-confirm,.review-dashboard details,.review-actions,.review-guide,.review-pending-card,.risk-metrics span,.coherence-compact,.coherence-compact .coh-help,.cv-note,.cv-card,.cv-pair,.cv-summary span,.sc-pair article,.sc-suggestion,.sc-empty,.st-central-list article,.st-current,.st-central-ref,.st-suggestion,.st-summary-col,.dg-overall,.dg-advice,.dg-readiness,.causal-bridge-vars li,.activity-link-empty){
+ background:#173743!important;border-color:#45666e!important;color:#f0f7f5!important;box-shadow:none!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.field,.didactic-card,.completion-card,.plan-card,.review-axis,.vt-assist,.evidence-registry,.tree-candidate,.objective-card){
+ border-radius:14px
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.field label,.didactic-main-label,.plan-grid label,.evidence-form label,.completion-card label,.objective-card label,.prep-main label){
+ color:#f0f7f5!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.stage-number,.order-index,.proposal-tag,.indicator-level strong,.objective-status,.completion-status,.evidence-count,.badge,.vester-mode,.tree-mode,.synthesis-mode,.objectives-mode,.stage-status.stage-missing){
+ background:#193c46!important;color:#bed4d8!important;border-color:#52747c!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.stage-number,.order-index){
+ border-radius:10px
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.guided-stage.current .stage-number){
+ background:#50e0c3!important;color:#072622!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.guided-subsection){
+ background:transparent!important;color:#bed4d8!important;border-color:#31535c!important;border-radius:8px
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.guided-subsection.current){
+ background:#193e46!important;color:#e7faf5!important;border-left:3px solid #50e0c3!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.guided-subsection.state-missing){
+ color:#bed4d8!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.status-dot){
+ border-color:#8ca9af!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.guided-subsection.state-complete .status-dot,.saved-dot.ok,.saved-dot.cloud){
+ background:#50e0c3!important;border-color:#50e0c3!important;box-shadow:none!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.guided-subsection.state-progress .status-dot){
+ background:#3d3425!important;border-color:#f9d58d!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.section-screen-icon){
+ background:#193e46!important;color:#50e0c3!important;box-shadow:inset 0 0 0 1px #45666e!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.section-progress-dots span,.section-progress-dots span+span:before){
+ background:#45666e!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.section-progress-dots span.done,.section-progress-dots span.done:before){
+ background:#50e0c3!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(#vtKnowledge){
+ background:#163743!important;border-color:#45666e!important;color:#e1f2ef!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(button,input,textarea,select){
+ font-family:inherit
+}
+body.workspace-preview:not(.vt-welcome-open) :where(input:not([type='checkbox']):not([type='radio']):not([type='range']),textarea,select){
+ background:#09212a!important;color:#eff8f5!important;border-color:#52747c!important;caret-color:#50e0c3;border-radius:10px
+}
+body.workspace-preview:not(.vt-welcome-open) :where(input::placeholder,textarea::placeholder){
+ color:#a9c4c9!important;opacity:1
+}
+body.workspace-preview:not(.vt-welcome-open) :where(input[type='checkbox'],input[type='radio']){
+ accent-color:#50e0c3
+}
+body.workspace-preview:not(.vt-welcome-open) :where(button:not(.guided-subsection),[role='button']){
+ background:#193c46!important;color:#e7faf5!important;border-color:#52747c!important;border-radius:10px;box-shadow:none
+}
+body.workspace-preview:not(.vt-welcome-open) :where(a[href],.vt-assist-references a,.vt-evidence-audit-results a,.vt-territory-check a,.guide summary,.trace-context summary,.indicator-tech-detail summary,.budget-field-help summary,.budget-general-help summary,.sc-prior summary,.sc-note summary,.sc-technical summary,.st-help summary,.st-technical summary,.pending-help summary){
+ color:#7ce5d2!important;text-underline-offset:3px
+}
+body.workspace-preview:not(.vt-welcome-open) :where(button.selected,.score-btn.selected,.didactic-choice-row button.selected,.choice-row button.selected,.sc-options button.selected,.battery-overview button.selected,.tree-candidate.chosen,.tree-node-editor.in-zone,.synthesis-card.selected,.objective-node.central,.tree-zone.central,.tree-diagram-level.central,.tree-diagram-level.central .tree-diagram-node,.nav button.active){
+ background:#193e46!important;color:#e7faf5!important;border-color:#50e0c3!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.stage-status.stage-complete,.ev-status.verificada,.completion-status.ok,.objective-status.confirmed,.indicator-quality.ok,.indicator-status-summary .ok,.indicator-approved-note:not(.pending),.battery-overview button.approved,.synthesis-checks .ok,.tree-ok,.review-axis.ok,.review-hero.ready){
+ background:#163e3e!important;color:#9af1dc!important;border-color:#51b5a4!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.stage-status.stage-progress,.ev-status.por_verificar,.completion-status.pending,.objective-status.pending,.indicator-quality.pending,.indicator-status-summary .pending,.indicator-approved-note.pending,.battery-overview button.pending,.synthesis-checks .warn,.vester-warning,.tree-warning,.objectives-warning,.objective-writing-warning,.prep-rule,.contrast-box,.activity-warning,.activity-link-empty,.indicator-baseline-note,.indicator-pending-list,.s16-focus-banner,.st-pending-note,.plan-alert,.risk-finish-box.pending,.review-axis.pending,.review-hero.review,.quadrant.active){
+ background:#3d3425!important;color:#f9d58d!important;border-color:#b29258!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.required,.evidence-error,.ev-status.descartada,.tree-stale,.quadrant.critical){
+ color:#ffb6bd!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.ev-status.descartada,.tree-stale,.quadrant.critical){
+ background:#402a31!important;border-color:#a96b74!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.quadrant.passive,.tree-zone.direct_cause,.tree-zone.indirect_cause,.tree-diagram-level.direct_cause,.tree-diagram-level.indirect_cause){
+ background:#19364a!important;border-color:#547c98!important;color:#b5d4ef!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.quadrant.indifferent,.tree-zone.outside){
+ background:#203843!important;border-color:#52747c!important;color:#bed4d8!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.tree-zone.direct_effect,.tree-zone.indirect_effect,.tree-diagram-level.direct_effect,.tree-diagram-level.indirect_effect){
+ background:#163e3e!important;border-color:#51b5a4!important;color:#d1eee8!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.completion-table th,.vester-matrix thead th,.table-scroll th){
+ background:#193c46!important;color:#e7faf5!important;border-color:#45666e!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.completion-table td,.vester-matrix td,.table-scroll td,.gantt-row>div){
+ background:#112c37!important;color:#f0f7f5!important;border-color:#45666e!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.plot-bg){
+ fill:#112c37!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.axis,.mean-line){
+ stroke:#9ab9bf!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.tick,.axis-title,.quad-label){
+ fill:#bed4d8!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.viz-point text){
+ fill:#fff!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.viz-point circle){
+ stroke:#bed4d8!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.viz-point.critical circle){
+ fill:#974652!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.viz-point.active circle){
+ fill:#806329!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.viz-point.passive circle){
+ fill:#355f86!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.viz-point.indifferent circle){
+ fill:#526e79!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.tree-flow-arrow,.objective-arrow,.tree-level-label,.legend-values){
+ color:#bed4d8!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.mobile-actions,.nav-wrap){
+ background:#0d2630!important;border-color:#45666e!important;box-shadow:none!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(.workspace-journey-toggle,.vt-home-button){
+ background:#193c46!important;color:#e7faf5!important;border-color:#52747c!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(button.primary,.guided-review-btn,#vtKnowledgeAsk,.vt-assist-approve,.vt-assist [data-assist-action='local'],.vt-evidence-draft [data-review-action='approve'],.sc-continue,.visual-export-bar button:first-child,#confirmFinal){
+ background:#50e0c3!important;color:#072622!important;border-color:#50e0c3!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(button:disabled,[aria-disabled='true']){
+ cursor:not-allowed;opacity:.56;transform:none!important
+}
+body.workspace-preview:not(.vt-welcome-open) :where(button:focus-visible,summary:focus-visible,a[href]:focus-visible,[role='button']:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible){
+ outline:3px solid #50e0c3!important;outline-offset:3px!important;box-shadow:0 0 0 4px #50e0c336!important
+}
+@media(hover:hover) and (pointer:fine){
+ body.workspace-preview:not(.vt-welcome-open) :where(button:not(:disabled),summary,a[href],[role="button"]:not([aria-disabled="true"])):hover{outline:2px solid #50e0c3!important;outline-offset:2px!important;box-shadow:0 0 0 3px #50e0c333,0 0 18px #50e0c355!important;transform:translateY(-1px)}
+ body.workspace-preview:not(.vt-welcome-open) :where(button.primary,.guided-review-btn,#vtKnowledgeAsk):not(:disabled):hover{background:#8cf3df!important;color:#072622!important}
+}
+@media(max-width:720px){body.workspace-preview:not(.vt-welcome-open) .hero.app-brand{grid-template-columns:1fr;grid-template-areas:"brand" "meta" "progress";border-radius:16px}body.workspace-preview:not(.vt-welcome-open) .app-brand-lockup{min-width:0}}
+@media(prefers-reduced-motion:reduce){body.workspace-preview:not(.vt-welcome-open) :where(button,summary,a[href],[role="button"],input,textarea,select){transition:none!important;transform:none!important;animation:none!important}}
