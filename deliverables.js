@@ -28,7 +28,7 @@ async function loadScript(src,test){if(test())return;await new Promise((ok,fail)
 const DOC_FOOTER='Formulador Cultural · Desarrollo por Paulo Olarte';
 function p(v){const t=clean(v);return t||'[POR VERIFICAR]'}
 function compact(v,max=30){const t=clean(v);return window.fcWriting?.compactPresentationText?window.fcWriting.compactPresentationText(t,max):t}
-function moneyRaw(v){const n=Number(v);return Number.isFinite(n)?new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(n):'[POR VERIFICAR]'}
+function moneyRaw(v){if(v==null||typeof v==='boolean'||String(v).trim()==='')return '[POR VERIFICAR]';const n=Number(v);return Number.isFinite(n)?new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(n):'[POR VERIFICAR]'}
 function table(headers,body){return '<table><thead><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+body.map(r=>'<tr>'+r.map(c=>'<td>'+esc(c)+'</td>').join('')+'</tr>').join('')+'</tbody></table>'}
 function vesterSnapshot(){
  const s=draft?.S06?.vester_state||{},ps=Array.isArray(s.selected)?s.selected:[],relations=s.relations||{};
