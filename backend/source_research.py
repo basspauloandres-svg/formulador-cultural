@@ -66,8 +66,8 @@ def search_terms(request: ResearchRequest) -> str:
     # Only a controlled vocabulary and years leave VÉRTICE; never send free text.
     q = normalize_metadata_text(request.question)
     controlled = ("bandas", "musica", "danza", "teatro", "bibliotecas", "patrimonio", "artesania", "educacion", "poblacion", "demografia", "juventud", "ruralidad", "empleo", "migracion", "pobreza", "plan de desarrollo", "participacion")
-    extras = [word for word in controlled if re.search(r"\\b"+word+r"\\b", q)][:3]
-    years = re.findall(r"\\b(?:19|20)\\d{2}\\b", q)[:2]
+    extras = [word for word in controlled if re.search(r"\b"+word+r"\b", q)][:3]
+    years = re.findall(r"\b(?:19|20)\d{2}\b", q)[:2]
     return (" ".join([location, topic, *extras, *years]))[:140]
 
 
