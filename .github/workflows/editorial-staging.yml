@@ -2,7 +2,7 @@ name: Editorial staging isolation
 on:
   pull_request:
     branches: [design/2026-11-26-editorial-integrated, staging/2026-11-26-editorial-review]
-    paths: [backend/**, section_review_ui.js, backend/staging_preview.py, backend/staging_transforms.py, index.html, app.js, welcome_turquoise.css, welcome_turquoise.js, brand_intro.js, unified_workspace.css, e2e/unified-workspace.cjs, .github/workflows/editorial-staging.yml]
+    paths: ['backend/**', '*.js', '*.css', 'index.html', 'e2e/**', '.github/workflows/editorial-staging.yml']
 permissions:
   contents: read
 jobs:
@@ -134,7 +134,7 @@ jobs:
               const frameB=await mobile.locator('#vtIntro canvas').evaluate(c=>c.toDataURL());
               if(frameA===frameB)throw Error('canvas frames did not evolve');
               if(!await mobile.locator('#vtIntro').isVisible())throw Error('cinematic intro ended too early');
-              await mobile.waitForTimeout(5000);
+              await mobile.waitForTimeout(3800);
               if(!await mobile.locator('#vtIntro').isVisible())throw Error('logo hold missing');
               await mobile.locator('#vtIntro').waitFor({state:'hidden',timeout:2800});
               const elapsed=Date.now()-began;
@@ -146,6 +146,76 @@ jobs:
               await mobile.locator('#vtIntro').waitFor({state:'hidden'});
               if(await mobile.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('mobile horizontal overflow');
               await mobile.locator('#vtContinueTop').click();
+              const scheduleCases=await mobile.evaluate(()=>{
+                const previous11=draft.S11,previous13=draft.S13;
+                try{
+                  const activity=id=>({id,confirmed:true});
+                  const row=activityId=>({activityId,confirmed:true,startDate:'2026-12-01',endDate:'2026-12-02',responsible:'Equipo',dependencyIds:[]});
+                  draft.S11={completion_state:{items:[activity('QA-A'),activity('QA-B')]}};
+                  const check=items=>{draft.S13={schedule_state:{items}};return window.fcSectionStatus('S13')};
+                  return [check([row('QA-A'),row('QA-A')]),check([row('QA-A'),row('QA-X')]),check([row('QA-A'),{...row('QA-B'),startDate:'invalid'}]),check([row('QA-A'),{...row('QA-B'),requiresReview:true}]),check([row('QA-A'),row('QA-B')])];
+                }finally{draft.S11=previous11;draft.S13=previous13}
+              });
+              if(JSON.stringify(scheduleCases)!==JSON.stringify(['progress','progress','progress','progress','complete']))throw Error('S13 coverage regression '+JSON.stringify(scheduleCases));
+              console.log('S13_ACTIVITY_COVERAGE_PASS',JSON.stringify(scheduleCases));
+              const coverageCases=await mobile.evaluate(()=>{
+                const p11=draft.S11,p12=draft.S12;
+                try{
+                  const results=[{id:'R1',confirmed:true},{id:'R2',confirmed:true}];
+                  const activity=(id,resultId)=>({id,resultId,confirmed:true});
+                  const check11=items=>{draft.S11={results_state:{items:results},completion_state:{items}};return window.fcSectionStatus('S11')};
+                  const indicator={id:'I1',linkedType:'Actividad',linkedId:'A1',selected:true,confirmed:true,indicator:'Participación registrada',formula:'Conteo',unidad:'Personas',lineaBase:'0',meta:'10',medioVerificacion:'Registro',periodicidad:'Mensual',responsable:'Equipo',plazo:'Diciembre'};
+                  const check12=items=>{draft.S12={completion_state:{items}};return window.fcSectionStatus('S12')};
+                  return [check11([activity('A1','R1')]),check11([activity('A1','R1'),activity('A2','RX')]),check11([activity('A1','R1'),activity('A2','R2')]),check12([{...indicator,meta:'[POR VERIFICAR]'}]),check12([indicator,{...indicator,id:'I2',confirmed:false}]),check12([indicator])];
+                }finally{draft.S11=p11;draft.S12=p12}
+              });
+              if(JSON.stringify(coverageCases)!==JSON.stringify(['progress','progress','complete','progress','progress','complete']))throw Error('S11/S12 coverage regression '+JSON.stringify(coverageCases));
+              console.log('S11_S12_COVERAGE_PASS',JSON.stringify(coverageCases));
+              const planningCases=await mobile.evaluate(()=>{
+                const old=[draft.S07,draft.S11,draft.S14,draft.S15];
+                try{
+                  draft.S07={tree_state:{nodes:[{id:'C1',zone:'direct_cause'}]}};
+                  draft.S11={results_state:{items:[{id:'R1',confirmed:true}]},completion_state:{items:[{id:'A1',confirmed:true}]}};
+                  const budget=items=>{draft.S14={budget_state:{activityStatus:{A1:'nocost'},items}};return window.fcSectionStatus('S14')};
+                  const targets=['cause:C1','result:R1','activity:A1'].map(id=>({id}));
+                  const assessments=Object.fromEntries(targets.map(t=>[t.id,'no']));
+                  const risk=(ts,items=[])=>{draft.S15={risk_state:{targets:ts,assessments,items}};return window.fcSectionStatus('S15')};
+                  return [budget([]),budget([{id:'B1',activityId:'A1',confirmed:true}]),risk(targets.slice(0,2)),risk(targets,[{targetId:'activity:obsolete',confirmed:true}]),risk(targets)];
+                }finally{[draft.S07,draft.S11,draft.S14,draft.S15]=old}
+              });
+              if(JSON.stringify(planningCases)!==JSON.stringify(['complete','progress','progress','progress','complete']))throw Error('S14/S15 coverage regression '+JSON.stringify(planningCases));
+              console.log('S14_S15_COVERAGE_PASS',JSON.stringify(planningCases));
+              const earlyCases=await mobile.evaluate(()=>{
+                const old=[draft.S06,draft.S07,draft.S08,draft.S09,draft.S10],gate=window.fcS09TransitionStatus;
+                try{
+                  const central={id:'C',zone:'central',text:'Problema'},cause={id:'D',zone:'direct_cause',text:'Causa',parentId:'C'};
+                  const tree=nodes=>{draft.S07={tree_state:{nodes}};return window.fcSectionStatus('S07')};
+                  const out=[tree([central]),tree([central,{...central,id:'X'},cause]),tree([central,cause])];
+                  draft.S08={enunciado:'[POR VERIFICAR]'};out.push(window.fcSectionStatus('S08'));
+                  draft.S06={vester_state:{selected:[{id:'A'},{id:'B'}],relations:{'A>B':{score:0},'B>A':{score:2}}}};
+                  out.push(window.fcSectionStatus('S06'));
+                  draft.S06.vester_state.selected=[{id:'A'},{id:'A'}];out.push(window.fcSectionStatus('S06'));
+                  window.fcS09TransitionStatus=()=>({ok:true});
+                  const objectives=[central,cause].map(x=>({...x,sourceText:x.text,text:'Cambio '+x.id,confirmed:true}));
+                  draft.S09={objectives_state:{items:objectives.slice(0,1)}};out.push(window.fcSectionStatus('S09'));
+                  draft.S09.objectives_state.items=objectives;out.push(window.fcSectionStatus('S09'));
+                  const alt={id:'A1',selected:true,confirmed:true,text:'Estrategia',sourceIds:['D']};
+                  const strategy=items=>{draft.S10={completion_state:{items}};return window.fcSectionStatus('S10')};
+                  out.push(strategy([{...alt,sourceIds:['X']}]),strategy([alt,{...alt,id:'A2'}]),strategy([alt]));
+                  return out;
+                }finally{[draft.S06,draft.S07,draft.S08,draft.S09,draft.S10]=old;window.fcS09TransitionStatus=gate}
+              });
+              if(JSON.stringify(earlyCases)!==JSON.stringify(['progress','progress','complete','missing','complete','progress','progress','complete','progress','progress','complete']))throw Error('S06-S10 regression '+JSON.stringify(earlyCases));
+              console.log('S06_S10_PROVENANCE_PASS',JSON.stringify(earlyCases));
+              const approvalCases=await mobile.evaluate(()=>{
+                const base=window.fcGetProjectSnapshot();
+                const copy=()=>JSON.parse(JSON.stringify(base));
+                const approved=copy();approved.sections.S16={review_state:{confirmed:true,reviewFingerprint:window.fcReviewFingerprint(approved)}};
+                const altered=JSON.parse(JSON.stringify(approved));altered.sections.S01={...(altered.sections.S01||{}),nombre_del_proyecto:'QA changed after review'};
+                return [window.fcAuditReviewApproval(base),window.fcAuditReviewApproval(approved),window.fcAuditReviewApproval(altered)];
+              });
+              if(JSON.stringify(approvalCases)!==JSON.stringify([false,true,false]))throw Error('S16 stale approval regression '+JSON.stringify(approvalCases));
+              console.log('S16_APPROVAL_FINGERPRINT_PASS',JSON.stringify(approvalCases));
               await mobile.locator('#guidedJourney .guided-subsection[data-code="S01"]').waitFor();
               await mobile.close();
               const reduced=await browser.newPage({viewport:{width:1024,height:768},reducedMotion:'reduce'});
