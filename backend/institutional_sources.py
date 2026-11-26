@@ -12,6 +12,7 @@ from territory_registry import normalized
 from prompt_boundary import contains_directive
 
 # Reviewed entry points, not an exhaustive directory or a stored factual answer.
+NATIONAL_PORTALS = (("https://www.mincultura.gov.co/", "Ministerio de las Culturas, las Artes y los Saberes"),)
 PORTALS = {"caldas": (
     ("https://educacion.caldas.gov.co/sala-de-prensa/articles-category-blog", "Secretaría de Educación de Caldas"),
     ("https://caldas.gov.co/noticias-gobernacion/149-educacion", "Gobernación de Caldas"),
@@ -20,7 +21,7 @@ SEEDS = {("neira", "caldas"): (
     ("https://educacion.caldas.gov.co/sala-de-prensa/articles-category-blog/neira-villamaria-y-aguadas-ocuparon-los-primeros-lugares-en-la-version-43-del-concurso-departamental-de-bandas-estudiantiles-de-musica", "Secretaría de Educación de Caldas"),
     ("https://caldas.gov.co/noticias-gobernacion/15213-con-alegria-y-mucho-orgullo-neira-recibio-a-la-banda-sinfonica-que-gano-el-festi-band-en-republica-dominicana-gobernacion-anuncio-recursos-para-impulsarla", "Gobernación de Caldas"),
 )}
-HOSTS = {"educacion.caldas.gov.co", "caldas.gov.co", "www.caldas.gov.co"}
+HOSTS = {"educacion.caldas.gov.co", "caldas.gov.co", "www.caldas.gov.co", "mincultura.gov.co", "www.mincultura.gov.co"}
 TERMS = ("banda", "music", "artist", "cultur", "danza", "teatro", "biblioteca", "patrimonio", "festival")
 MAX_BYTES = 2_500_000
 TTL = 3600
@@ -34,10 +35,12 @@ def safe_url(url, article=True):
         p=urlsplit(url)
         if not (p.scheme=="https" and p.hostname in HOSTS and p.port in (None,443)
                 and not p.username and not p.password and not p.query and not p.fragment
-                and re.fullmatch(r"/[a-zA-Z0-9/_-]+",p.path)):
+                and re.fullmatch(r"/[a-zA-Z0-9/_.-]*",p.path)):
             return False
         if not article:
-            return any(url==u for values in PORTALS.values() for u,_ in values)
+            return any(url==u for u,_ in NATIONAL_PORTALS) or any(url==u for values in PORTALS.values() for u,_ in values)
+        if p.hostname in {"mincultura.gov.co","www.mincultura.gov.co"}:
+            return bool(re.fullmatch(r"/noticias/Paginas/(?!default\.aspx$)[a-zA-Z0-9-]+\.aspx",p.path))
         return bool(re.fullmatch(r"/sala-de-prensa/articles-category-blog/[a-z0-9-]+",p.path)
                     or re.fullmatch(r"/(?:index.php/)?noticias-gobernacion/(?:[0-9]+-[a-z-]+/)?[0-9]+-[a-z0-9-]+",p.path))
     except ValueError:
@@ -138,7 +141,7 @@ def parse(data):
     page.feed(data.decode("utf-8",errors="replace"))
     return page
 
-def article_passages(data,url,publisher,city):
+def article_passages(data,url,publisher,city,department=None):
     page=parse(data); date=date_from(page)
     if not date: return []
     result=[]
@@ -148,6 +151,7 @@ def article_passages(data,url,publisher,city):
         sentences=re.split(r"(?<=[.!?])\s+",paragraph)
         for sentence in sentences:
             if not 45<=len(sentence)<=420 or not relevant(sentence,city): continue
+            if department and urlsplit(url).hostname in {"mincultura.gov.co","www.mincultura.gov.co"} and not re.search(r"\b"+re.escape(department)+r"\b",normalized(sentence)): continue
             result.append({"source_id":"official-"+sha256(url.encode()).hexdigest()[:16],
                 "title":"Publicación institucional · "+date,"publisher":publisher,"url":url,
                 "locator":"Párrafo HTML "+str(i),"sha256":sha256(data).hexdigest(),
@@ -158,10 +162,10 @@ def article_passages(data,url,publisher,city):
             return result
     return result
 
-async def institutional_passages(key,categories):
-    if not key or key[1] not in PORTALS or "PRACTICAS_MUSICALES" not in categories: return []
+async def institutional_passages(key,categories,web_candidates=()):
+    if not key or "PRACTICAS_MUSICALES" not in categories: return []
     city,dept=key
-    portals=PORTALS[dept]
+    portals=NATIONAL_PORTALS+PORTALS.get(dept,())
     pages=await asyncio.gather(*(public_html(url,False) for url,_ in portals))
     candidates=list(SEEDS.get(key,()))
     for (base,publisher),data in zip(portals,pages):
@@ -170,9 +174,17 @@ async def institutional_passages(key,categories):
             url=urljoin(base,href)
             if safe_url(url) and relevant(title+" "+urlsplit(url).path,city):
                 candidates.append((url,publisher))
+    for item in web_candidates:
+        url=item.get("url","")
+        if not safe_url(url) or not relevant(item.get("title","")+" "+item.get("summary",""),city): continue
+        host=urlsplit(url).hostname
+        if host in {"mincultura.gov.co","www.mincultura.gov.co"}:
+            candidates.append((url,NATIONAL_PORTALS[0][1]))
+        elif dept=="caldas":
+            candidates.append((url,"Secretaría de Educación de Caldas" if host=="educacion.caldas.gov.co" else "Gobernación de Caldas"))
     unique=list(dict.fromkeys(candidates))[:4]
     pages=await asyncio.gather(*(public_html(url) for url,_ in unique))
     found=[]
     for (url,publisher),data in zip(unique,pages):
-        if data: found.extend(article_passages(data,url,publisher,city))
+        if data: found.extend(article_passages(data,url,publisher,city,dept))
     return sorted(found,key=lambda r:r["publication_date"],reverse=True)[:2]
