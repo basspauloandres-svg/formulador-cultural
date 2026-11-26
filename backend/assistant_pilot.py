@@ -84,9 +84,24 @@ async def verified_user(bearer: str) -> str:
             )
     except httpx.RequestError:
         raise HTTPException(503, "No se pudo comprobar la sesión.") from None
-    if response.status_code != 200:
+    if response.status_code == 429:
+        # Upstream rate limits are not evidence that a session is invalid.
+        # Retain a bounded numeric retry hint; never relay upstream bodies.
+        raw = response.headers.get("Retry-After", "")
+        delay = max(5, min(300, int(raw))) if re.fullmatch(r"[0-9]{1,6}", raw) else 10
+        raise HTTPException(429, "Autenticación temporalmente ocupada. Conserva tu borrador y reintenta.",
+                            headers={"Retry-After": str(delay)})
+    if response.status_code in (401, 403):
         raise HTTPException(401, "La sesión no es válida.")
-    user_id = response.json().get("id")
+    if response.status_code != 200:
+        raise HTTPException(503, "No se pudo comprobar la sesión. Conserva tu borrador y reintenta.")
+    try:
+        body = response.json()
+    except ValueError:
+        raise HTTPException(503, "Respuesta de autenticación no disponible.") from None
+    if not isinstance(body, dict):
+        raise HTTPException(503, "Respuesta de autenticación no disponible.")
+    user_id = body.get("id")
     if not isinstance(user_id, str) or not user_id:
         raise HTTPException(401, "No se pudo identificar al usuario.")
     return user_id
