@@ -22,11 +22,12 @@ def valid_latency(value):
     return type(value) in (float,int) and math.isfinite(value) and value>=0
 
 def valid_usage(row):
-    if not all(count(row.get(k)) for k in USAGE):
+    if not all(count(row.get(k)) for k in ("prompt_tokens","completion_tokens","provider_calls")):
         return False
-    if row["cached_prompt_tokens"]>row["prompt_tokens"]:
+    cached=row.get("cached_prompt_tokens")
+    if cached is not None and (not count(cached) or cached>row["prompt_tokens"]):
         return False
-    if row["provider_calls"]==0 and any(row[k]!=0 for k in USAGE[:3]):
+    if row["provider_calls"]==0 and (row["prompt_tokens"]!=0 or row["completion_tokens"]!=0 or cached not in (None,0)):
         return False
     return True
 
@@ -86,13 +87,16 @@ def compare(rows, rates=None):
                 item["status"]="PAIRED"
                 item["outcomes"]={k:arms[k].get("outcome","UNKNOWN") for k in ARMS}
                 item["quality"]={k:human_score(arms[k]) for k in ARMS}
+                # A reduction caused by an unsuccessful response is not an efficacy gain.
+                item["comparable_success"]=all(arms[k].get("outcome")=="OK" for k in ARMS)
                 if valid_latency(a.get("latency_ms")) and valid_latency(b.get("latency_ms")):
                     item["latency_delta_ms"]=b["latency_ms"]-a["latency_ms"]
                 if valid_usage(a) and valid_usage(b):
+                    # Missing cache breakdown does not erase observed total tokens.
                     item["tokens_saved"]=(a["prompt_tokens"]+a["completion_tokens"]-
                                           b["prompt_tokens"]-b["completion_tokens"])
                     item["calls_saved"]=a["provider_calls"]-b["provider_calls"]
-                    if cost_rates and rates["model"]==a["model"]:
+                    if cost_rates and rates["model"]==a["model"] and all(count(row.get("cached_prompt_tokens")) for row in (a,b)):
                         def cost(r):
                             return ((r["prompt_tokens"]-r["cached_prompt_tokens"])*cost_rates[0]
                                     +r["cached_prompt_tokens"]*cost_rates[1]
@@ -105,7 +109,8 @@ def compare(rows, rates=None):
     return {"cases":result,"statuses":dict(Counter(x["status"] for x in result)),
             "paired_with_complete_usage":len(known),
             "total_tokens_saved":sum(x["tokens_saved"] for x in known) if known and len(known)==len(result) else None,
-            "quality_ready":bool(result) and all(x["quality"] and all(q and q["provisional_pass"] for q in x["quality"].values()) for x in result)}
+            "successful_paired_cases":sum(x.get("comparable_success") is True for x in result),
+            "quality_ready":bool(result) and all(x.get("comparable_success") is True and x["quality"] and all(q and q["provisional_pass"] for q in x["quality"].values()) for x in result)}
 
 if __name__=="__main__":
     import argparse
