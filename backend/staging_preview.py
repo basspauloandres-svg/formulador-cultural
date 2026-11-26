@@ -52,7 +52,7 @@ def status():
 def index():
     html = SOURCE
     html = html.replace("</head>", """<style>#signupBtn,#loginBtn,#setPasswordBtn,#syncBtn,.auth-divider,#projectManager{display:none!important}</style>
-<script>window.FC_DOCUMENT_API_URL=location.origin;</script></head>""", 1)
+<script>window.FC_DOCUMENT_API_URL=location.origin;window.FC_LOCAL_PROJECTS=true;</script><script src="h01-projects.js"></script></head>""", 1)
     html = html.replace('<body class="guided-mode workspace-preview">',
         '<body class="guided-mode workspace-preview"><div role="status" style="padding:12px 16px;background:#183d35;color:white;text-align:center;font:600 15px system-ui">VÉRTICE · Entorno de prueba · Datos de ejemplo · Guardado local independiente · Acceso a IA con cuenta existente</div>', 1)
     return HTMLResponse(html, headers=HEADERS)
@@ -70,7 +70,7 @@ app.add_api_route("/assistant/s02/verify-excerpt", assistant_s02_verify_excerpt,
 
 @app.get("/{asset}")
 def asset(asset: str):
-    if asset not in ASSETS:
+    if asset not in ASSETS and asset != "h01-projects.js":
         raise HTTPException(404, "Recurso no disponible en esta prueba")
     target = ROOT / asset
     if not target.is_file():
