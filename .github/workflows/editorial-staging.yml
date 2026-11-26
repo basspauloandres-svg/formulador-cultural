@@ -156,11 +156,53 @@ jobs:
             } finally {await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)})
           JS
+          # Capture actual WebGL draw calls and record the opening in an isolated browser.
+          node <<'JS'
+          const {chromium}=require('@playwright/test');
+          const fs=require('node:fs');
+          (async()=>{
+            const browser=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+            const dir='test-results/vertice-intro';fs.mkdirSync(dir,{recursive:true});
+            try{
+              for(const fallback of [false,true]){
+                const context=await browser.newContext({viewport:{width:1280,height:720},deviceScaleFactor:1, ...(fallback?{}:{recordVideo:{dir,size:{width:1280,height:720}}})});
+                await context.addInitScript(({fallback})=>{
+                  window.__introAudit={contexts:0,draws:0,vertices:0,depth:false,errors:[]};
+                  const original=HTMLCanvasElement.prototype.getContext;
+                  HTMLCanvasElement.prototype.getContext=function(type,...args){
+                    if(fallback&&/^webgl/.test(type))return null;
+                    const gl=original.call(this,type,...args);
+                    if(gl&&type==='webgl'){
+                      const a=window.__introAudit;a.contexts++;
+                      const draw=gl.drawArrays.bind(gl);
+                      gl.drawArrays=function(mode,first,count){draw(mode,first,count);a.draws++;a.vertices+=count;a.depth ||= gl.isEnabled(gl.DEPTH_TEST);const err=gl.getError();if(err!==gl.NO_ERROR)a.errors.push(err)};
+                    }return gl;
+                  };
+                },{fallback});
+                const page=await context.newPage();
+                await page.route('**/*',route=>{const u=new URL(route.request().url());return u.origin==='http://127.0.0.1:8765'||u.hostname==='cdn.jsdelivr.net'?route.continue():route.abort()});
+                await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
+                await page.locator('#vtIntro').waitFor();
+                await page.waitForTimeout(1800);
+                const audit=await page.evaluate(()=>window.__introAudit);
+                if(!fallback&&(!audit.contexts||!audit.draws||!audit.vertices||!audit.depth||audit.errors.length))throw Error('WebGL not verified '+JSON.stringify(audit));
+                if(fallback&&(audit.contexts||audit.draws))throw Error('fallback unexpectedly used WebGL');
+                await page.screenshot({path:dir+'/'+(fallback?'fallback':'webgl')+'-assembly.png'});
+                await page.locator('#vtIntro').waitFor({state:'hidden',timeout:10000});
+                fs.writeFileSync(dir+'/'+(fallback?'fallback':'webgl')+'.json',JSON.stringify(audit,null,2));
+                console.log('VERTICE_RENDERER_PASS',fallback?'fallback':'webgl',JSON.stringify(audit));
+                const video=page.video();await context.close();if(video)await video.saveAs(dir+'/vertice-opening.webm');
+              }
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
           node e2e/unified-workspace.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: unified-workspace-visual-audit
-          path: test-results/unified-workspace/
+          path: |
+            test-results/unified-workspace/
+            test-results/vertice-intro/
           if-no-files-found: ignore
           retention-days: 7
