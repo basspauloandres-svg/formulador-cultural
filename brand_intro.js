@@ -10,7 +10,7 @@
  const canvas=intro.querySelector('canvas'),ctx=canvas.getContext('2d');
  if(!ctx)return;
  const W=1000,H=340;
- const TIMING=Object.freeze({assemble:3.15,solidStart:3.12,solidEnd:3.62,fadeStart:4.25,end:4.9});
+ const TIMING=Object.freeze({solidStart:4.75,solidEnd:5.25,fadeStart:5.65,end:6.25});
  canvas.width=W;canvas.height=H;
  const logo=document.createElement('canvas');logo.width=W;logo.height=H;
  const l=logo.getContext('2d',{willReadFrequently:true});if(!l)return;
@@ -24,12 +24,24 @@
  drawLogo(l);
  const pixels=l.getImageData(0,0,W,H).data,particles=[];
  let seed=87321;const rand=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
+ // Camera-space fragments. Depth is projected with perspective, rather than a shared 2-D orbit.
  for(let y=60;y<280;y+=6)for(let x=75;x<950;x+=6){
   const i=(y*W+x)*4;if(pixels[i+3]<180)continue;
-  const a=rand()*Math.PI*2,r=115+rand()*510,depth=rand();
-  particles.push({x,y,sx:W/2+Math.cos(a)*r,sy:H/2+Math.sin(a)*r*.39,
-   arc:(rand()-.5)*115,color:pixels[i]>190?'#f5f9f7':pixels[i+1]>165?'#50e0c3':'#159a91',delay:.15+rand()*.65,peak:12+depth*10,initial:1.2+depth*2.6});
+  const layer=rand(),front=layer>.93,back=layer<.36;
+  const z=front?170+rand()*210:back?-510+rand()*250:-190+rand()*310;
+  const angle=rand()*Math.PI*2,rad=180+rand()*490;
+  const sx=W/2+Math.cos(angle)*rad,sy=H/2+Math.sin(angle)*rad*.53;
+  const dx=x-sx,dy=y-sy,turn=(rand()-.5)*220;
+  const start=.65+rand()*1.55,arrival=3.88+rand()*.89;
+  particles.push({x,y,sx,sy,z,front,back,start,arrival,
+   c1x:sx+dx*.18+turn,c1y:sy+dy*.08-turn*.5,
+   c2x:x-dx*.19-turn*.22,c2y:y-dy*.23+turn*.23,
+   phase:rand()*Math.PI*2,spin:(rand()-.5)*2.4,
+   drift:18+rand()*36,peak:front?24+rand()*12:back?6+rand()*6:13+rand()*11,
+   initial:.8+rand()*2.4,color:pixels[i]>190?'#f5f9f7':pixels[i+1]>165?'#50e0c3':'#159a91'});
  }
+ // Far-to-near compositing makes foreground fragments occlude the distant ones.
+ particles.sort((a,b)=>a.z-b.z);
  let done=false,frame=0,timer=0;
  const finish=()=>{
   if(done)return;done=true;cancelAnimationFrame(frame);clearTimeout(timer);
@@ -50,36 +62,54 @@
  const begin=performance.now();
  const clamp=v=>Math.max(0,Math.min(1,v));
  const smooth=v=>{v=clamp(v);return v*v*(3-2*v)};
+ const ease=v=>{v=clamp(v);return v*v*v*(10+v*(-15+6*v))};
+ const bezier=(a,b,c,d,u)=>{const v=1-u;return v*v*v*a+3*v*v*u*b+3*v*u*u*c+u*u*u*d};
+ const project=(x,y,z)=>{const k=790/(790-z);return {x:W/2+(x-W/2)*k,y:H/2+(y-H/2)*k,k}};
+ function pose(p,t){
+  const age=t-p.start,raw=clamp(age/(p.arrival-p.start)),u=ease(raw);
+  const quiet=1-smooth(raw);
+  const time=Math.max(0,t);
+  const driftX=Math.sin(time*.73+p.phase)*p.drift*quiet;
+  const driftY=Math.cos(time*.89+p.phase)*p.drift*.48*quiet;
+  const x=bezier(p.sx,p.c1x,p.c2x,p.x,u)+driftX;
+  const y=bezier(p.sy,p.c1y,p.c2y,p.y,u)+driftY;
+  const z=p.z*(1-u)+Math.sin(Math.PI*u)*p.z*.14;
+  const point=project(x,y,z);
+  const growth=smooth((t-.15-p.start*.24)/1.65),settle=smooth((raw-.55)/.45);
+  const size=(p.initial+(p.peak-p.initial)*growth)*(1-settle)+6.05*settle;
+  return {...point,size:size*point.k,angle:p.spin*(1-u)+Math.sin(time*.8+p.phase)*.19*quiet};
+ }
  function render(now){
   if(done)return;
   const t=(now-begin)/1000;
   if(t>=TIMING.end){finish();return}
   ctx.clearRect(0,0,W,H);
-  // A quiet, depth-like field of light, followed by a deliberate assembly.
-  const atmosphere=ctx.createRadialGradient(W*.5,H*.5,8,W*.5,H*.5,390);
-  atmosphere.addColorStop(0,'rgba(31,143,139,'+(.12+.10*smooth(t/2.7))+')');
-  atmosphere.addColorStop(.55,'rgba(20,83,93,.08)');
+  const atmosphere=ctx.createRadialGradient(W*.5,H*.48,5,W*.5,H*.5,430);
+  atmosphere.addColorStop(0,'rgba(35,130,132,'+(.075+.09*smooth(t/3.8))+')');
+  atmosphere.addColorStop(.57,'rgba(20,73,83,.055)');
   atmosphere.addColorStop(1,'rgba(7,27,35,0)');
   ctx.fillStyle=atmosphere;ctx.fillRect(0,0,W,H);
   const solid=smooth((t-TIMING.solidStart)/(TIMING.solidEnd-TIMING.solidStart));
-  const camera=1+.045*smooth(t/2.2)-.045*smooth((t-2.2)/1.25);
+  const camera=.94+.085*ease(t/4.6)-.025*ease((t-4.5)/.85);
   ctx.save();ctx.translate(W/2,H/2);ctx.scale(camera,camera);ctx.translate(-W/2,-H/2);
   if(solid<1){
    for(const p of particles){
-    const age=t-p.delay;
-    if(age<=0)continue;
-    const travel=smooth((age-.30)/(TIMING.assemble-p.delay-.30));
-    const curve=Math.sin(Math.PI*travel);
-    const x=p.sx+(p.x-p.sx)*travel+p.arc*curve;
-    const y=p.sy+(p.y-p.sy)*travel-p.arc*.28*curve;
-    // Squares expand from specks to 12–22 px before settling into the 6 px logo grid.
-    const expand=smooth(age/.85),settle=smooth((travel-.45)/.55);
-    const s=(p.initial+(p.peak-p.initial)*expand)*(1-settle)+6.05*settle;
-    const a=(1-solid)*smooth(age/.38)*(.46+.54*travel);
-    ctx.fillStyle=p.color;ctx.globalAlpha=a*.16;
-    ctx.fillRect(x-s*.76,y-s*.76,s*1.52,s*1.52);
-    ctx.globalAlpha=a;
-    ctx.fillRect(x-s/2,y-s/2,s,s);
+    const alpha=(1-solid)*smooth((t-p.start*.31)/.9)*(p.back?.35+.65*smooth((t-p.start)/(p.arrival-p.start)):p.front?.65:.74+.26*smooth(t/4));
+    if(alpha<.012)continue;
+    const q=pose(p,t),s=q.size;
+    if(q.x<-70||q.x>W+70||q.y<-70||q.y>H+70)continue;
+    // Short exposure trail only for the few near-camera tiles; avoid uniform glow or strobing.
+    if(p.front&&t>p.start&&t<p.arrival){
+     const prev=pose(p,t-.045);
+     ctx.strokeStyle=p.color;ctx.lineWidth=Math.max(1,s*.38);ctx.lineCap='round';ctx.globalAlpha=alpha*.12;
+     ctx.beginPath();ctx.moveTo(prev.x,prev.y);ctx.lineTo(q.x,q.y);ctx.stroke();
+    }
+    ctx.save();ctx.translate(q.x,q.y);ctx.rotate(q.angle);
+    ctx.fillStyle=p.color;ctx.globalAlpha=alpha*(p.front?.10:.055);
+    ctx.fillRect(-s*.76,-s*.76,s*1.52,s*1.52);
+    ctx.globalAlpha=alpha;ctx.fillRect(-s/2,-s/2,s,s);
+    if(p.front&&s>10){ctx.fillStyle='#d5fff4';ctx.globalAlpha=alpha*.18;ctx.fillRect(-s/2,-s/2,s,Math.max(1,s*.075));}
+    ctx.restore();
    }
   }
   if(solid>0){ctx.globalAlpha=solid;ctx.drawImage(logo,0,0)}
@@ -87,6 +117,6 @@
   if(t>TIMING.fadeStart)intro.style.opacity=String(1-smooth((t-TIMING.fadeStart)/(TIMING.end-TIMING.fadeStart)));
   frame=requestAnimationFrame(render);
  }
- timer=setTimeout(finish,5200);
+ timer=setTimeout(finish,6550);
  frame=requestAnimationFrame(render);
 })();
