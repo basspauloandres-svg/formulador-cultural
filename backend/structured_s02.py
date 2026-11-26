@@ -130,7 +130,9 @@ def collect_sources(result, identity, question):
                fragmento="El conjunto administrativo eenq-ga7s de Datos Abiertos Colombia contiene registros de organizaciones y entidades del sector Cultura asociados al código DIVIPOLA "+code+".",
                periodo=None,alcance="municipal",codigo_territorio=code,sha256=records.get("response_sha256"),
                localizador="Código DIVIPOLA "+code,kind="administrative_registry",scope="RECORD_EXISTENCE_ONLY")
-    found.sort(key=lambda f:f.periodo or "",reverse=True)
+    # Prefer question-specific terms, then publication date; no assertion of semantic support.
+    qterms=set(normalized(question).split()) & {"bandas","banda","musica","danza","teatro","bibliotecas","patrimonio","artesania","educacion","poblacion","demografia","juventud","ruralidad","empleo","migracion","pobreza","participacion","organizaciones"}
+    found.sort(key=lambda f:(len(qterms & set(normalized(f.fragmento).split())),f.periodo or ""),reverse=True)
     return scoped_sources(found[:5], code)
 
 
@@ -250,6 +252,8 @@ async def proponer_contexto(payload: Solicitud, authorization: str = Header(defa
         async with asyncio.timeout(50):
             retrieval=await guide(GuidedRequest(field=payload.field,context=context,text="",question=question,
                           codigo_divipola=payload.codigo_divipola,generate=False),authorization,user_id=user)
+            if (retrieval.get("territory") or {}).get("divipola")!=payload.codigo_divipola:
+                raise RuntimeError("territorial identity changed")
             sources=collect_sources(retrieval,identity,question)
             base.update({k:retrieval.get(k,[]) for k in ("candidate_sources","municipal_references","sources","errors")})
             if not sources:
