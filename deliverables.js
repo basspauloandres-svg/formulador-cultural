@@ -78,7 +78,7 @@ function indicatorTechnicalTable(inds){
  return table(['Nivel','Indicador','Fórmula / criterio','Unidad','Línea base','Meta','Periodicidad','Medio de verificación','Responsable','Plazo'],inds.map(x=>[x.linkedType||'Actividad',x.indicator,x.formula||'[POR VERIFICAR]',x.unidad,x.lineaBase,x.meta,x.periodicidad,x.medioVerificacion,x.responsable,x.plazo]))
 }
 function reportHtml(){
- const documentReady=window.fcGetReviewSnapshot?.()?.ready===true&&window.fcGetProjectIntegrityReport?.()?.ok===true&&window.fcReviewApprovalCurrent?.()===true;
+ const documentReady=isDocumentReady();
  const acts=rows(window.fcGetActivitiesSnapshot||window.fcGetActivities).filter(x=>x.confirmed),res=rows(window.fcGetResultsSnapshot||window.fcGetResults).filter(x=>x.confirmed),inds=rows(window.fcGetIndicatorsSnapshot||window.fcGetIndicators).filter(x=>x.confirmed),sch=rows(window.fcGetScheduleSnapshot||window.fcGetSchedule),bud=rows(window.fcGetBudgetSnapshot||window.fcGetBudget),risks=rows(window.fcGetRiskSnapshot||window.fcGetRisks),bs=(window.fcGetBudgetSummarySnapshot?.()||window.fcGetBudgetSummary?.())||{},vester=vesterSnapshot();
  const obj=objectiveNodes().filter(x=>x.confirmed),central=obj.find(x=>x.zone==='central'),spec=obj.filter(x=>x.zone==='direct_cause'),meansIndirect=obj.filter(x=>x.zone==='indirect_cause'),ends=obj.filter(x=>x.zone==='direct_effect'||x.zone==='indirect_effect'),alt=rows(window.fcGetAlternativesSnapshot||window.fcGetAlternatives).find(x=>x.selected&&x.confirmed),coherence=window.fcGetCoherenceReport?.()||{score:0,checks:[]};
  const project=esc(p(draft?.S01?.nombre_del_proyecto)),entity=esc(p(draft?.S01?.entidad_u_organizacion)),territory=esc(p(draft?.S02?.territorio_o_lugar_de_intervencion||draft?.S01?.municipio)),responsible=esc(p(draft?.S01?.responsable));
@@ -86,7 +86,7 @@ function reportHtml(){
  @page{size:A4;margin:20mm 16mm 18mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#23312b;line-height:1.5;max-width:1000px;margin:auto;padding:24px;background:#fff}
  .cover{min-height:86vh;display:flex;flex-direction:column;justify-content:center;border-top:10px solid #176b49;padding:42px 12px}.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#4f6b5d;font-weight:700}.cover h1{font-size:34px;line-height:1.12;margin:12px 0 20px;color:#173d2c}.cover-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}.cover-card{border:1px solid #d9e5de;border-radius:10px;padding:12px;background:#f8fbf9}.cover-card small{display:block;color:#6b7b73}.section{margin-top:32px}.section-title{display:flex;gap:10px;align-items:center;border-bottom:2px solid #dfe9e3;padding-bottom:7px;margin-bottom:12px}.section-no{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#176b49;color:white;font-size:12px;font-weight:700}.section h2{margin:0;font-size:20px;color:#173d2c}.lead{font-size:14px;color:#53665c}.callout{background:#f5fbf7;border-left:4px solid #2d8a61;border-radius:8px;padding:10px 12px}.note{background:#fff8df;border:1px solid #eadc9b;border-radius:8px;padding:10px}.table-wrap{width:100%;overflow-x:auto}table{width:100%;border-collapse:collapse;margin:10px 0 18px}th,td{border:1px solid #dfe6e2;padding:7px;text-align:left;vertical-align:top;font-size:10.5px}th{background:#eef5f1;color:#244a37;font-weight:700}tbody tr:nth-child(even){background:#fbfcfb}.diagram,.chart-box{border:1px solid #e0e8e3;border-radius:12px;padding:12px;background:white;margin:12px 0}.diagram svg,.report-chart{width:100%;height:auto}.matrix-caption{font-size:11px;color:#65756d;margin-top:-6px}.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.metric-card{border:1px solid #dfe6e2;border-radius:10px;padding:12px;background:#f8fbf9}.metric-card b{display:block;font-size:18px;color:#173d2c}.page-break{break-before:page;page-break-before:always}.avoid-break{break-inside:avoid;page-break-inside:avoid}.doc-footer{margin-top:28px;padding-top:10px;border-top:1px solid #dfe4e8;text-align:center;font-size:10px;color:#66717c;letter-spacing:.02em}small{color:#66717c}@media(max-width:720px){.cover-grid,.summary-grid{grid-template-columns:1fr}}@media print{body{padding:0}.doc-footer{position:fixed;left:0;right:0;bottom:4mm;background:#fff;padding-top:4px}.table-wrap{overflow:visible}}
  </style></head><body>
- <section class="cover"><div class="eyebrow">Formato estándar de proyecto cultural</div><h1>${project}</h1><p class="lead">Documento técnico generado a partir del proceso de formulación, análisis causal, planeación, seguimiento y gestión de riesgos.</p><div class="cover-grid"><div class="cover-card"><small>Entidad / organización</small><b>${entity}</b></div><div class="cover-card"><small>Territorio</small><b>${territory}</b></div><div class="cover-card"><small>Responsable</small><b>${responsible}</b></div><div class="cover-card"><small>Estado del documento</small><b>${documentReady?'Proyecto maestro revisado':'Proyecto en revisión'}</b><small>${coherence.score}% de coherencia orientativa; requiere revisión de convocatoria.</small></div></div></section>
+ <section class="cover"><div class="eyebrow">Formato estándar de proyecto cultural</div><h1>${project}</h1><p class="lead">Documento técnico generado a partir del proceso de formulación, análisis causal, planeación, seguimiento y gestión de riesgos.</p><div class="cover-grid"><div class="cover-card"><small>Entidad / organización</small><b>${entity}</b></div><div class="cover-card"><small>Territorio</small><b>${territory}</b></div><div class="cover-card"><small>Responsable</small><b>${responsible}</b></div><div class="cover-card"><small>Estado del documento</small><b>${getDocumentStatus(documentReady)}</b><small>${coherence.score}% de coherencia orientativa; requiere revisión de convocatoria.</small></div></div></section>
  <section class="section page-break"><div class="section-title"><span class="section-no">1</span><h2>Resumen ejecutivo</h2></div><p>${esc(p(draft?.S08?.enunciado))}</p></section>
  <section class="section"><div class="section-title"><span class="section-no">2</span><h2>Contexto territorial, cultural y social</h2></div><p>${esc(p(draft?.S02?.territorio_o_lugar_de_intervencion))}</p><p>${esc(p(draft?.S02?.caracteristicas_culturales))}</p><p>${esc(p(draft?.S02?.principales_dinamicas_sociales))}</p></section>
  <section class="section"><div class="section-title"><span class="section-no">3</span><h2>Población</h2></div><p><b>Población atendida:</b> ${esc(p(draft?.S03?.poblacion_afectada))}</p><p><b>Participantes:</b> ${esc(p(draft?.S03?.poblacion_participante))}</p><p>${esc(p(draft?.S03?.caracterizacion))}</p></section>
@@ -105,10 +105,16 @@ function reportHtml(){
  <section class="section"><div class="section-title"><span class="section-no">16</span><h2>Fuentes y anexos</h2></div><p>${esc(p(draft?.S04?.fuentes))}</p><small>Los vacíos conservan la marca [POR VERIFICAR].</small></section>
  <div class="doc-footer">${esc(DOC_FOOTER)}</div></body></html>`
 }
+function isDocumentReady(review=window.fcGetReviewSnapshot?.()){
+ return review?.ready===true&&window.fcGetProjectIntegrityReport?.()?.ok===true&&window.fcReviewApprovalCurrent?.()===true;
+}
+function getDocumentStatus(ready=isDocumentReady()){
+ return ready?'Proyecto maestro revisado':'Proyecto en revisión';
+}
 function professionalDocumentPayload(){
  const obj=objectiveNodes().filter(x=>x.confirmed),central=obj.find(x=>x.zone==='central');
  const v=vesterSnapshot(),coherence=window.fcGetCoherenceReport?.()||{score:0,checks:[]},review=window.fcGetReviewSnapshot?.()||{};
- const documentReady=review.ready===true&&window.fcGetProjectIntegrityReport?.()?.ok===true&&window.fcReviewApprovalCurrent?.()===true;
+ const documentReady=isDocumentReady(review);
  return {
   title:p(draft?.S01?.nombre_del_proyecto),
   entity:p(draft?.S01?.entidad_u_organizacion),
@@ -135,7 +141,7 @@ function professionalDocumentPayload(){
   vester:{rows:v.rows,meanInfluence:v.meanInfluence,meanDependence:v.meanDependence},
   integrity_issues:window.fcGetProjectIntegrityReport?.().issues||[],
   historical_alternatives:window.fcGetHistoricalAlternatives?.()||[],
-  document_status:documentReady?'Proyecto maestro revisado':'Proyecto en revisión',
+  document_status:getDocumentStatus(documentReady),
   coherence:{score:coherence.score||0,checks:coherence.checks||[],summary:documentReady?'La revisión interna no reporta rupturas bloqueantes en la cadena principal.':'El proyecto conserva pendientes o relaciones todavía no evaluables; revise los controles siguientes antes de presentar.'}
  }
 }
@@ -161,12 +167,24 @@ async function exportProfessionalDocument(kind,fallback){
  }
  try{
   announceDocumentGenerator({mode:'python',connected:true,message:'Generando documento profesional…'});
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);
-  const response=await fetch(api+'/documents/'+kind,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(professionalDocumentPayload()),signal:controller.signal});
-  clearTimeout(timer);
+  const body=JSON.stringify(professionalDocumentPayload()),baseName=filename();
+  const request=async()=>{
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);
+   try{
+    return await fetch(api+'/documents/'+kind,{method:'POST',headers:{'Content-Type':'application/json'},body,signal:controller.signal});
+   }finally{clearTimeout(timer)}
+  };
+  let response=await request();
+  const retryAfter=response.headers.get('Retry-After');
+  const seconds=retryAfter===null?NaN:Number(retryAfter);
+  if(response.status===429&&Number.isFinite(seconds)&&seconds>=0&&seconds<=10){
+   announceDocumentGenerator({mode:'python',connected:true,message:'El motor está ocupado. Se reintentará la generación en '+seconds+' s.'});
+   await new Promise(resolve=>setTimeout(resolve,seconds*1000));
+   response=await request();
+  }
   if(!response.ok)throw new Error('HTTP '+response.status);
   const blob=await response.blob(),ext=kind==='docx'?'docx':'pdf';
-  download(filename()+'-proyecto-profesional.'+ext,blob);
+  download(baseName+'-proyecto-profesional.'+ext,blob);
   announceDocumentGenerator({mode:'python',connected:true,message:'Documento profesional generado con el motor Python.'});
   return true
  }catch(error){
@@ -204,5 +222,5 @@ function reportParagraphs(){
 }
 async function exportDocx(){await loadScript('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js',()=>typeof JSZip!=='undefined');const zip=new JSZip(),body=reportParagraphs();zip.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>');zip.folder('_rels').file('.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');zip.folder('word').folder('_rels').file('document.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>');zip.folder('word').file('document.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>'+body+'<w:sectPr><w:footerReference w:type="default" r:id="rId2"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>');zip.folder('word').file('footer1.xml',docFooterXml());zip.folder('word').file('styles.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:rPr><w:b/><w:sz w:val="30"/></w:rPr></w:style></w:styles>');const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});download(filename()+'-proyecto.docx',blob)}
 async function treePdf(kind){await loadScript('https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js',()=>typeof html2pdf!=='undefined');const div=document.createElement('div');div.style.padding='20px';div.innerHTML='<h2>'+(kind==='problem'?'Árbol de problemas':'Árbol de objetivos')+'</h2>'+svgFor(kind);document.body.appendChild(div);try{await html2pdf().set({filename:filename()+'-'+(kind==='problem'?'arbol-problemas':'arbol-objetivos')+'.pdf',margin:8,html2canvas:{scale:1.5},jsPDF:{unit:'mm',format:'a3',orientation:'landscape'}}).from(div).save()}finally{div.remove()}}
-window.fcTreeSvg=svgFor;window.fcExportProblemTreeSVG=()=>exportSvg('problem');window.fcExportObjectiveTreeSVG=()=>exportSvg('objective');window.fcOpenProblemTree=()=>openSvg('problem');window.fcOpenObjectiveTree=()=>openSvg('objective');window.fcExportProblemTreePDF=()=>treePdf('problem');window.fcExportObjectiveTreePDF=()=>treePdf('objective');window.fcExportProjectHTML=exportHtml;window.fcExportProjectPDF=()=>exportProfessionalDocument('pdf',exportPdf);window.fcExportProjectDOCX=()=>exportProfessionalDocument('docx',exportDocx);window.fcProjectReportHTML=reportHtml;window.fcProjectDocumentPayload=professionalDocumentPayload;window.fcGetDocumentGeneratorStatus=()=>({...documentGeneratorStatus});window.fcSetDocumentApiUrl=url=>{const cleanUrl=clean(url);if(cleanUrl)localStorage.setItem('fc_document_api_url',cleanUrl);else localStorage.removeItem('fc_document_api_url');return documentApiBase()};
+window.fcTreeSvg=svgFor;window.fcExportProblemTreeSVG=()=>exportSvg('problem');window.fcExportObjectiveTreeSVG=()=>exportSvg('objective');window.fcOpenProblemTree=()=>openSvg('problem');window.fcOpenObjectiveTree=()=>openSvg('objective');window.fcExportProblemTreePDF=()=>treePdf('problem');window.fcExportObjectiveTreePDF=()=>treePdf('objective');window.fcExportProjectHTML=exportHtml;window.fcExportProjectPDF=()=>exportProfessionalDocument('pdf',exportPdf);window.fcExportProjectDOCX=()=>exportProfessionalDocument('docx',exportDocx);window.fcProjectReportHTML=reportHtml;window.fcProjectDocumentPayload=professionalDocumentPayload;window.fcGetDocumentStatus=getDocumentStatus;window.fcGetDocumentGeneratorStatus=()=>({...documentGeneratorStatus});window.fcSetDocumentApiUrl=url=>{const cleanUrl=clean(url);if(cleanUrl)localStorage.setItem('fc_document_api_url',cleanUrl);else localStorage.removeItem('fc_document_api_url');return documentApiBase()};
 })();

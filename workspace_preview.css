@@ -1,0 +1,111 @@
+/* VÉRTICE editorial workspace — integrated design candidate; isolated validation.
+   No new application state, network requests, fonts, or dependencies.
+   Scope: visual layout only; not approved for release. */
+body.workspace-preview{
+ --ink:#20342f;--muted:#51655e;--line:#dce4de;--paper:#fff;
+ --brand:#21664d;--brand-strong:#174d3a;--brand-soft:#e7f1e9;
+ --soft:#f4f7f4;--shadow:none;--shadow-soft:none;
+ color:var(--ink);background:#f3f5f2;
+}
+.workspace-preview .wrap{max-width:1560px;padding:24px clamp(12px,2.5vw,36px) 28px}
+.workspace-preview .hero.app-brand{
+ background:#183d35;border-radius:14px;box-shadow:none;
+ padding:18px 22px;margin:0 0 16px;min-height:0;
+}
+.workspace-preview .hero.app-brand:after{display:none}
+.workspace-preview .hero.app-brand h1{font-size:clamp(1.4rem,2.4vw,1.9rem);letter-spacing:-.04em}
+.workspace-preview .app-brand-symbol{color:#a4d9b7}
+.workspace-preview .hero.app-brand h1 span{color:#a4d9b7}
+.workspace-preview .hero.app-brand .app-brand-note{opacity:1}
+.workspace-preview .auth-card{border-radius:12px;box-shadow:none;margin:0 0 14px}
+.workspace-preview .panel{
+ border:1px solid var(--line);border-radius:16px;box-shadow:none;
+ background:white;padding:clamp(16px,3vw,38px);min-width:0;
+ overflow-wrap:anywhere
+}
+.workspace-preview #guidedJourney{
+ background:#eef2ed;border:1px solid #d6e0d7;border-radius:14px;
+ padding:14px;box-shadow:none;margin:0 0 14px
+}
+.workspace-preview .guided-journey-head{display:grid;gap:10px}
+.workspace-preview .guided-journey-head strong{font-size:1rem;color:#20342f}
+.workspace-preview .guided-journey-head p{color:#4e6259}
+.workspace-preview .guided-review-btn{background:#21664d;border-color:#21664d;min-height:44px}
+.workspace-preview .guided-stage{background:transparent;border:none;box-shadow:none;border-radius:8px}
+.workspace-preview .guided-stage.current{box-shadow:none;border:1px solid #a8c4b1}
+.workspace-preview .guided-stage header{background:none;padding:12px 8px}
+.workspace-preview .guided-stage header strong{font-size:.9rem;color:#20342f}
+.workspace-preview .guided-subsections{padding:0 4px 6px}
+.workspace-preview .guided-subsection{padding:8px 7px;min-height:44px;border-top:0;border-radius:7px}
+.workspace-preview .guided-subsection.current{background:#d8e9dc;color:#153d2d;font-weight:650}
+.workspace-preview .guided-subsection small{color:#4b6457}
+.workspace-preview .guided-subsection span:last-child{font-size:.83rem}
+.workspace-preview .stage-status.stage-missing{color:#495c52}
+.workspace-preview .section-screen-header{background:none;box-shadow:none;border-radius:0}
+.workspace-preview .section-screen-copy h2{font-size:clamp(1.4rem,2.8vw,2rem);letter-spacing:-.035em;color:#20342f}
+.workspace-preview #vtKnowledge{
+ text-align:left;background:#f1f6f2;border:1px solid #bed5c5;
+ padding:14px 16px;border-radius:10px;margin:14px 0 22px;color:#234539
+}
+.workspace-preview #vtKnowledge summary{cursor:pointer;font-weight:700;min-height:30px}
+.workspace-preview #vtKnowledge input{width:100%;min-height:44px;font:inherit;border:1px solid #a7bcb0;border-radius:8px;padding:10px;margin:8px 0}
+.workspace-preview #vtKnowledge button{font:inherit;background:#21664d;color:white;border:0;border-radius:8px;min-height:44px;padding:10px 16px}
+.workspace-preview .didactic-card,.workspace-preview .completion-card,.workspace-preview .plan-card{
+ box-shadow:none;border-radius:10px
+}
+.workspace-preview .primary{background:#21664d!important;border-color:#21664d!important;box-shadow:none}
+.workspace-preview .toolbar button,.workspace-preview .auth-actions button{min-height:44px}
+.workspace-preview :is(button,input,textarea,select,summary,a):focus-visible{
+ outline:3px solid #275a87!important;outline-offset:3px!important
+}
+.workspace-preview .status{border-radius:8px;box-shadow:none;color:#41574b}
+.workspace-preview .foot{color:#4e6259}
+@media(min-width:1100px){
+ .workspace-preview .wrap{
+  display:grid;grid-template-columns:minmax(238px,286px) minmax(0,1fr);
+  grid-template-areas:"brand brand" "auth auth" "journey panel" "foot foot";
+  gap:16px 22px;align-items:start
+ }
+ .workspace-preview .hero{grid-area:brand;margin:0}
+ .workspace-preview .auth-card{grid-area:auth;margin:0}
+ .workspace-preview #guidedJourney{grid-area:journey;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto;margin:0}
+ .workspace-preview .guided-stage-grid{grid-template-columns:1fr}
+ .workspace-preview .guided-stage:last-child{grid-column:auto}
+ .workspace-preview .nav-wrap{display:none}
+ .workspace-preview #panel{grid-area:panel;margin:0}
+ .workspace-preview .foot{grid-area:foot}
+}
+@media(max-width:1099px){
+ .workspace-preview .guided-stage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .workspace-preview .guided-stage:last-child{grid-column:1/-1}
+}
+@media(max-width:650px){
+ .workspace-preview .wrap{padding:8px 8px 24px}
+ .workspace-preview .hero.app-brand{padding:16px;margin:0 0 10px}
+ .workspace-preview .hero.app-brand .app-brand-note{display:block}
+ .workspace-preview .app-brand-meta{padding-left:0}
+ .workspace-preview .guided-stage-grid{grid-template-columns:1fr}
+ .workspace-preview .guided-stage:last-child{grid-column:auto}
+ .workspace-preview .guided-stage:not(.current) header{padding:9px 6px}
+ .workspace-preview #guidedJourney{padding:10px}
+ .workspace-preview .panel{padding:16px 12px}
+ .workspace-preview .foot{padding-bottom:100px}
+}
+@media(prefers-reduced-motion:reduce){
+ .workspace-preview *{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
+
+/* The navigation toggle is UI-only and never changes project completion. */
+.workspace-preview #workspaceJourneySections[hidden]{display:none!important}
+.workspace-preview .workspace-journey-toggle{
+ width:100%;min-height:44px;padding:9px 12px;border:1px solid #789b86;
+ border-radius:8px;background:#fff;color:#174d3a;font:inherit;font-weight:650;
+ text-align:left;cursor:pointer
+}
+.workspace-preview .workspace-journey-toggle:hover{background:#e7f1e9}
+
+.workspace-preview .guided-subsection.state-missing,
+.workspace-preview .section-screen-copy > small,
+.workspace-preview .field > .help {
+ color:#3e5549;
+}

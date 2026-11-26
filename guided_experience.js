@@ -39,7 +39,7 @@ function sectionIcon(name){
  return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+(paths[name]||paths.document)+'</svg>'
 }
 function stageDots(stage){
- return '<div class="section-progress-dots" aria-label="Paso '+stage.n+' de '+stages.length+'">'+stages.map(s=>'<span class="'+(s.n<=stage.n?'done':'')+'"></span>').join('')+'</div>'
+ return '<div class="section-progress-dots" role="img" aria-label="Paso '+stage.n+' de '+stages.length+'">'+stages.map(s=>'<span class="'+(s.n<=stage.n?'done':'')+'"></span>').join('')+'</div>'
 }
 
 function code(){try{return typeof active!=='undefined'?active:(($('#counter')?.textContent||'').match(/^S\d{2}/)?.[0]||'S01')}catch{return 'S01'}}
@@ -80,6 +80,17 @@ function renderJourney(){
  let wrap=$('#guidedJourney');if(!wrap){wrap=document.createElement('section');wrap.id='guidedJourney';wrap.className='guided-journey';$('.nav-wrap')?.insertAdjacentElement('beforebegin',wrap)}
  wrap.className='guided-journey';
  wrap.innerHTML='<div class="guided-journey-head"><div><strong>Tu recorrido</strong><p>Ubica dónde vas, qué ya terminaste y qué falta. Puedes entrar directamente a cualquier sección.</p></div><button class="guided-review-btn" type="button">Revisar lo que llevo</button></div><div class="guided-stage-grid">'+stages.map(s=>{const ss=stageState(s),cur=s.items.some(i=>i[0]===current);return '<section class="guided-stage '+(cur?'current ':'')+'stage-'+ss+'"><header><span class="stage-number">'+s.n+'</span><div><strong>'+s.title+'</strong><span class="stage-status stage-'+ss+'">'+stLabel(ss)+'</span></div></header><div class="guided-subsections">'+s.items.map(([c,t])=>{const cs=state(c);return '<button type="button" data-code="'+c+'" class="guided-subsection '+(c===current?'current ':'')+'state-'+cs+'"><span class="status-dot"></span><span><small>'+c+'</small>'+t+'</span></button>'}).join('')+'</div></section>'}).join('')+'</div>';
+ if(document.body.classList.contains('workspace-preview')){
+  const grid=wrap.querySelector('.guided-stage-grid'),head=wrap.querySelector('.guided-journey-head');
+  grid.id='workspaceJourneySections';
+  const toggle=document.createElement('button');toggle.type='button';toggle.className='workspace-journey-toggle';
+  toggle.setAttribute('aria-controls',grid.id);
+  const currentButton=grid.querySelector('[data-code="'+current+'"]');
+  if(currentButton)currentButton.setAttribute('aria-current','step');
+  const apply=()=>{const closed=wrap.dataset.workspaceCollapsed==='true';grid.hidden=closed;toggle.setAttribute('aria-expanded',String(!closed));toggle.textContent=(closed?'Mostrar secciones':'Ocultar secciones')+' · '+current;};
+  toggle.onclick=()=>{wrap.dataset.workspaceCollapsed=String(wrap.dataset.workspaceCollapsed!=='true');apply()};
+  head.append(toggle);apply();
+ }
  wrap.querySelectorAll('[data-code]').forEach(b=>b.onclick=()=>go(b.dataset.code));
  wrap.querySelector('.guided-review-btn').onclick=()=>go('S16')
 }
