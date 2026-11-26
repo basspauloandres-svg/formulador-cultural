@@ -65,6 +65,47 @@ const assert=require('node:assert/strict');
   assert.equal(await other.evaluate(()=>window.fcLocalProjectId()),b);
   assert.equal(await otherTitle.inputValue(),'Villamaría segunda pestaña');
   console.log('H01_CROSS_TAB_IDENTITY_PASS');
+  // Synthetic session and intercepted response: never contact the model or Supabase.
+  await page.evaluate(()=>{sb.auth.getSession=async()=>({data:{session:{access_token:'synthetic-test-token',user:{id:'h01-user-A'}}}})});
+  await other.evaluate(()=>{sb.auth.getSession=async()=>({data:{session:{access_token:'synthetic-test-token',user:{id:'h01-user-A'}}}})});
+  await page.locator('#guidedJourney [data-code="S02"]').click();
+  const field=page.locator('#fields [data-field="territorio_o_lugar_de_intervencion"]');
+  await field.fill('Observación sintética de Neira');await page.locator('#save').click();
+  let release,arrived;const gate=new Promise(resolve=>release=resolve),started=new Promise(resolve=>arrived=resolve);
+  await page.route('**/assistant/s02/guide',async route=>{
+    arrived();await gate;
+    await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({section:'S02',field:'territorio_o_lugar_de_intervencion',territory_context:'Neira',suggestion:'Respuesta sintética exclusiva de Neira',suggestion_origin:'SYNTHETIC_TEST',claims:[],evidence_manifest:[],claim_audit:[]})});
+  });
+  const panel=page.locator('[data-review-field="territorio_o_lugar_de_intervencion"]');
+  await panel.locator('[data-review-action="verify"]').click();await started;
+  assert.equal(await page.evaluate(()=>window.fcH01PendingReviewCount()),1);
+  await page.locator('#h01ProjectSelect').selectOption(b);
+  const opened=page.waitForEvent('popup');
+  await page.locator('#h01Continue').click();
+  const next=await opened;
+  try{
+    await next.waitForLoadState('domcontentloaded');
+    assert.equal(await next.evaluate(()=>window.fcLocalProjectId()),b);
+    assert.equal(await next.evaluate(()=>window.fcH01GetReview('S02','territorio_o_lugar_de_intervencion')),null);
+    release();
+    await page.waitForFunction(()=>window.fcH01PendingReviewCount()===0);
+    const stored=await page.evaluate(()=>window.fcH01GetReview('S02','territorio_o_lugar_de_intervencion'));
+    assert.equal(stored.projectId,a);assert.equal(stored.ownerId,'h01-user-A');
+    assert.equal(stored.data.suggestion,'Respuesta sintética exclusiva de Neira');
+    assert.equal(await next.evaluate(()=>window.fcH01GetReview('S02','territorio_o_lugar_de_intervencion')),null);
+    assert.equal(await field.inputValue(),'Observación sintética de Neira');
+    await page.reload({waitUntil:'domcontentloaded'});
+    await page.evaluate(()=>{sb.auth.getSession=async()=>({data:{session:{access_token:'synthetic-test-token',user:{id:'h01-user-B'}}}})});
+    await panel.locator('[data-review-action="restore"]').click();
+    assert.equal(await panel.locator('.vt-evidence-draft').isVisible(),false);
+    await page.evaluate(()=>{sb.auth.getSession=async()=>({data:{session:{access_token:'synthetic-test-token',user:{id:'h01-user-A'}}}})});
+    await panel.locator('[data-review-action="restore"]').click();
+    await panel.locator('.vt-evidence-draft').waitFor({state:'visible'});
+    assert.equal(await panel.locator('.vt-evidence-draft textarea').inputValue(),'Respuesta sintética exclusiva de Neira');
+    assert.equal(await field.inputValue(),'Observación sintética de Neira');
+    console.log('H01_07_SYNTHETIC_DEFERRED_REVIEW_PASS');
+  }finally{release();await next.close()}
+
  }finally{await other.close()}
 
  }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
