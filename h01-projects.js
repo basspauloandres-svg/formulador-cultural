@@ -39,17 +39,39 @@ const refreshMeta=()=>{
 proto.getItem=function(k){return get.call(this,this===storage&&managed(String(k))?ns(current,k):k)};
 proto.setItem=function(k,v){const scoped=this===storage&&managed(String(k));set.call(this,scoped?ns(current,k):k,v);if(scoped&&k===draftKey)refreshMeta()};
 proto.removeItem=function(k){return remove.call(this,this===storage&&managed(String(k))?ns(current,k):k)};
+// Keep the originating document alive while a review is in flight.
+// Other projects may be opened in another tab; do not abandon a live request.
+const pendingReviews=new Map();
+window.fcH01BeginReview=(section,field)=>{const token=uuid();pendingReviews.set(token,{section,field});return token};
+window.fcH01EndReview=token=>pendingReviews.delete(token);
+window.fcH01PendingReviewCount=()=>pendingReviews.size;
+const reviewKey='formulador-cultural-h01-review-inbox-v1';
+window.fcH01StoreReview=(entry)=>{
+ if(entry.projectId!==current||!entry.section||!entry.field||!entry.requestId)return false;
+ const inbox=parse(localStorage.getItem(reviewKey),{});
+ inbox[entry.section+':'+entry.field]=entry;
+ localStorage.setItem(reviewKey,JSON.stringify(inbox));return true;
+};
+window.fcH01GetReview=(section,field)=>parse(localStorage.getItem(reviewKey),{})[section+':'+field]||null;
+window.fcH01ClearReview=(section,field)=>{const inbox=parse(localStorage.getItem(reviewKey),{});delete inbox[section+':'+field];localStorage.setItem(reviewKey,JSON.stringify(inbox))};
+const openProject=target=>{
+ if(!pendingReviews.size){navigateTo(target);return}
+ const url=new URL(location.href);url.searchParams.set('project',target);
+ const other=window.open(url.href,'_blank');
+ if(!other){alert('Permite abrir otra pestaña para continuar mientras termina la consulta del proyecto actual.');return}
+ other.opener=null;
+};
 const flush=()=>{if(typeof saveLocal==='function')saveLocal();refreshMeta()};
 const switchTo=target=>{
  if(!parse(rawGet(registryKey),[]).some(p=>p.id===target))throw Error('Proyecto no disponible');
  if(target===current)return;
- flush();rawSet(activeKey,target);navigateTo(target);
+ flush();rawSet(activeKey,target);openProject(target);
 };
 const create=()=>{
  flush();const next=uuid(),now=new Date().toISOString();
  rawSet(ns(next,draftKey),'{}');rawSet(ns(next,'fc_active'),'S01');
  const list=parse(rawGet(registryKey),[]);list.push({id:next,title:'Proyecto sin nombre',createdAt:now,updatedAt:now,sections:0});
- rawSet(registryKey,JSON.stringify(list));rawSet(activeKey,next);navigateTo(next);
+ rawSet(registryKey,JSON.stringify(list));rawSet(activeKey,next);openProject(next);
 };
 window.fcLocalProjectId=()=>current;
 window.fcLocalProjects=()=>parse(rawGet(registryKey),[]).map(p=>({...p}));
