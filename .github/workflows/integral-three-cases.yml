@@ -1,0 +1,36 @@
+name: Integral three-case regression
+on:
+  pull_request:
+    branches: [qa/2026-11-26-s02-structured-territory]
+    paths: [e2e/integral-three-cases.cjs, .github/workflows/integral-three-cases.yml]
+permissions:
+  contents: read
+jobs:
+  cases:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r backend/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --no-package-lock --ignore-scripts @playwright/test@1.56.1
+          npx playwright install chromium
+      - name: Test seeded projects in isolated browser
+        run: |
+          (cd backend && python -m uvicorn staging_preview:app --host 127.0.0.1 --port 8765) >/tmp/integral.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          curl --retry 20 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:8765/health
+          node e2e/integral-three-cases.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integral-three-cases
+          path: test-results/integral/
+          retention-days: 7
