@@ -301,6 +301,7 @@ jobs:
           JS
           node e2e/unified-workspace.cjs
           node e2e/integral-closure.cjs
+          node e2e/h01-project-isolation.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
