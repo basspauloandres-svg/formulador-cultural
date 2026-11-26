@@ -189,6 +189,16 @@ def manifest_item(f,code):
             "prompt_excerpt":fragment,"excerpt_sha256":sha256(fragment.encode()).hexdigest()}
 
 
+def lexical_anchor(body,refs):
+    # Conservative screening, not a semantic entailment test.
+    stop={"para","como","desde","entre","sobre","esta","este","estas","estos","del","las","los","una","unos","unas","que","con","por","sin","segun","fuente","municipio","departamento","contexto","datos"}
+    def terms(value):
+        return {w for w in normalized(value).split() if len(w)>=4 and w not in stop}
+    claim=terms(body)
+    observed=terms(" ".join(f.fragmento+" "+(f.periodo or "") for f in refs))
+    return bool(claim and len(claim & observed)>=min(3,len(claim)) and len(claim & observed)/len(claim)>=0.35)
+
+
 def review_claims(output,sources,code):
     claims=[]; audit=[]; used=set(); lines=[]
     for a in output.afirmaciones:
@@ -204,7 +214,7 @@ def review_claims(output,sources,code):
         registry_only=bool(refs) and all(f.scope=="RECORD_EXISTENCE_ONLY" for f in refs)
         if registry_only and normalized(body)!=normalized(refs[0].fragmento):
             valid=False
-        if (not valid or contains_directive(body) or has_private_contact(body)
+        if (not valid or not lexical_anchor(body,refs) or contains_directive(body) or has_private_contact(body)
                 or numbers(body)-numbers(known)
                 or (status=="contradictoria" and len({str(f.url) for f in refs})<2)):
             status="insuficiente"
