@@ -171,6 +171,20 @@ jobs:
               });
               if(JSON.stringify(coverageCases)!==JSON.stringify(['progress','progress','complete','progress','progress','complete']))throw Error('S11/S12 coverage regression '+JSON.stringify(coverageCases));
               console.log('S11_S12_COVERAGE_PASS',JSON.stringify(coverageCases));
+              const planningCases=await mobile.evaluate(()=>{
+                const old=[draft.S07,draft.S11,draft.S14,draft.S15];
+                try{
+                  draft.S07={tree_state:{nodes:[{id:'C1',zone:'direct_cause'}]}};
+                  draft.S11={results_state:{items:[{id:'R1',confirmed:true}]},completion_state:{items:[{id:'A1',confirmed:true}]}};
+                  const budget=items=>{draft.S14={budget_state:{activityStatus:{A1:'nocost'},items}};return window.fcSectionStatus('S14')};
+                  const targets=['cause:C1','result:R1','activity:A1'].map(id=>({id}));
+                  const assessments=Object.fromEntries(targets.map(t=>[t.id,'no']));
+                  const risk=(ts,items=[])=>{draft.S15={risk_state:{targets:ts,assessments,items}};return window.fcSectionStatus('S15')};
+                  return [budget([]),budget([{id:'B1',activityId:'A1',confirmed:true}]),risk(targets.slice(0,2)),risk(targets,[{targetId:'activity:obsolete',confirmed:true}]),risk(targets)];
+                }finally{[draft.S07,draft.S11,draft.S14,draft.S15]=old}
+              });
+              if(JSON.stringify(planningCases)!==JSON.stringify(['complete','progress','progress','progress','complete']))throw Error('S14/S15 coverage regression '+JSON.stringify(planningCases));
+              console.log('S14_S15_COVERAGE_PASS',JSON.stringify(planningCases));
               await mobile.locator('#guidedJourney .guided-subsection[data-code="S01"]').waitFor();
               await mobile.close();
               const reduced=await browser.newPage({viewport:{width:1024,height:768},reducedMotion:'reduce'});
