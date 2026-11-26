@@ -123,7 +123,14 @@ jobs:
               await mobile.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
               await mobile.locator('#vtWelcome').waitFor();
               await mobile.locator('#vtIntro').waitFor();
-              await mobile.locator('#vtIntro').waitFor({state:'hidden',timeout:3500});
+              // Verify the extended temporal contract, including continued visibility at 2.2 s.
+              const began=Date.now();
+              await mobile.waitForTimeout(2200);
+              if(!await mobile.locator('#vtIntro').isVisible())throw Error('cinematic intro ended too early');
+              await mobile.locator('#vtIntro').waitFor({state:'hidden',timeout:4500});
+              const elapsed=Date.now()-began;
+              if(elapsed<3900||elapsed>6600)throw Error('unexpected cinematic duration: '+elapsed);
+              console.log('CINEMATIC_INTRO_DURATION_MS',elapsed);
               await mobile.reload({waitUntil:'domcontentloaded'});
               if(await mobile.locator('#vtIntro').isVisible())throw Error('intro repeated in same session');
               if(await mobile.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('mobile horizontal overflow');
