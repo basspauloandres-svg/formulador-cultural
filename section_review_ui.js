@@ -257,13 +257,17 @@ const root=document.getElementById('vtKnowledge');
 if(!root)return;
 const question=document.getElementById('vtKnowledgeQuestion'),ask=document.getElementById('vtKnowledgeAsk'),out=document.getElementById('vtKnowledgeResult');
 const API='https://formulador-cultural-api.onrender.com';
-let seq=0,activeRequest=null;
+let seq=0,activeRequest=null,retryUntil=0,retryTimer=null;
+const askLabel=ask.textContent;
+function updateAsk(){const remaining=Math.max(0,Math.ceil((retryUntil-Date.now())/1000));ask.disabled=!!activeRequest||remaining>0;ask.textContent=remaining>0?'Consultar en '+remaining+' s':askLabel;clearTimeout(retryTimer);if(remaining>0)retryTimer=setTimeout(updateAsk,Math.min(1000,Math.max(1,retryUntil-Date.now())));}
+function setRetry(response){const raw=response.headers.get('Retry-After')||'';const seconds=/^[0-9]{1,6}$/.test(raw)?Math.max(5,Math.min(300,Number(raw))):10;retryUntil=Date.now()+seconds*1000;updateAsk();return seconds;}
 function section(){return String(document.getElementById('counter')?.textContent||'').match(/S(?:0[1-9]|1[0-6])/)?.[0]||null;}
 function add(tag,value,parent=out){const el=document.createElement(tag);el.textContent=String(value||'');parent.appendChild(el);return el;}
-function clear(){seq++;activeRequest?.abort();activeRequest=null;out.replaceChildren();ask.disabled=false;}
+function clear(){seq++;activeRequest?.abort();activeRequest=null;out.replaceChildren();updateAsk();}
 question.addEventListener('input',clear);
 root.addEventListener('toggle',()=>{if(!root.open)clear()});
 ask.addEventListener('click',async()=>{
+ if(activeRequest||Date.now()<retryUntil)return;
  const value=question.value.trim(),current=section(),id=++seq;
  activeRequest?.abort();activeRequest=null;
  out.replaceChildren();
@@ -279,7 +283,7 @@ ask.addEventListener('click',async()=>{
   if(!token){out.replaceChildren();add('p','Inicia sesión para consultar la biblioteca metodológica. Puedes seguir usando las ayudas locales.');return}
   const response=await fetch(API+'/assistant/knowledge',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({section:current,question:value})});
   if(stale())return;
-  if(!response.ok){out.replaceChildren();add('p',response.status===429?'Capacidad temporalmente ocupada. Continúa con las ayudas locales y vuelve a consultar.':'Consulta documental no disponible. Utiliza la orientación local.');return}
+  if(!response.ok){out.replaceChildren();if(response.status===429){const seconds=setRetry(response);add('p','Capacidad temporalmente ocupada. Conserva tu trabajo y vuelve a consultar después de '+seconds+' segundos. No se realizará un reintento automático.');}else if(response.status===401){add('p','No se pudo validar tu sesión. Inicia sesión nuevamente si es necesario; conserva tu borrador.');}else{add('p','Consulta documental no disponible. Utiliza la orientación local.');}return}
   const data=await response.json();if(stale())return;
   if(data.section!==current||!['DETERMINISTIC_GUIDANCE','DOCUMENT_RETRIEVAL','ABSTAIN'].includes(data.route)||data.generation_used!==false){out.replaceChildren();add('p','La respuesta no corresponde a una consulta documental válida. Repite la consulta.');return;}
   out.replaceChildren();
@@ -291,7 +295,7 @@ ask.addEventListener('click',async()=>{
    try{const url=new URL(p.url);if(url.protocol==='https:'&&!url.username&&!url.password){const a=add('a','Consultar documento original',card);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer'}}catch{}
    add('small','Fragmento SHA-256: '+String(p.excerpt_sha256||''),card);
   }
- }catch{if(!stale()){out.replaceChildren();add('p','Consulta documental no disponible. Utiliza la orientación local.')}}finally{clearTimeout(timeout);if(id===seq){activeRequest=null;ask.disabled=false}}
+ }catch{if(!stale()){out.replaceChildren();add('p','Consulta documental no disponible. Utiliza la orientación local.')}}finally{clearTimeout(timeout);if(id===seq){activeRequest=null;updateAsk()}}
 });
 const counter=document.getElementById('counter');
 let lastSection=section();
