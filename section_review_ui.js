@@ -291,11 +291,15 @@ ask.addEventListener('click',async()=>{
   if(stale())return;
   if(!response.ok){out.replaceChildren();if(response.status===429){const seconds=setRetry(response);add('p','Capacidad temporalmente ocupada. Conserva tu trabajo y vuelve a consultar después de '+seconds+' segundos. No se realizará un reintento automático.');}else if(response.status===401){add('p','No se pudo validar tu sesión. Inicia sesión nuevamente si es necesario; conserva tu borrador.');}else{add('p','Consulta documental no disponible. Utiliza la orientación local.');}return}
   const data=await response.json();if(stale())return;
-  if(data.section!==current||!['DETERMINISTIC_GUIDANCE','DOCUMENT_RETRIEVAL','ABSTAIN'].includes(data.route)||data.generation_used!==false){out.replaceChildren();add('p','La respuesta no corresponde a una consulta documental válida. Repite la consulta.');return;}
+  if(data.section!==current||!['DETERMINISTIC_GUIDANCE','REFERENCED_GUIDANCE','DOCUMENT_RETRIEVAL','ABSTAIN'].includes(data.route)||data.generation_used!==false){out.replaceChildren();add('p','La respuesta no corresponde a una consulta documental válida. Repite la consulta.');return;}
   out.replaceChildren();
-  add('strong',data.route==='DETERMINISTIC_GUIDANCE'?'Orientación operativa':data.route==='DOCUMENT_RETRIEVAL'?'Documentos recuperados · cotejo pendiente':'Evidencia insuficiente');
+  add('strong',data.route==='DETERMINISTIC_GUIDANCE'?'Orientación operativa':data.route==='REFERENCED_GUIDANCE'?'Orientación conceptual con referencias':data.route==='DOCUMENT_RETRIEVAL'?'Documentos recuperados · cotejo pendiente':'Evidencia insuficiente');
   add('p',data.answer);
   if(data.source)add('small',data.source);
+  for(const ref of (Array.isArray(data.references)?data.references.slice(0,5):[])){
+   const card=add('article','');add('strong',ref.title,card);add('p',ref.publisher+' · '+ref.locator,card);
+   try{const url=new URL(ref.url);if(url.protocol==='https:'&&!url.username&&!url.password){const a=add('a','Consultar referencia',card);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer'}}catch{}
+  }
   for(const p of (Array.isArray(data.passages)?data.passages.slice(0,5):[])){
    const card=add('article','');add('strong',p.title,card);add('p',p.publisher+' · '+p.edition+' · '+p.locator,card);add('p',p.excerpt,card);
    try{const url=new URL(p.url);if(url.protocol==='https:'&&!url.username&&!url.password){const a=add('a','Consultar documento original',card);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer'}}catch{}
