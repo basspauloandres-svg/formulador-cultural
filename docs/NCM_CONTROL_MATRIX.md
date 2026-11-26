@@ -141,3 +141,7 @@ Candidato verificado 38aa68e483308ab026755cc99bfb7f2c379009d0, rama checkpoint/2
 
 ## H01 — independencia de proyectos (2026-11-26)
 Estado OPEN_CRITICAL. Base recuperable d64265cc7c7a4bbe69e2c128084d2c8823fb0137. PR #153: candidato 64f41fd, auditoría 45887430104/job 140141524138 FAIL: botón h01New interceptado por panel authCard; 247 Python y regresiones anteriores PASS. Corregida ubicación en flujo normal; pendiente repetir navegador sin force. Ensayo mantiene nube deshabilitada y migración local no destructiva. H01-06–11 pendientes; no declarar aislamiento entre cuentas, IA o nube ni cierre. Sin cambios de esquema o producción.
+
+
+### H01 — evidencia incremental
+Auditorías 56 (2da2ebc), 58 (3acdec2) y 59 (6bdb764): PASS. Checkpoint checkpoint/2026-11-26-H01-local-audit58. Siete escenarios locales positivos; H01-09 HTML exclusivamente, H01-10 persistencia local sin conexión, H01-11 advertencia Caldas con excepción humana: parciales. H01-06, 07, 08 OPEN: sin evidencia de recuperación remota, conservación de respuestas IA en tránsito ni aislamiento de cuentas. Auditoría 60 (5e1c0ba) pendiente para prueba multipestaña. El porcentaje de cierre estricto no debe confundirse con escenarios parcialmente cubiertos. No se autoriza cierre ni promoción a producción por estos resultados.
