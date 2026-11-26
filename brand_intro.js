@@ -10,9 +10,9 @@
  const canvas=intro.querySelector('canvas'),ctx=canvas.getContext('2d');
  if(!ctx)return;
  const W=1000,H=340;
- const dpr=Math.min(2,window.devicePixelRatio||1);
+ const dpr=Math.min(4,Math.max(1,Math.min(innerWidth*.92,1180)* (window.devicePixelRatio||1)/W));
  const TIMING=Object.freeze({solidStart:4.75,solidEnd:5.25,fadeStart:5.65,end:6.25});
- canvas.width=W*dpr;canvas.height=H*dpr;ctx.scale(dpr,dpr);
+ canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.scale(canvas.width/W,canvas.height/H);
  const logo=document.createElement('canvas');logo.width=W;logo.height=H;
  const l=logo.getContext('2d',{willReadFrequently:true});if(!l)return;
  const symbol=(c)=>{
@@ -201,7 +201,7 @@
   }
   const symbolSolid=smooth((t-3.15)/.35);
   if(symbolSolid>0){ctx.globalAlpha=symbolSolid;symbol(ctx)}
-  if(solid>0){ctx.globalAlpha=solid;ctx.drawImage(logo,300,0,W-300,H,300,0,W-300,H)}
+  if(solid>0){ctx.globalAlpha=solid;ctx.fillStyle='#f5f9f7';ctx.textBaseline='middle';ctx.font='750 108px system-ui, sans-serif';ctx.fillText('VÉRTICE',318,174,590)}
   ctx.restore();ctx.globalAlpha=1;
   if(t>TIMING.fadeStart)intro.style.opacity=String(1-smooth((t-TIMING.fadeStart)/(TIMING.end-TIMING.fadeStart)));
   frame=requestAnimationFrame(render);
