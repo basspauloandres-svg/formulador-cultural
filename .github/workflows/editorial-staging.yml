@@ -158,6 +158,19 @@ jobs:
               });
               if(JSON.stringify(scheduleCases)!==JSON.stringify(['progress','progress','progress','progress','complete']))throw Error('S13 coverage regression '+JSON.stringify(scheduleCases));
               console.log('S13_ACTIVITY_COVERAGE_PASS',JSON.stringify(scheduleCases));
+              const coverageCases=await mobile.evaluate(()=>{
+                const p11=draft.S11,p12=draft.S12;
+                try{
+                  const results=[{id:'R1',confirmed:true},{id:'R2',confirmed:true}];
+                  const activity=(id,resultId)=>({id,resultId,confirmed:true});
+                  const check11=items=>{draft.S11={results_state:{items:results},completion_state:{items}};return window.fcSectionStatus('S11')};
+                  const indicator={id:'I1',linkedType:'Actividad',linkedId:'A1',selected:true,confirmed:true,indicator:'Participación registrada',formula:'Conteo',unidad:'Personas',lineaBase:'0',meta:'10',medioVerificacion:'Registro',periodicidad:'Mensual',responsable:'Equipo',plazo:'Diciembre'};
+                  const check12=items=>{draft.S12={completion_state:{items}};return window.fcSectionStatus('S12')};
+                  return [check11([activity('A1','R1')]),check11([activity('A1','R1'),activity('A2','RX')]),check11([activity('A1','R1'),activity('A2','R2')]),check12([{...indicator,meta:'[POR VERIFICAR]'}]),check12([indicator,{...indicator,id:'I2',confirmed:false}]),check12([indicator])];
+                }finally{draft.S11=p11;draft.S12=p12}
+              });
+              if(JSON.stringify(coverageCases)!==JSON.stringify(['progress','progress','complete','progress','progress','complete']))throw Error('S11/S12 coverage regression '+JSON.stringify(coverageCases));
+              console.log('S11_S12_COVERAGE_PASS',JSON.stringify(coverageCases));
               await mobile.locator('#guidedJourney .guided-subsection[data-code="S01"]').waitFor();
               await mobile.close();
               const reduced=await browser.newPage({viewport:{width:1024,height:768},reducedMotion:'reduce'});
