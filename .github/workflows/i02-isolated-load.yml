@@ -1,0 +1,41 @@
+name: I02 isolated 40-session load
+on:
+  pull_request:
+    branches: [s02-research-first-20261124]
+permissions:
+  contents: read
+jobs:
+  i02-real-auth-load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.39.2
+      - name: Start disposable local Supabase
+        run: |
+          mkdir -p "$RUNNER_TEMP/vertice-i02"
+          cd "$RUNNER_TEMP/vertice-i02"
+          supabase init
+          supabase start
+      - name: Install candidate dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Verify 40 distinct local sessions and bounded recovery
+        env:
+          VERTICE_AUTH_MODE: isolated
+          VERTICE_TEST_SUPABASE_URL: http://127.0.0.1:54321
+          PYTHONPATH: backend
+        run: |
+          cd "$RUNNER_TEMP/vertice-i02"
+          export VERTICE_TEST_SUPABASE_PUBLIC_KEY="$(supabase status -o json | python -c 'import json,sys; print(json.load(sys.stdin)["ANON_KEY"])')"
+          cd "$GITHUB_WORKSPACE"
+          python scripts/i02_real_auth_load.py
+      - name: Stop disposable Supabase
+        if: always()
+        run: |
+          cd "$RUNNER_TEMP/vertice-i02"
+          supabase stop --no-backup
