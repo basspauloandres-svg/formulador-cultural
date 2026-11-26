@@ -31,7 +31,8 @@ def isolated_national_divipola():
         }}
     with patch.object(guided,"resolve_territory",new=fake_resolve), \
          patch.object(guided,"cultural_registry",new=AsyncMock(return_value={"status":"NO_RECORDS_RETURNED","records":[]})), \
-         patch.object(guided,"municipal_passages",new=AsyncMock(return_value=[])):
+         patch.object(guided,"municipal_passages",new=AsyncMock(return_value=[])), \
+         patch.object(guided,"institutional_passages",new=AsyncMock(return_value=[])):
         yield
 
 
