@@ -1,0 +1,408 @@
+{
+  "schema_version": "0.2",
+  "record_status": "NOT_RUN",
+  "candidate_sha": "6bad6998abaf45b91a91a43b1601cf553d2879e4",
+  "case_protocol": "docs/Q07_REVIEW_PACK_20261126.md",
+  "provisional_threshold": 90,
+  "score_maxima": {
+    "pertinence": 15,
+    "evidence": 15,
+    "method": 20,
+    "technical": 15,
+    "budget": 15,
+    "indicators": 10,
+    "editing": 10
+  },
+  "independence_verified_by_responsible": null,
+  "reviewers": [
+    {
+      "reviewer_code": null,
+      "type": null,
+      "independence_declaration": null,
+      "records": [
+        {
+          "case_id": "C01",
+          "candidate_sha": null,
+          "executed_at": null,
+          "environment": null,
+          "device": null,
+          "duration_minutes": null,
+          "output_artifact_ref": null,
+          "gates": {
+            "Q01": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q02": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q03": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q04": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q05": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q06": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            }
+          },
+          "scores": {
+            "pertinence": null,
+            "evidence": null,
+            "method": null,
+            "technical": null,
+            "budget": null,
+            "indicators": null,
+            "editing": null
+          },
+          "score_justifications": {
+            "pertinence": null,
+            "evidence": null,
+            "method": null,
+            "technical": null,
+            "budget": null,
+            "indicators": null,
+            "editing": null
+          },
+          "critical_defects": null,
+          "total": null,
+          "decision": null
+        },
+        {
+          "case_id": "C02",
+          "candidate_sha": null,
+          "executed_at": null,
+          "environment": null,
+          "device": null,
+          "duration_minutes": null,
+          "output_artifact_ref": null,
+          "gates": {
+            "Q01": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q02": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q03": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q04": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q05": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q06": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            }
+          },
+          "scores": {
+            "pertinence": null,
+            "evidence": null,
+            "method": null,
+            "technical": null,
+            "budget": null,
+            "indicators": null,
+            "editing": null
+          },
+          "score_justifications": {
+            "pertinence": null,
+            "evidence": null,
+            "method": null,
+            "technical": null,
+            "budget": null,
+            "indicators": null,
+            "editing": null
+          },
+          "critical_defects": null,
+          "total": null,
+          "decision": null
+        },
+        {
+          "case_id": "C03",
+          "candidate_sha": null,
+          "executed_at": null,
+          "environment": null,
+          "device": null,
+          "duration_minutes": null,
+          "output_artifact_ref": null,
+          "gates": {
+            "Q01": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q02": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q03": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q04": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q05": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q06": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            }
+          },
+          "scores": {
+            "pertinence": null,
+            "evidence": null,
+            "method": null,
+            "technical": null,
+            "budget": null,
+            "indicators": null,
+            "editing": null
+          },
+          "score_justifications": {
+            "pertinence": null,
+            "evidence": null,
+            "method": null,
+            "technical": null,
+            "budget": null,
+            "indicators": null,
+            "editing": null
+          },
+          "critical_defects": null,
+          "total": null,
+          "decision": null
+        }
+      ]
+    },
+    {
+      "reviewer_code": null,
+      "type": null,
+      "independence_declaration": null,
+      "records": [
+        {
+          "case_id": "C01",
+          "candidate_sha": null,
+          "executed_at": null,
+          "environment": null,
+          "device": null,
+          "duration_minutes": null,
+          "output_artifact_ref": null,
+          "gates": {
+            "Q01": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q02": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q03": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q04": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q05": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q06": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            }
+          },
+          "scores": {
+            "pertinence": null,
+            "evidence": null,
+            "method": null,
+            "technical": null,
+            "budget": null,
+            "indicators": null,
+            "editing": null
+          },
+          "score_justifications": {
+            "pertinence": null,
+            "evidence": null,
+            "method": null,
+            "technical": null,
+            "budget": null,
+            "indicators": null,
+            "editing": null
+          },
+          "critical_defects": null,
+          "total": null,
+          "decision": null
+        },
+        {
+          "case_id": "C02",
+          "candidate_sha": null,
+          "executed_at": null,
+          "environment": null,
+          "device": null,
+          "duration_minutes": null,
+          "output_artifact_ref": null,
+          "gates": {
+            "Q01": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q02": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q03": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q04": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q05": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q06": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            }
+          },
+          "scores": {
+            "pertinence": null,
+            "evidence": null,
+            "method": null,
+            "technical": null,
+            "budget": null,
+            "indicators": null,
+            "editing": null
+          },
+          "score_justifications": {
+            "pertinence": null,
+            "evidence": null,
+            "method": null,
+            "technical": null,
+            "budget": null,
+            "indicators": null,
+            "editing": null
+          },
+          "critical_defects": null,
+          "total": null,
+          "decision": null
+        },
+        {
+          "case_id": "C03",
+          "candidate_sha": null,
+          "executed_at": null,
+          "environment": null,
+          "device": null,
+          "duration_minutes": null,
+          "output_artifact_ref": null,
+          "gates": {
+            "Q01": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q02": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q03": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q04": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q05": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            },
+            "Q06": {
+              "status": "NOT_RUN",
+              "evidence_refs": [],
+              "justification": null
+            }
+          },
+          "scores": {
+            "pertinence": null,
+            "evidence": null,
+            "method": null,
+            "technical": null,
+            "budget": null,
+            "indicators": null,
+            "editing": null
+          },
+          "score_justifications": {
+            "pertinence": null,
+            "evidence": null,
+            "method": null,
+            "technical": null,
+            "budget": null,
+            "indicators": null,
+            "editing": null
+          },
+          "critical_defects": null,
+          "total": null,
+          "decision": null
+        }
+      ]
+    }
+  ],
+  "disagreements": [],
+  "corrective_actions": [],
+  "responsible_decision": null
+}
