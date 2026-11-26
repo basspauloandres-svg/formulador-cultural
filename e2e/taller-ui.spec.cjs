@@ -133,3 +133,54 @@ test('TALLER-VKE-01: consulta metodológica aislada, procedencia, saturación y 
   await expect(question).toHaveValue('');
   expect(hosted.filter(m=>['POST','PATCH','PUT','DELETE'].includes(m))).toEqual([]);
 });
+
+
+// Q07/P01: three scenario-specific smoke tests; not an expert quality verdict.
+// Independent browser contexts, offline from hosted services. User inputs are
+// synthetic; tests stop at an honest incomplete project rather than fabricating
+// evidence, quotes, or approvals. Recover the draft from a local reload.
+for (const fixture of [
+ {id:'C01',title:'QA C01 Formación musical',population:'Grupo escolar; número de participantes [POR VERIFICAR]',evidence:'Propuesta docente sintética; registro de asistencia pendiente',problem:'Discontinuidad de talleres de iniciación musical'},
+ {id:'C02',title:'QA C02 Circulación artística',population:'Artistas locales; cupos por definir',evidence:'Recursos limitados; financiación y cotizaciones [POR VERIFICAR]',problem:'Disponibilidad insuficiente de espacios y fechas para presentaciones'},
+ {id:'C03',title:'QA C03 Memoria y conocimientos culturales',population:'Participantes comunitarios; consentimiento pendiente',evidence:'Fuente sintética A indica cuatro encuentros; fuente sintética B indica dos. Contradicción sin resolver; autorización documental pendiente.',problem:'Documentación incompleta de conocimientos culturales'}
+]) {
+ test('Q07/P01 '+fixture.id+': conservar datos pendientes y recuperar borrador local',async({page})=>{
+  const prohibited=[];
+  await page.route(/https:\/\/(?:rmaevwlxcuqimxdzxdmq\.supabase\.co|formulador-cultural-api\.onrender\.com)\//,route=>{
+    if(['POST','PUT','PATCH','DELETE'].includes(route.request().method()))prohibited.push(route.request().method());
+    return route.abort();
+  });
+  await page.goto('/',{waitUntil:'domcontentloaded'});
+  const data={
+   S01:['nombre_del_proyecto',fixture.title],
+   S02:['territorio_o_lugar_de_intervencion',fixture.id==='C03'?'Granada, departamento por verificar':'Municipio sintético de prueba'],
+   S03:['poblacion_afectada',fixture.population],
+   S04:['evidencia_disponible',fixture.evidence],
+   S05:['situaciones_observables',fixture.problem]
+  };
+  for(const [code,[field,value]] of Object.entries(data)){
+   await page.locator('#guidedJourney .guided-subsection[data-code="'+code+'"]').click();
+   await page.locator('#fields [data-field="'+field+'"]').fill(value);
+   await page.locator('#save').click();
+   await expect(page.locator('#status')).toContainText('guardado');
+  }
+  await page.reload({waitUntil:'domcontentloaded'});
+  for(const [code,[field,value]] of Object.entries(data)){
+   await page.locator('#guidedJourney .guided-subsection[data-code="'+code+'"]').click();
+   await expect(page.locator('#fields [data-field="'+field+'"]')).toHaveValue(value);
+  }
+  await page.locator('#guidedJourney .guided-subsection[data-code="S16"]').click();
+  await expect(page.locator('#callReadiness')).toContainText('pendiente de perfil oficial verificado');
+  const before=await page.evaluate(()=>window.fcProjectDocumentPayload());
+  expect(before.document_status).toBe('Proyecto en revisión');
+  await page.locator('#confirmReview').check();
+  await page.locator('#saveReview').click();
+  await expect(page.locator('#finalReviewStatus')).toContainText('aprobación pendiente');
+  const after=await page.evaluate(()=>({payload:window.fcProjectDocumentPayload(),html:window.fcProjectReportHTML()}));
+  expect(after.payload.document_status).toBe('Proyecto en revisión');
+  expect(after.html).toContain(fixture.title);
+  expect(after.html).toContain('[POR VERIFICAR]');
+  expect(after.html).toContain(fixture.evidence);
+  expect(prohibited).toEqual([]);
+ });
+}
