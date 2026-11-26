@@ -99,3 +99,26 @@ def test_registry_identifier_reused_as_count_is_rejected():
     draft, flags = guard_generated_claims("Existen 05001 asistentes en DIVIPOLA 05001 [N1].", "", evidence)
     assert not draft
     assert any("cifras_nuevas_sin_fuente" in f.get("concepts", []) for f in flags)
+
+
+def test_municipal_fixture_extract_only_not_metadata_or_bare_label():
+    original="Se propone realizar talleres de música para estudiantes."
+    statement="En 2024 se realizaron talleres de música [M1]."
+    canonical="[M1] Fuente: Institución ficticia; p. 1; Extracto: En 2024 se realizaron talleres de música."
+    draft,flags=guard_generated_claims(statement,original,canonical)
+    assert draft==statement and not flags
+    for invalid in ("[M1] En 2024 se realizaron talleres de música.",
+                    "[M1] Fuente: Informe de 2024; p. 1; Extracto: Se realizaron talleres de música."):
+        draft,flags=guard_generated_claims(statement,original,invalid)
+        assert draft==original
+        assert flags[-1]["type"]=="GENERATIVE_FALLBACK_ORIGINAL"
+    draft,flags=guard_generated_claims("En 2025 se realizaron 40 talleres [M1].",original,canonical)
+    assert draft==original and flags[-1]["type"]=="GENERATIVE_FALLBACK_ORIGINAL"
+
+def test_fallback_origin_marker_survives_diagnostic_limit():
+    original="Se propone realizar talleres de música para estudiantes."
+    generated=" ".join("Se realizaron "+str(i)+" talleres." for i in range(100,113))
+    draft,flags=guard_generated_claims(generated,original)
+    assert draft==original
+    assert len(flags)==10
+    assert flags[-1]["type"]=="GENERATIVE_FALLBACK_ORIGINAL"
