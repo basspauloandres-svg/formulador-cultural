@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from assistant_pilot import configured, groq_key, reserve, GROQ_ENDPOINT
 from generative_grounding import guard_generated_claims
 from claim_audit import qualify_claims
+from model_usage import MODEL_BUDGET
 from prompt_boundary import BOUNDARY, data_message, safe_model_content, quarantine_directives, quarantine_flag, contains_directive
 
 logger = logging.getLogger("uvicorn.error")
@@ -92,6 +93,9 @@ async def compose_section_draft(*, section: str, field: str, text: str,
     if model.startswith("openai/gpt-oss-"):
         payload["reasoning_effort"] = "low"
         payload["include_reasoning"] = False
+    if not MODEL_BUDGET.reserve("section_draft", payload):
+        return {"suggestion": None, "draft_status": "MODEL_QUOTA_EXCEEDED",
+                "review_flags": [], "evidence_used": used}
     try:
         async with httpx.AsyncClient(timeout=18, follow_redirects=False) as client:
             response = await client.post(
@@ -102,7 +106,9 @@ async def compose_section_draft(*, section: str, field: str, text: str,
             logger.info("section_draft_upstream_status=%s", response.status_code)
             return {"suggestion": None, "draft_status": "MODEL_UNAVAILABLE",
                     "review_flags": [], "evidence_used": used}
-        raw = safe_model_content(response.json()["choices"][0]["message"], credential=groq_key())
+        data = response.json()
+        MODEL_BUDGET.observe("section_draft", data)
+        raw = safe_model_content(data["choices"][0]["message"], credential=groq_key())
         if not isinstance(raw, str) or not raw.strip():
             raise ValueError("Empty model response")
         draft, flags = guard_generated_claims(raw.strip()[:1600], text, evidence)
