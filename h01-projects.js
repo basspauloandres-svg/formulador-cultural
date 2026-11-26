@@ -53,7 +53,7 @@ window.fcSwitchLocalProject=switchTo;
 window.fcLocalProjectStorageKeys=keys;
 function mount(){
  const host=document.querySelector('#authCard');if(!host)return;
- const box=document.createElement('section');box.className='auth-card';box.id='h01Projects';box.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:10px';
+ const box=document.createElement('section');box.className='guided-journey';box.id='h01Projects';box.style.cssText='position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px;margin:12px 0';
  const info=document.createElement('div');info.style.flex='1 1 180px';
  const heading=document.createElement('strong');heading.textContent='Mis proyectos';
  const detail=document.createElement('div');detail.className='auth-help';detail.id='h01ActiveProject';info.append(heading,detail);
@@ -64,7 +64,7 @@ function mount(){
  const update=()=>{const list=window.fcLocalProjects(),item=list.find(p=>p.id===current),selected=select.value||current;const signature=JSON.stringify(list.map(p=>[p.id,p.title]));if(select.dataset.signature!==signature){select.replaceChildren(...list.map(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.title;return o}));select.value=list.some(p=>p.id===selected)?selected:current;select.dataset.signature=signature}detail.textContent=(item?.title||'Proyecto sin nombre')+' · '+(item?.sections||0)+'/16 secciones con registro · '+(item?.updatedAt?new Date(item.updatedAt).toLocaleString('es-CO'):'');};
  const safe=fn=>()=>{try{fn()}catch(e){status.textContent='No se pudo guardar o cambiar de proyecto. Conserva esta página y revisa el almacenamiento.';console.error(e)}};
  open.onclick=safe(()=>switchTo(select.value));add.onclick=safe(create);
- box.append(info,select,open,add,status);host.before(box);update();
+ box.append(info,select,open,add,status);document.querySelector('#guidedJourney').before(box);update();
  document.addEventListener('input',e=>{if(e.target.matches?.('[data-field]')){status.textContent='Cambios pendientes de guardar';clearTimeout(window.__h01SaveTimer);window.__h01SaveTimer=setTimeout(safe(()=>{flush();status.textContent='Guardado local';update()}),450)}});
  document.addEventListener('focusout',e=>{if(e.target.matches?.('[data-field]'))safe(()=>{flush();status.textContent='Guardado local';update()})()});
  const observer=new MutationObserver(update);observer.observe(document.querySelector('#fields'),{childList:true});
