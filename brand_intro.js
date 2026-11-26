@@ -44,9 +44,55 @@
  }
  // Far-to-near compositing makes foreground fragments occlude the distant ones.
  particles.sort((a,b)=>a.z-b.z);
+ 
+ // Offscreen WebGL layer: real cube faces, perspective and per-fragment depth testing.
+ // The existing Canvas 2D path remains the fallback and final vector-logo compositor.
+ function createVolume(){
+  const surface=document.createElement('canvas');surface.width=canvas.width;surface.height=canvas.height;
+  const gl=surface.getContext('webgl',{alpha:true,antialias:true,premultipliedAlpha:true});
+  if(!gl)return null;
+  const shader=(type,source)=>{const sh=gl.createShader(type);gl.shaderSource(sh,source);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(sh));return sh};
+  const vs=shader(gl.VERTEX_SHADER,`attribute vec3 aPosition;attribute vec3 aNormal;attribute vec4 aColor;
+   varying vec4 vColor;void main(){float w=1.0-aPosition.z/790.0;
+   gl_Position=vec4((aPosition.x-500.0)/500.0,(170.0-aPosition.y)/170.0,-aPosition.z/900.0,w);
+   float light=.46+.54*max(0.0,dot(normalize(aNormal),normalize(vec3(-.45,-.65,1.0))));
+   vColor=vec4(aColor.rgb*light,aColor.a);}`);
+  const fs=shader(gl.FRAGMENT_SHADER,`precision mediump float;varying vec4 vColor;void main(){gl_FragColor=vec4(vColor.rgb*vColor.a,vColor.a);}`);
+  const program=gl.createProgram();gl.attachShader(program,vs);gl.attachShader(program,fs);gl.linkProgram(program);
+  if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));
+  gl.useProgram(program);const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+  for(const [name,size,offset] of [['aPosition',3,0],['aNormal',3,12],['aColor',4,24]]){const loc=gl.getAttribLocation(program,name);gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,size,gl.FLOAT,false,40,offset)}
+  gl.enable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
+  const corners=[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]];
+  const faces=[[[0,3,2,1],[0,0,-1]],[[4,5,6,7],[0,0,1]],[[0,4,7,3],[-1,0,0]],[[1,2,6,5],[1,0,0]],[[0,1,5,4],[0,-1,0]],[[3,7,6,2],[0,1,0]]];
+  const vertices=new Float32Array(particles.length*36*10);
+  let lost=false;surface.addEventListener('webglcontextlost',e=>{e.preventDefault();lost=true});
+  function draw(t,solid){
+   if(lost||gl.isContextLost())return false;
+   let n=0;
+   for(const p of particles){
+    const fade=p.isSymbol?smooth((t-3.15)/.35):solid;
+    const alpha=(1-fade)*smooth((t-p.start*.31)/.9);
+    if(alpha<.025)continue;
+    const q=pose(p,t),u=smooth((t-p.start)/(p.arrival-p.start)),size=q.size/q.k/2;
+    const z=790*(1-1/q.k),x=500+(q.x-500)/q.k,y=170+(q.y-170)/q.k;
+    const ax=(p.phase+t*.75)*(1-u),ay=(p.spin*2+t*.43)*(1-u),az=q.angle;
+    const ca=Math.cos(ax),sa=Math.sin(ax),cb=Math.cos(ay),sb=Math.sin(ay),cc=Math.cos(az),sc=Math.sin(az);
+    const rot=([a,b,c])=>{const Y=b*ca-c*sa,Z=b*sa+c*ca,X=a*cb+Z*sb,D=-a*sb+Z*cb;return [X*cc-Y*sc,X*sc+Y*cc,D]};
+    const rgb=p.color==='#f5f9f7'?[.96,.98,.97]:p.color==='#50e0c3'?[.31,.88,.76]:[.08,.60,.57];
+    for(const [ids,normal] of faces){const m=rot(normal);for(const i of [0,1,2,0,2,3]){const v=rot(corners[ids[i]]);vertices[n++]=x+v[0]*size;vertices[n++]=y+v[1]*size;vertices[n++]=z+v[2]*size;vertices[n++]=m[0];vertices[n++]=m[1];vertices[n++]=m[2];vertices[n++]=rgb[0];vertices[n++]=rgb[1];vertices[n++]=rgb[2];vertices[n++]=alpha;}}
+   }
+   gl.viewport(0,0,surface.width,surface.height);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+   gl.bufferData(gl.ARRAY_BUFFER,vertices.subarray(0,n),gl.DYNAMIC_DRAW);gl.drawArrays(gl.TRIANGLES,0,n/10);
+   ctx.drawImage(surface,0,0,W,H);return true;
+  }
+  return {draw,dispose(){gl.deleteBuffer(buffer);gl.deleteProgram(program);gl.deleteShader(vs);gl.deleteShader(fs)}};
+ }
+ let volume=null;try{volume=createVolume()}catch(e){console.warn('VÉRTICE: Canvas fallback',e)}
+
  let done=false,frame=0,timer=0;
  const finish=()=>{
-  if(done)return;done=true;cancelAnimationFrame(frame);clearTimeout(timer);
+  if(done)return;done=true;cancelAnimationFrame(frame);clearTimeout(timer);volume?.dispose();
   intro.hidden=true;document.removeEventListener('keydown',onKey,true);
   document.removeEventListener('pointerdown',onPointer,true);
   document.removeEventListener('visibilitychange',onVisibility);
@@ -104,7 +150,7 @@
   const camera=.94+.085*ease(t/4.6)-.025*ease((t-4.5)/.85);
   const floating=smooth((t-4.55)/.6);
   ctx.save();ctx.translate(W/2+Math.sin(t*1.15)*4*floating,H/2+Math.sin((t-4.55)*2.1)*7*floating);ctx.scale(camera,camera);ctx.translate(-W/2,-H/2);
-  if(solid<1){
+  if(solid<1&&!(volume&&volume.draw(t,solid))){
    for(const p of particles){
     const partSolid=p.isSymbol?smooth((t-3.15)/.35):solid;
     const alpha=(1-partSolid)*smooth((t-p.start*.31)/.9)*(p.back?.35+.65*smooth((t-p.start)/(p.arrival-p.start)):p.front?.65:.74+.26*smooth(t/4));
