@@ -84,3 +84,10 @@ Regresión del SHA integrado: CI 45833566956 completada con éxito. Chromium loc
 - Próximo paso: comprobar despliegue y ejecutar con investigador el primer proyecto integral S01–S16; mantener Q07, V01 y el hito 75% abiertos. No incrementar estimación global por diseño.
 
 - Confirmación posterior: Render reportó `live` para dep-dc44h315efls73d1qkhg, SHA 904763afc8428c1283fcae4ca81319295ff43684, 2026-11-26 14:57:24 UTC. Logs: startup completo y GET / 200. El GET externo desde la herramienta de consulta no fue accesible y el entorno local no resolvió DNS; revisión visual directa y IA autenticada alojada pendientes. Producción verificada live en c9839baa, sin cambios. URL de ensayo: https://vertice-e01-staging.onrender.com/.
+
+
+## 11. Continuidad visual S01–S16 — 26/11/2026
+- Solicitud del investigador: conservar la identidad de la portada durante la formulación. PR #141, rama design/2026-11-26-unified-workspace, candidato `4855be65c2691c1fa959e1372f2a58f5c68e8145` sobre staging `904763afc8428c1283fcae4ca81319295ff43684`.
+- CSS aislado al espacio de trabajo: azul profundo, azul petróleo, turquesa, estados semánticos diferenciados, controles, tablas, asistentes, visualizaciones y misma marca. Conserva código funcional, datos, rutas, IA y formato documental. Ningún cambio de esquema.
+- CI 45845196006 / job 139996917376, en ejecución al registrar. Conserva prueba de bienvenida y aislamiento, añade auditoría de las 16 secciones en tres resoluciones (48 vistas previstas), detección de superficies claras, contraste básico de controles y captura de pantalla. No equivale a revisión visual humana, evaluación integral WCAG o validación metodológica.
+- No promover ni desplegar el nuevo candidato hasta verificar CI y corregir defectos. Staging anterior conserva su versión validada; alcance autorizado limitado a ensayo. Mantener hito 75 % abierto.
