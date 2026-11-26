@@ -44,7 +44,7 @@ function stageDots(stage){
 
 function code(){try{return typeof active!=='undefined'?active:(($('#counter')?.textContent||'').match(/^S\d{2}/)?.[0]||'S01')}catch{return 'S01'}}
 function data(c){try{return typeof draft!=='undefined'?(draft[c]||{}):{}}catch{return {}}}
-function has(v){if(v===null||v===undefined)return false;if(typeof v==='string')return !!v.trim();if(Array.isArray(v))return v.length>0;if(typeof v==='object')return Object.keys(v).length>0;return true}
+function has(v){if(v===null||v===undefined)return false;if(typeof v==='string')return !!v.trim()&&!/^\s*\[POR\s+(VERIFICAR|REVISAR|DEFINIR)\b/i.test(v);if(Array.isArray(v))return v.length>0;if(typeof v==='object')return Object.keys(v).length>0;return true}
 function fieldsStatus(c){
  const s=typeof sections!=='undefined'?sections[c]:null,d=data(c);if(!s)return 'missing';
  const req=(s.fields||[]).filter(x=>x[2]).map(x=>x[0]),all=(s.fields||[]).map(x=>x[0]);
@@ -55,8 +55,8 @@ function state(c){
  const d=data(c);
  try{
   if(c==='S05'){const p=d.vester_preparation_v2||d.vester_preparation||{};const xs=p.items||[];if(xs.filter(x=>x.confirmed&&(x.status==='ready'||x.status==='confirmed')).length>=2)return 'complete';return has(d.situaciones_observables)?'progress':'missing'}
-  if(c==='S06'){const v=d.vester_state||{},ps=v.selected||[],rel=v.relations||{};let need=ps.length*(ps.length-1),answered=ps.reduce((n,a)=>n+ps.filter(b=>{const score=rel[a.id+'>'+b.id]?.score;return a.id!==b.id&&Number.isInteger(score)&&score>=0&&score<=3}).length,0);const cv=d.causal_validation||{},pairs=cv.pairs||[];const reviewed=pairs.filter(p=>p.decision&&p.decision!=='pending').length;if(ps.length>=2&&answered>=need&&(!pairs.length||reviewed===pairs.length))return 'complete';return ps.length||answered||pairs.length?'progress':'missing'}
-  if(c==='S07'){const t=d.tree_state||{},ns=t.nodes||[],cent=ns.some(n=>n.zone==='central'),linked=ns.filter(n=>n.zone&&n.zone!=='outside'&&n.zone!=='central').length;if(cent&&linked)return 'complete';return cent||ns.length?'progress':'missing'}
+  if(c==='S06'){const v=d.vester_state||{},ps=v.selected||[],rel=v.relations||{};let need=ps.length*(ps.length-1),answered=ps.reduce((n,a)=>n+ps.filter(b=>{const score=rel[a.id+'>'+b.id]?.score;return a.id!==b.id&&Number.isInteger(score)&&score>=0&&score<=3}).length,0);const cv=d.causal_validation||{},pairs=cv.pairs||[];const reviewed=pairs.filter(p=>p.decision&&p.decision!=='pending').length;if(ps.length>=2&&ps.every(p=>p.id)&&new Set(ps.map(p=>p.id)).size===ps.length&&answered===need&&(!pairs.length||reviewed===pairs.length))return 'complete';return ps.length||answered||pairs.length?'progress':'missing'}
+  if(c==='S07'){const t=d.tree_state||{},ns=t.nodes||[],cent=ns.filter(n=>n.zone==='central'),direct=ns.filter(n=>n.zone==='direct_cause');if(cent.length===1&&has(cent[0].text)&&direct.length&&direct.every(n=>has(n.text))&&new Set(ns.map(n=>n.id)).size===ns.length)return 'complete';return ns.length?'progress':'missing'}
   if(c==='S08')return has(d.enunciado)?'complete':fieldsStatus(c);
   if(c==='S09'){const gate=window.fcS09TransitionStatus?.();if(gate&&!gate.ok)return 'progress';const o=d.objectives_state||{},xs=o.items||[];if(xs.length&&xs.every(x=>x.confirmed))return 'complete';return xs.length?'progress':'missing'}
   if(c==='S10'){const xs=d.completion_state?.items||[];if(xs.some(x=>x.selected&&x.confirmed))return 'complete';return xs.length?'progress':'missing'}
