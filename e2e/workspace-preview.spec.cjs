@@ -15,6 +15,18 @@ for(const viewport of [{width:1440,height:900},{width:1024,height:768},{width:39
   await expect(nav).toHaveCount(16);
   const expected=Array.from({length:16},(_,i)=>'S'+String(i+1).padStart(2,'0'));
   expect(await nav.evaluateAll(nodes=>nodes.map(n=>n.dataset.code))).toEqual(expected);
+  const toggle=page.locator('.workspace-journey-toggle');
+  const grid=page.locator('#workspaceJourneySections');
+  await expect(toggle).toHaveAttribute('aria-expanded','true');
+  await toggle.focus();
+  await page.keyboard.press('Enter');
+  await expect(toggle).toHaveAttribute('aria-expanded','false');
+  await expect(grid).toBeHidden();
+  await expect(nav).toHaveCount(16);
+  await expect(toggle).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(grid).toBeVisible();
+  await expect(toggle).toHaveAttribute('aria-expanded','true');
   const layout=await page.evaluate(()=>{
    const n=document.querySelector('#guidedJourney').getBoundingClientRect(),p=document.querySelector('#panel').getBoundingClientRect();
    return {navRight:n.right,panelLeft:p.left,navBottom:n.bottom,panelTop:p.top,width:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth};
