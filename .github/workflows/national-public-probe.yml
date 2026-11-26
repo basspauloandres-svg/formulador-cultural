@@ -1,0 +1,50 @@
+name: Public documentary recovery - national probe
+on:
+  pull_request:
+    branches: [qa/2026-11-26-institutional-research]
+    paths: [.github/workflows/national-public-probe.yml]
+permissions:
+  contents: read
+jobs:
+  sources:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: f8eb7903dddb657ff090fe10b7e18c5c9ffc6d31
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r backend/requirements.txt
+      - name: Observe live official retrieval, no user session or model calls
+        env:
+          PYTHONPATH: backend
+        run: |
+          python - <<'PY'
+          import asyncio, json
+          from institutional_sources import institutional_passages, public_html, article_passages
+          from territory_registry import resolve_territory
+          CASES=[
+              ("Neira, Caldas","neira","caldas","17486","https://educacion.caldas.gov.co/sala-de-prensa/articles-category-blog/neira-villamaria-y-aguadas-ocuparon-los-primeros-lugares-en-la-version-43-del-concurso-departamental-de-bandas-estudiantiles-de-musica"),
+              ("Quibdó, Chocó","quibdo","choco","27001","https://www.mincultura.gov.co/noticias/Paginas/renace-el-teatro-cesar-conto-de-quibdo-el-gran-espacio-cultural-del-pacifico-colombiano.aspx"),
+              ("Leticia, Amazonas","leticia","amazonas","91001","https://www.mincultura.gov.co/noticias/Paginas/el-ministerio-de-las-culturas-y-la-biblioteca-nacional-se-unieron-para-rescatar-los-saberes-de-las-comunidades-indigenas.aspx"),
+          ]
+          async def main():
+              results=[]
+              for label,city,dept,code,url in CASES:
+                  territory=await resolve_territory(label)
+                  identity=(territory.get('identity') or {}).get('divipola')
+                  data=await public_html(url)
+                  passages=article_passages(data,url,'Fuente institucional',city,dept) if data else []
+                  auto=await institutional_passages((city,dept),{'PRACTICAS_MUSICALES'})
+                  candidate=await institutional_passages((city,dept),{'PRACTICAS_MUSICALES'},[{'url':url,'title':label+' cultura música artes','summary':''}])
+                  row={'territory':label,'expected_divipola':code,'resolved':identity,'http_document_recovered':bool(data),'direct_passages':len(passages),'automatic_passages':len(auto),'candidate_passages':len(candidate),'dates':[p.get('publication_date') for p in candidate],'model_calls':0}
+                  results.append(row)
+                  print('NATIONAL_SOURCE_OBSERVATION',json.dumps(row,ensure_ascii=False))
+              # A supplied public URL tests retrieval, not independent web discovery.
+              assert all(r['resolved']==r['expected_divipola'] for r in results),'National identity recovery incomplete'
+              assert all(r['candidate_passages']>0 for r in results),'At least one known relevant document could not be recovered; retain negative result'
+              print('NATIONAL_KNOWN_CANDIDATE_RECOVERY_PASS')
+          asyncio.run(main())
+          PY
