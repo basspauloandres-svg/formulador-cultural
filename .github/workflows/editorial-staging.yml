@@ -207,6 +207,15 @@ jobs:
               });
               if(JSON.stringify(earlyCases)!==JSON.stringify(['progress','progress','complete','missing','complete','progress','progress','complete','progress','progress','complete']))throw Error('S06-S10 regression '+JSON.stringify(earlyCases));
               console.log('S06_S10_PROVENANCE_PASS',JSON.stringify(earlyCases));
+              const approvalCases=await mobile.evaluate(()=>{
+                const base=window.fcGetProjectSnapshot();
+                const copy=()=>JSON.parse(JSON.stringify(base));
+                const approved=copy();approved.sections.S16={review_state:{confirmed:true,reviewFingerprint:window.fcReviewFingerprint(approved)}};
+                const altered=JSON.parse(JSON.stringify(approved));altered.sections.S01={...(altered.sections.S01||{}),nombre_del_proyecto:'QA changed after review'};
+                return [window.fcAuditReviewApproval(base),window.fcAuditReviewApproval(approved),window.fcAuditReviewApproval(altered)];
+              });
+              if(JSON.stringify(approvalCases)!==JSON.stringify([false,true,false]))throw Error('S16 stale approval regression '+JSON.stringify(approvalCases));
+              console.log('S16_APPROVAL_FINGERPRINT_PASS',JSON.stringify(approvalCases));
               await mobile.locator('#guidedJourney .guided-subsection[data-code="S01"]').waitFor();
               await mobile.close();
               const reduced=await browser.newPage({viewport:{width:1024,height:768},reducedMotion:'reduce'});
