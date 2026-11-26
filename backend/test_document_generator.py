@@ -335,3 +335,14 @@ def test_export_status_does_not_certify_caller_supplied_eligibility():
     declared = normalized_payload({"document_status": "Proyecto maestro revisado"})["document_status"]
     assert "según revisión declarada" in declared
     assert "requiere cotejo de convocatoria" in declared
+
+
+def test_export_preserves_cost_source_distinct_from_financing():
+    payload = sample_payload()
+    payload["budget"][0].update(priceSource="COTIZACION QA 2025",priceDate="2025-01-01",
+                                 priceStatus="documented_estimate",fundingSource="FONDO QA")
+    with ZipFile(BytesIO(generate_docx(payload))) as z:
+        xml = z.read("word/document.xml").decode("utf-8")
+        for item in ("COTIZACION QA 2025","2025-01-01","documented_estimate","FONDO QA"):
+            assert item in xml
+    assert generate_pdf(payload).startswith(b"%PDF")
