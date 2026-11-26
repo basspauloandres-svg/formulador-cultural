@@ -1,0 +1,32 @@
+name: V01 offline local arm
+on:
+  pull_request:
+    branches: [s02-research-first-20261124]
+    paths:
+      - 'scripts/v01_local_observations.py'
+      - '.github/workflows/v01-local-observations.yml'
+permissions:
+  contents: read
+jobs:
+  v01-local:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install existing candidate dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Verify existing offline evaluator and routing
+        env:
+          PYTHONPATH: backend
+        run: python -m pytest -q backend/test_vke_evaluation.py backend/test_knowledge_assistant.py backend/test_knowledge_index.py
+      - name: Capture per-task offline VKE observations
+        env:
+          PYTHONPATH: backend
+          VERTICE_V01_MODE: offline-synthetic
+        run: python scripts/v01_local_observations.py
