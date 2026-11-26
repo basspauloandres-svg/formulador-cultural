@@ -1,0 +1,84 @@
+name: Editorial staging isolation
+on:
+  pull_request:
+    branches: [design/2026-11-26-editorial-integrated]
+    paths: [backend/staging_preview.py, .github/workflows/editorial-staging.yml]
+permissions:
+  contents: read
+jobs:
+  isolation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r backend/requirements.txt
+      - name: Check isolated preview and deny unlisted paths
+        env:
+          PYTHONPATH: backend
+        run: |
+          python - <<'PY'
+          from fastapi.testclient import TestClient
+          from staging_preview import app, ASSETS
+          c = TestClient(app)
+          health = c.get('/health').json()
+          assert health['status'] == 'ok' and not health['cloud'] and not health['generative_ai']
+          root = c.get('/')
+          assert root.status_code == 200 and 'Entorno de prueba' in root.text
+          assert 'workspace-preview' in root.text and '@supabase/supabase-js' not in root.text
+          assert "connect-src 'self'" in root.headers['content-security-policy']
+          assert len(ASSETS) >= 30
+          for asset in ASSETS:
+              response = c.get('/' + asset)
+              assert response.status_code == 200, asset
+              assert 'formulador-cultural-api.onrender.com' not in response.text, asset
+          for path in ['/backend/main.py','/README.md','/AGENTS.md','/.env','/docs','/openapi.json','/projects']:
+              assert c.get(path).status_code in (404,405), path
+          for path in ['/assistant/knowledge','/assistant/s02/guide','/assistant/s02','/assistant/section/review','/projects']:
+              assert c.post(path,json={}).status_code in (404,405), path
+          print('STAGING_ISOLATION_PASS', len(ASSETS), health['candidate'])
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --no-package-lock --ignore-scripts @playwright/test@1.56.1
+          npx playwright install chromium
+      - name: Browser smoke — isolated local draft
+        run: |
+          (cd backend && python -m uvicorn staging_preview:app --host 127.0.0.1 --port 8765) > /tmp/staging.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          curl --retry 15 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:8765/health
+          node <<'JS'
+          const { chromium }=require('@playwright/test');
+          (async()=>{const browser=await chromium.launch();
+            try {
+              const page=await browser.newPage({viewport:{width:1440,height:900}});
+              const blocked=[],errors=[];
+              page.on('pageerror',e=>errors.push(e.message));
+              await page.route('**/*',route=>{
+                const url=new URL(route.request().url());
+                if(url.origin==='http://127.0.0.1:8765'||url.hostname==='cdn.jsdelivr.net')return route.continue();
+                blocked.push(url.hostname);return route.abort();
+              });
+              await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
+              await page.locator('#guidedJourney .guided-subsection[data-code="S01"]').waitFor();
+              if(await page.locator('#guidedJourney .guided-subsection[data-code]').count()!==16)throw Error('navigation count');
+              await page.locator('#guidedJourney [data-code="S01"]').click();
+              const field=page.locator('#fields [data-field="nombre_del_proyecto"]');
+              await field.fill('QA staging — synthetic');
+              await page.locator('#save').click();
+              await page.reload({waitUntil:'domcontentloaded'});
+              await page.locator('#guidedJourney [data-code="S01"]').click();
+              if(await field.inputValue()!=='QA staging — synthetic')throw Error('local draft did not persist');
+              if(await page.locator('#authSignedOut').isVisible())throw Error('cloud login visible');
+              if(blocked.length||errors.length)throw Error(JSON.stringify({blocked,errors}));
+              console.log('STAGING_LOCAL_BROWSER_PASS');
+            } finally {await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)})
+          JS
