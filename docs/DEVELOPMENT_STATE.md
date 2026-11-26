@@ -53,3 +53,8 @@ f46b142e, PR #136, run 45821079836, job 139913175687: success. 40 identidades si
 3. Q07: dos revisores humanos independientes, tres proyectos representativos; conservar desacuerdos, incertidumbre y resultados negativos. No asignar evaluación humana mediante IA.
 4. Perfil de convocatoria verificable, rediseño independiente y regresión integral según NCM. Mantener 75/80 abiertos mientras falten criterios.
 5. No publicar, fusionar o cambiar producción sin autorización específica.
+
+## 7. Continuidad V01 — objetivo 75 % (26/11/2026)
+- PR #137, rama validation/2026-11-26-v01-observations, commit eeb2fe5f012a636244895f80fbdff8c8b3e88047. Brazo local VKE sobre candidato exacto 6bad6998; diez tareas sintéticas, dos repeticiones y dos condiciones de índice, 40 observaciones previstas con huellas, rutas, latencia e indexación separadas. Sin credenciales ni llamadas generativas previstas. CI 45823662572: completed/success al consultar; no atribuir observaciones efectivas ni PASS sin verificar logs.
+- Q05: fuente oficial consultada 26/11, https://sistemaconvocatorias.mincultura.gov.co/programas/1 : no hay manual específico ni anexos disponibles; https://sistemaconvocatorias.mincultura.gov.co/portafolios : primer bimestre de 2027 proyectado. Perfil PNCC 2027 permanece INSUFFICIENT_EVIDENCE. No fabricar condiciones ni trasladar las de 2026.
+- Q07: sigue pendiente revisión humana independiente. V01: línea base comparable, corpus real autorizado, calidad y costo pendientes. Mantener 74% estimado; 75% formal abierto. No fusionar ni desplegar.
