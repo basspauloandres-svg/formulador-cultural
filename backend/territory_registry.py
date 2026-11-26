@@ -150,11 +150,43 @@ def resolve_from_records(context: str, records: list[dict]) -> dict:
     return {"status": "NOT_FOUND", "identity": None}
 
 
+# Index only a complete public snapshot. Rebuild on snapshot replacement,
+# not per query. Preserve ambiguity and original catalog order.
+_INDEX_RECORDS: list[dict] | None = None
+_INDEX: dict[str, list[dict]] = {}
+
+def build_lookup(records: list[dict]) -> dict[str, list[dict]]:
+    index: dict[str, list[dict]] = {}
+    for record in records:
+        name = _strip_prefix(record["municipality"])
+        dept = normalized(record["department"])
+        for key in dict.fromkeys((name, f"{name} {dept}", record["divipola"])):
+            index.setdefault(key, []).append(record)
+    return index
+
+def resolve_indexed(context: str, records: list[dict]) -> dict:
+    global _INDEX_RECORDS, _INDEX
+    if _INDEX_RECORDS is not records:
+        index = build_lookup(records)
+        _INDEX_RECORDS, _INDEX = records, index
+    value = _strip_prefix(context)
+    if not value:
+        return {"status": "MISSING_TERRITORY", "identity": None}
+    options = _INDEX.get(value, [])
+    if len(options) == 1:
+        return {"status": "FOUND", "identity": options[0]}
+    if len(options) > 1:
+        return {"status":"AMBIGUOUS_MUNICIPALITY","identity":None,
+                "candidates":[{k:r[k] for k in ("municipality","department","divipola","territory_type")}
+                              for r in options[:12]]}
+    return {"status": "NOT_FOUND", "identity": None}
+
+
 async def resolve_territory(context: str) -> dict:
     records = await registry()
     if records is None:
         return {"status": "REGISTRY_UNAVAILABLE", "identity": None}
-    result = resolve_from_records(context, records)
+    result = resolve_indexed(context, records)
     result["source"] = SOURCE_PAGE
     result["dataset_id"] = DATASET
     return result
