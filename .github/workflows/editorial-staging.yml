@@ -146,6 +146,18 @@ jobs:
               await mobile.locator('#vtIntro').waitFor({state:'hidden'});
               if(await mobile.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('mobile horizontal overflow');
               await mobile.locator('#vtContinueTop').click();
+              const scheduleCases=await mobile.evaluate(()=>{
+                const previous11=draft.S11,previous13=draft.S13;
+                try{
+                  const activity=id=>({id,confirmed:true});
+                  const row=activityId=>({activityId,confirmed:true,startDate:'2026-12-01',endDate:'2026-12-02',responsible:'Equipo',dependencyIds:[]});
+                  draft.S11={completion_state:{items:[activity('QA-A'),activity('QA-B')]}};
+                  const check=items=>{draft.S13={schedule_state:{items}};return window.fcSectionStatus('S13')};
+                  return [check([row('QA-A'),row('QA-A')]),check([row('QA-A'),row('QA-X')]),check([row('QA-A'),{...row('QA-B'),startDate:'invalid'}]),check([row('QA-A'),{...row('QA-B'),requiresReview:true}]),check([row('QA-A'),row('QA-B')])];
+                }finally{draft.S11=previous11;draft.S13=previous13}
+              });
+              if(JSON.stringify(scheduleCases)!==JSON.stringify(['progress','progress','progress','progress','complete']))throw Error('S13 coverage regression '+JSON.stringify(scheduleCases));
+              console.log('S13_ACTIVITY_COVERAGE_PASS',JSON.stringify(scheduleCases));
               await mobile.locator('#guidedJourney .guided-subsection[data-code="S01"]').waitFor();
               await mobile.close();
               const reduced=await browser.newPage({viewport:{width:1024,height:768},reducedMotion:'reduce'});
