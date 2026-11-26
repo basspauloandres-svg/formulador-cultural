@@ -248,3 +248,48 @@ document.head.appendChild(style);
 new MutationObserver(mount).observe(document.getElementById('fields')||document.body,{childList:true,subtree:true});
 mount();
 })();
+
+
+/* VKE: no automatic submission of project data, no project mutations. */
+(()=>{
+'use strict';
+const root=document.getElementById('vtKnowledge');
+if(!root)return;
+const question=document.getElementById('vtKnowledgeQuestion'),ask=document.getElementById('vtKnowledgeAsk'),out=document.getElementById('vtKnowledgeResult');
+const API='https://formulador-cultural-api.onrender.com';
+let seq=0;
+function section(){return String(document.getElementById('counter')?.textContent||'').match(/S(?:0[1-9]|1[0-6])/)?.[0]||null;}
+function add(tag,value,parent=out){const el=document.createElement(tag);el.textContent=String(value||'');parent.appendChild(el);return el;}
+function clear(){seq++;out.replaceChildren();ask.disabled=false;}
+question.addEventListener('input',clear);
+root.addEventListener('toggle',()=>{if(!root.open)clear()});
+ask.addEventListener('click',async()=>{
+ const value=question.value.trim(),current=section(),id=++seq;
+ out.replaceChildren();
+ if(value.length<2){add('p','Escribe una pregunta metodológica.');return}
+ if(!current){add('p','Abre una sección de formulación.');return}
+ ask.disabled=true;add('p','Consultando orientación y documentos…');
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),20000);
+ const stale=()=>id!==seq||question.value.trim()!==value||section()!==current||!root.open;
+ try{
+  const token=(await sb.auth.getSession())?.data?.session?.access_token;
+  if(stale())return;
+  if(!token){out.replaceChildren();add('p','Inicia sesión para consultar la biblioteca metodológica. Puedes seguir usando las ayudas locales.');return}
+  const response=await fetch(API+'/assistant/knowledge',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({section:current,question:value})});
+  if(stale())return;
+  if(!response.ok){out.replaceChildren();add('p',response.status===429?'Capacidad temporalmente ocupada. Continúa con las ayudas locales y vuelve a consultar.':'Consulta documental no disponible. Utiliza la orientación local.');return}
+  const data=await response.json();if(stale()||data.section!==current)return;
+  out.replaceChildren();
+  add('strong',data.route==='DETERMINISTIC_GUIDANCE'?'Orientación operativa':data.route==='DOCUMENT_RETRIEVAL'?'Documentos recuperados · cotejo pendiente':'Evidencia insuficiente');
+  add('p',data.answer);
+  if(data.source)add('small',data.source);
+  for(const p of (Array.isArray(data.passages)?data.passages.slice(0,5):[])){
+   const card=add('article','');add('strong',p.title,card);add('p',p.publisher+' · '+p.edition+' · '+p.locator,card);add('p',p.excerpt,card);
+   try{const url=new URL(p.url);if(url.protocol==='https:'&&!url.username&&!url.password){const a=add('a','Consultar documento original',card);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer'}}catch{}
+   add('small','Fragmento SHA-256: '+String(p.excerpt_sha256||''),card);
+  }
+ }catch{if(!stale()){out.replaceChildren();add('p','Consulta documental no disponible. Utiliza la orientación local.')}}finally{clearTimeout(timeout);if(id===seq)ask.disabled=false}
+});
+const counter=document.getElementById('counter');
+if(counter)new MutationObserver(()=>{clear();question.value='';root.open=false}).observe(counter,{childList:true,characterData:true,subtree:true});
+})();
