@@ -15,6 +15,7 @@ const FIELDS={
  S14:['presupuesto_resumen'],
  S15:['riesgos_resumen']
 };
+const inflight=new Map();
 const S02=['territorio_o_lugar_de_intervencion','caracteristicas_culturales','principales_dinamicas_sociales','antecedentes'];
 function node(tag,txt='',className=''){const el=document.createElement(tag);el.textContent=txt;el.className=className;return el}
 function territory(){
@@ -22,7 +23,11 @@ function territory(){
  const dept=String(draft?.S01?.departamento||'').trim();
  return city+(dept?', '+dept:'');
 }
+function projectStamp(){
+ return JSON.stringify([cloudProject?.id||'local',draft?.S01?.nombre_del_proyecto||'',draft?.S01?.idea_inicial_usuario||'']);
+}
 function mount(){
+ for(const [element,controller] of inflight)if(!element.isConnected){controller.abort();inflight.delete(element);}
  if(typeof active==='undefined')return;
  const allowed=active==='S02'?S02:FIELDS[active];
  if(!allowed)return;
@@ -40,7 +45,7 @@ function mount(){
    const proposalTitle=node('strong','Redacción propuesta · pendiente de aprobación');
    const proposalText=node('textarea');proposalText.rows=5;
    proposalText.setAttribute('aria-label','Redacción propuesta para este campo');
-   const approve=node('button','Incorporar y guardar redacción');approve.type='button';
+   const approve=node('button',active==='S02'?'Aplicar borrador':'Incorporar y guardar redacción');approve.type='button';
    approve.dataset.reviewAction='approve';
    const discard=node('button','Descartar redacción');discard.type='button';
    discard.dataset.reviewAction='discard';
@@ -48,9 +53,14 @@ function mount(){
    const savedReview=node('p','','vt-evidence-detail');savedReview.hidden=true;
    const savedSources=node('details','','vt-saved-evidence');savedSources.hidden=true;
    let renderedManifest='';
+   const isTerritorial=active==='S02';
+   const query=node('textarea');query.rows=2;query.maxLength=3000;
+   query.placeholder='Ejemplo: ¿Qué información reciente existe sobre este tema en el municipio?';
+   query.setAttribute('aria-label','Consulta territorial específica para este campo');
+   if(isTerritorial){panel.append(node('label','¿Qué quieres investigar?'),query);}
    panel.append(button,status,savedReview,savedSources,results,proposal);
    host.appendChild(panel);
-   let seq=0,lastContext=territory(),sourceValue='',sourceContext='',sourceSection='',sourceDraft='',needsReview=false,pendingAudit=null;
+   let seq=0,lastContext=territory(),lastProject=projectStamp(),lastProjectObject=draft.S01,sourceValue='',sourceContext='',sourceSection='',sourceDraft='',sourceProject='',sourceProjectObject=null,sourceQuestion='',sourceCode='',needsReview=false,pendingAudit=null,controller=null;
    function showSavedReview(){
      const record=draft?.S02?.evidence_review_state?.fields?.[field.dataset.field];
      if(active!=='S02'||!record){savedReview.hidden=true;savedSources.hidden=true;return;}
@@ -69,43 +79,71 @@ function mount(){
          if(typeof item.url==='string'&&item.url.startsWith('https://')){
            const link=node('a','Consultar fuente original');link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';wrapper.appendChild(link);
          }
+         wrapper.appendChild(node('p',[item.title,item.period,item.geographic_scope,item.locator].filter(Boolean).join(' · '),'vt-evidence-detail'));
          wrapper.appendChild(node('p',String(item.prompt_excerpt||''),'vt-evidence-detail'));
          wrapper.appendChild(node('p','SHA-256 del documento: '+String(item.sha256||'')+' · SHA-256 del extracto: '+String(item.excerpt_sha256||''),'vt-evidence-detail'));
          savedSources.appendChild(wrapper);
        });
      }
    }
-   field.addEventListener('input',showSavedReview);
+   function invalidate(){
+     seq++;controller?.abort();controller=null;inflight.delete(field);button.disabled=false;
+     results.hidden=true;results.replaceChildren();proposal.hidden=true;proposalText.value='';
+     pendingAudit=null;needsReview=false;sourceCode='';
+   }
+   field.addEventListener('input',()=>{invalidate();showSavedReview()});
+   query.addEventListener('input',()=>{invalidate();status.textContent='Consulta modificada. Investiga nuevamente.';});
    showSavedReview();
    function clearIfChanged(){
      const now=territory();
      showSavedReview();
-     if(now===lastContext)return false;
-     lastContext=now;seq+=1;results.hidden=true;results.replaceChildren();proposal.hidden=true;proposalText.value='';sourceValue='';sourceContext='';sourceDraft='';needsReview=false;pendingAudit=null;
-     status.textContent='Cambió el municipio. Se descartó la revisión anterior.';
+     const project=projectStamp(),projectObject=draft.S01;
+     if(now===lastContext&&project===lastProject&&projectObject===lastProjectObject)return false;
+     lastContext=now;lastProject=project;lastProjectObject=projectObject;invalidate();
+     status.textContent='Cambió el proyecto o el municipio. Se descartó la revisión anterior.';
      return true;
    }
    panel.vtReviewInvalidate=clearIfChanged;
    button.onclick=async()=>{
      clearIfChanged();
-     const context=territory(),input=field.value.trim(),request=++seq,requestedSection=active;
+     invalidate();
+     const context=territory(),input=field.value.trim(),request=++seq,requestedSection=active,project=projectStamp(),projectObject=draft.S01,question=query.value.trim();
      results.hidden=true;results.replaceChildren();proposal.hidden=true;
      if(!context){status.textContent='Completa el municipio en S01 para contextualizar la revisión.';return}
      if(!input&&active!=='S02'){status.textContent='Escribe una observación o afirmación en este campo para contrastarla.';return}
      button.disabled=true;status.textContent='Contrastando afirmaciones y preparando un borrador editable...';
+     const control=new AbortController();controller=control;inflight.set(field,control);
+     const timeout=setTimeout(()=>control.abort(),70000);
+     const current=()=>request===seq&&controller===control&&field.isConnected&&active===requestedSection&&field.value.trim()===input&&territory()===context&&projectStamp()===project&&draft.S01===projectObject&&query.value.trim()===question;
      try{
        const sessionResult=await sb.auth.getSession();
        const token=sessionResult?.data?.session?.access_token;
+       if(!current())return;
        if(!token){status.textContent='Inicia sesión para revisar fuentes.';return}
        const isS02=requestedSection==='S02';
-       const response=await fetch(API+(isS02?'/assistant/s02/guide':'/assistant/section/review'),{
-         method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-         body:JSON.stringify({section:requestedSection,field:field.dataset.field,text:input,context,include_web:true,compose:true,generate:true})
+       let code='';
+       if(isS02){
+         const selected=draft.S01?.territory_selection;
+         if(selected&&selected.context===context&&/^\d{5}$/.test(selected.codigo))code=selected.codigo;
+         else{
+           const resolved=await fetch(API+'/territory/resolve',{method:'POST',signal:control.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({context})});
+           if(!current())return;
+           if(!resolved.ok)throw Error('registry');
+           const data=await resolved.json();if(!current())return;
+           if(data.status!=='FOUND'||!/^\d{5}$/.test(data.identity?.divipola||'')){status.textContent='Selecciona un municipio y departamento inequívocos en S01.';return;}
+           code=data.identity.divipola;
+         }
+       }
+       if(!current())return;
+       const label=field.closest('.field')?.querySelector('label')?.textContent||field.dataset.field;
+       const response=await fetch(API+(isS02?'/assistant/s02/contexto-territorial':'/assistant/section/review'),{
+         method:'POST',signal:control.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+         body:JSON.stringify(isS02?{codigo_divipola:code,consulta:question||('Investiga '+label.replace('· requerido','').trim()),field:field.dataset.field,aporte:input}:{section:requestedSection,field:field.dataset.field,text:input,context,include_web:true,compose:true,generate:true})
        });
        const data=await response.json();
-       if(request!==seq||active!==requestedSection||!field.isConnected||field.value.trim()!==input||territory()!==context)return;
+       if(!current())return;
        if(!response.ok){status.textContent=String(data.detail||'No se pudo completar la revisión.').slice(0,220);return}
-       if(data.section!==requestedSection||(isS02&&(data.territory_context!==context||data.field!==field.dataset.field))){status.textContent='La respuesta no corresponde al campo o territorio solicitado. Repite la consulta.';return;}
+       if(data.section!==requestedSection||(isS02&&(data.codigo_divipola!==code||data.territory?.divipola!==code||data.field!==field.dataset.field))){status.textContent='La respuesta no corresponde al campo o territorio solicitado. Repite la consulta.';return;}
        const claims=Array.isArray(data.claims)?data.claims:[];
        if(claims.length||!isS02)results.appendChild(node('strong','Afirmaciones detectadas · evaluación preliminar'));
        if(!claims.length&&!isS02)results.appendChild(node('p','No se identificaron oraciones completas; amplía la descripción.'));
@@ -164,7 +202,7 @@ function mount(){
        const audited=Array.isArray(data.claim_audit)?data.claim_audit:[];
        if(isS02&&audited.length){
          results.appendChild(node('strong','Revisión de las afirmaciones propuestas'));
-         const labels={LITERAL_MATCH_REVIEW_REQUIRED:'Correspondencia textual; requiere cotejo',REGISTRY_FACT_REVIEW_REQUIRED:'Registro administrativo de alcance limitado; requiere revisión',INSUFFICIENT_EVIDENCE:'Respaldo insuficiente',INVALID_PROVENANCE:'Procedencia inválida'};
+         const labels={LITERAL_MATCH_REVIEW_REQUIRED:'Correspondencia textual; requiere cotejo',REGISTRY_FACT_REVIEW_REQUIRED:'Registro administrativo de alcance limitado; requiere revisión',INSUFFICIENT_EVIDENCE:'Respaldo insuficiente',INVALID_PROVENANCE:'Procedencia inválida',MODEL_SUPPORT_PROPOSED:'Respaldo propuesto por el modelo; cotejo pendiente',MODEL_CONTRADICTION_REVIEW_REQUIRED:'Posible contradicción; cotejo pendiente'};
          const semanticLabels={MODEL_ENTAILMENT_REVIEW_REQUIRED:'Evaluación del modelo: posible apoyo textual',MODEL_CONTRADICTION_REVIEW_REQUIRED:'Evaluación del modelo: posible contradicción',INSUFFICIENT_EVIDENCE:'Evaluación semántica insuficiente'};
          audited.forEach(item=>{
            const p=node('div','','vt-evidence-passages');
@@ -202,8 +240,8 @@ function mount(){
        if(suggestion){
          pendingAudit=isS02?{context,divipola:data.territory?.divipola||null,
            origin:data.suggestion_origin||'UNKNOWN',manifest,claim_audit:audited,semantic_support_status:data.semantic_support_status||'NOT_ASSESSED',
-           reviewed_text:suggestion}:null;
-         sourceValue=field.value;sourceContext=context;sourceSection=requestedSection;sourceDraft=suggestion;needsReview=isS02;
+           used_references:data.used_references||[],structured_claims:data.afirmaciones||[],query:question,reviewed_text:suggestion}:null;
+         sourceValue=field.value;sourceContext=context;sourceSection=requestedSection;sourceDraft=suggestion;sourceProject=project;sourceProjectObject=projectObject;sourceQuestion=question;sourceCode=code;needsReview=isS02;
          proposalText.value=suggestion;
          proposal.hidden=false;
          status.textContent=data.suggestion_origin==='DETERMINISTIC_REGISTRY_FACT'?'Propuesta construida directamente a partir del registro administrativo; no corresponde a una redacción del modelo. Revisa su alcance antes de incorporar.':data.suggestion_origin==='USER_TEXT_FALLBACK'?'Se conserva el aporte original porque el modelo añadió contenido sin respaldo.':'Redacción preparada. Verifica los datos y aprueba para incorporarla al campo y guardarla.';
@@ -213,14 +251,14 @@ function mount(){
              ' advertencia(s) sobre contenido generado o inferencias. Revisa antes de aprobar.','vt-evidence-detail'));
          }
        }else{
-         status.textContent=data.blocked_for_evidence?'Evidencia insuficiente para formular una propuesta sustentada. Revisa las fuentes disponibles.':'La consulta no produjo un borrador utilizable. El campo permanece intacto.';
+         status.textContent=data.aviso|| (data.blocked_for_evidence?'Evidencia insuficiente para formular una propuesta sustentada. Revisa las fuentes disponibles.':'La consulta no produjo un borrador utilizable. El campo permanece intacto.');
        }
-     }catch{status.textContent='La consulta no respondió. El texto original sigue intacto.'}
-     finally{button.disabled=false}
+     }catch{if(current())status.textContent='La consulta no respondió. El texto original sigue intacto.'}
+     finally{clearTimeout(timeout);if(controller===control){controller=null;inflight.delete(field);button.disabled=false;}}
    };
    approve.onclick=()=>{
      if(clearIfChanged())return;
-     if(proposal.hidden||!field.isConnected||active!==sourceSection||territory()!==sourceContext||field.value!==sourceValue ){
+     if(proposal.hidden||!field.isConnected||active!==sourceSection||territory()!==sourceContext||field.value!==sourceValue||projectStamp()!==sourceProject||draft.S01!==sourceProjectObject||query.value.trim()!==sourceQuestion||(isTerritorial&&pendingAudit?.divipola!==sourceCode) ){
        status.textContent='Cambió el campo o el municipio. Repite la investigación antes de incorporar la redacción.';return;
      }
      const edited=proposalText.value.trim();
@@ -242,7 +280,7 @@ function mount(){
      const save=document.getElementById('save');if(save)save.click();
    };
    discard.onclick=()=>{
-     proposal.hidden=true;pendingAudit=null;
+     invalidate();
      status.textContent='Propuesta descartada. El texto original continúa intacto.';
    };
  });
