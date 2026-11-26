@@ -127,6 +127,39 @@
   const size=(p.initial+(p.peak-p.initial)*growth)*(1-settle)+6.05*settle;
   return {...point,size:size*point.k,angle:p.spin*(1-u)+Math.sin(time*.8+p.phase)*.19*quiet};
  }
+
+ // Independent, advected fractal cloud field: no stars, no galaxies, no external assets.
+ const mist=document.createElement('canvas');mist.width=384;mist.height=132;
+ const mc=mist.getContext('2d');
+ const mistImage=mc?.createImageData(mist.width,mist.height);
+ const hash=(x,y)=>{let n=Math.imul(x,374761393)+Math.imul(y,668265263)|0;n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967295};
+ function noise(x,y){const a=Math.floor(x),b=Math.floor(y),u=x-a,v=y-b;const U=u*u*(3-2*u),V=v*v*(3-2*v);return (hash(a,b)*(1-U)+hash(a+1,b)*U)*(1-V)+(hash(a,b+1)*(1-U)+hash(a+1,b+1)*U)*V}
+ function fbm(x,y){let n=0,w=.55;for(let i=0;i<5;i++){n+=w*noise(x,y);x=x*2.04+17.1;y=y*2.04+8.7;w*=.49}return n}
+ let lastMist=-1;
+ function paintMist(t){
+  if(!mc||!mistImage)return;
+  if(t-lastMist>=.075||lastMist<0){
+   const d=mistImage.data,mw=mist.width,mh=mist.height;
+   for(let j=0;j<mh;j++)for(let i=0;i<mw;i++){
+    const x=i/(mw-1),y=j/(mh-1),X=x*6,Y=y*3.6;
+    const warp=fbm(X*.78-t*.065,Y*.85+t*.025);
+    const bend=.74+.095*Math.sin(x*6.2+t*.24)+.052*Math.sin(x*14-t*.2);
+    const belt=Math.exp(-Math.pow((y-bend)/.155,2));
+    const side=Math.exp(-Math.pow((x-.05)/.24,2)-Math.pow((y-.62)/.4,2));
+    const upper=Math.exp(-Math.pow((x-.79)/.42,2)-Math.pow((y-.05)/.25,2));
+    const n=fbm(X+t*.17+warp*1.7,Y-warp*1.9-t*.06);
+    const detail=fbm(X*1.9-t*.11,Y*1.7+warp*2.4);
+    const plume=Math.pow(Math.max(0,(n-.30)*1.75),1.8);
+    const ridge=Math.pow(Math.max(0,1-Math.abs(detail-.50)*7),3);
+    const density=Math.min(1,(belt*.93+side*.67+upper*.38)*(plume*1.6+ridge*plume*.55));
+    const glow=Math.min(1,density*.75+ridge*density*.35),k=(j*mw+i)*4;
+    d[k]=Math.round(2+7*glow);d[k+1]=Math.round(12+110*glow);d[k+2]=Math.round(15+104*glow);d[k+3]=Math.round(255*Math.min(1,density*1.65));
+   }
+   mc.putImageData(mistImage,0,0);lastMist=t;
+  }
+  ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(mist,0,0,W,H);ctx.restore();
+ }
+
  function render(now){
   if(done)return;
   const t=(now-begin)/1000;
@@ -138,15 +171,7 @@
   atmosphere.addColorStop(1,'rgba(7,27,35,0)');
   ctx.fillStyle=atmosphere;ctx.fillRect(0,0,W,H);
   const solid=smooth((t-4.55)/.4);
-  // Slow layered turquoise mist, without stars or celestial objects.
-  for(let j=0;j<18;j++){
-   const x=(j*173)%1100-50+Math.sin(t*.23+j*1.7)*55;
-   const y=H*.78+Math.sin(j*.88+t*.31)*48;
-   const r=95+(j*29)%95;
-   const cloud=ctx.createRadialGradient(x,y,0,x,y,r);
-   cloud.addColorStop(0,'rgba(13,130,119,.075)');cloud.addColorStop(.45,'rgba(12,104,101,.045)');cloud.addColorStop(1,'rgba(5,55,58,0)');
-   ctx.fillStyle=cloud;ctx.fillRect(x-r,y-r,r*2,r*2);
-  }
+  paintMist(t);
   const camera=.94+.085*ease(t/4.6)-.025*ease((t-4.5)/.85);
   const floating=smooth((t-4.55)/.6);
   ctx.save();ctx.translate(W/2+Math.sin(t*1.15)*4*floating,H/2+Math.sin((t-4.55)*2.1)*7*floating);ctx.scale(camera,camera);ctx.translate(-W/2,-H/2);
