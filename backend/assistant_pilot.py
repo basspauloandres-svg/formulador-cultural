@@ -12,6 +12,7 @@ import httpx
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 from claim_audit import qualify_claims
+from model_usage import MODEL_BUDGET
 from generative_grounding import guard_generated_claims
 from prompt_boundary import BOUNDARY, data_message, safe_model_content, quarantine_directives, quarantine_flag, contains_directive
 
@@ -160,6 +161,8 @@ async def assist(request: AssistantRequest, bearer: str, evidence: str | None = 
     if model.startswith("openai/gpt-oss-"):
         payload["reasoning_effort"] = "low"
         payload["include_reasoning"] = False
+    if not MODEL_BUDGET.reserve("s02", payload):
+        raise HTTPException(429, "Capacidad generativa temporalmente agotada. Utiliza la orientación local.")
     try:
         async with httpx.AsyncClient(timeout=18, follow_redirects=False) as client:
             response = await client.post(
@@ -180,6 +183,7 @@ async def assist(request: AssistantRequest, bearer: str, evidence: str | None = 
             logger.warning("assistant_groq_upstream_unexpected status=%d", response.status_code)
             raise HTTPException(502, "Groq devolvió un estado no previsto. Usa la orientación local.")
         data = response.json()
+        MODEL_BUDGET.observe("s02", data)
         choice = data["choices"][0]
         message = choice["message"]
         raw_content = safe_model_content(message, credential=groq_key())
