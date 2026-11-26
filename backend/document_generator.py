@@ -404,7 +404,9 @@ def _docx_resource_entries(doc: Document, budget: list[dict[str, Any]]) -> None:
             f"{activity} — Recurso: {description}; Unidad: {clean(item.get('unit'))}; "
             f"Cantidad: {clean(item.get('quantity'))}; Veces: {clean(item.get('frequency'))}; "
             f"Costo unitario: {clean(item.get('unitCost'))}; Total: {clean(item.get('totalCost'))}; "
-            f"Tipo: {clean(item.get('costType'))}; Fuente: {source}."
+            f"Tipo: {clean(item.get('costType'))}; Financiación: {source}; "
+            f"Soporte de tarifa declarado: {clean(item.get('priceStatus'))}; "
+            f"Referencia: {clean(item.get('priceSource'))}; Fecha: {clean(item.get('priceDate'))}."
         )
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -859,7 +861,10 @@ def _pdf_resource_entries(story: list[Any], budget: list[dict[str, Any]], styles
             f"Costo unitario: {xml_escape(clean(item.get('unitCost')))}; "
             f"Total: {xml_escape(clean(item.get('totalCost')))}; "
             f"Tipo: {xml_escape(clean(item.get('costType')))}; "
-            f"Fuente: {xml_escape(clean(item.get('fundingSource')))}."
+            f"Financiación: {xml_escape(clean(item.get('fundingSource')))}; "
+            f"Soporte de tarifa declarado: {xml_escape(clean(item.get('priceStatus')))}; "
+            f"Referencia: {xml_escape(clean(item.get('priceSource')))}; "
+            f"Fecha: {xml_escape(clean(item.get('priceDate')))}."
         )
         story.append(Paragraph(line, styles["FC_Record"]))
 
