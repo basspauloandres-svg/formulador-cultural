@@ -162,3 +162,8 @@ Candidato de integración `ea0e1577f6cea6ab4c76e9cd23103b7b34d22938` (PR #138), 
 Se mantiene 74 % estimado. Hito formal 75 %, objetivo 80 % y habilitación del diplomado pendientes. No se fusionó ni desplegó; main se verificó en `c9839baa`. Se aplicaron los procedimientos del repositorio, incluida la trazabilidad por SHA y el uso de Supabase aislado como alcance de la evidencia I02 existente.
 
 Regresión del SHA integrado: CI 45833566956 completada con éxito. Chromium local 22/22, con 19 casos de regresión y tres recorridos complementarios. Backend 234/234, con 21 advertencias de dependencias y rotulado de ejes. El resultado conserva los límites de aceptación del bloque.
+
+
+## 2026-11-26 — preparación operativa: portada y animación en ensayo aislado
+- Candidato de interfaz `904763afc8428c1283fcae4ca81319295ff43684`, checkpoint `checkpoint/2026-11-26-welcome-brand-validated`. Run 45843442287, job 139990844864: aislamiento de 47 recursos, interacción de bienvenida, persistencia local, omisión y duración acotada de animación, no repetición, movilidad y movimiento reducido PASS. Fallo previo 45842708672 conservado (metadato confundido con borrador); corrección probada en candidato exacto. La evaluación visual humana y el engagement siguen pendientes.
+- Se adelantó únicamente la rama de ensayo autorizada `staging/2026-11-26-editorial-review` sin force al SHA validado. Main idéntica a c9839baa; deploy de ensayo dep-dc44h315efls73d1qkhg, compilación satisfactoria, activación pendiente de confirmación live. Ver manifiesto DEVELOPMENT_STATE.md. No nuevos recursos ni gastos. No alterar 74% estimado, Q01–Q07, V01, 75/80/100. Prioridad: ensayo real del primer proyecto completo y comprobación de IA autenticada alojada.
