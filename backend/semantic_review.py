@@ -9,6 +9,7 @@ import json
 import re
 import httpx
 from citation_audit import canonical
+from model_usage import MODEL_BUDGET
 from prompt_boundary import BOUNDARY, safe_model_content, quarantine_directives, contains_directive
 
 SYSTEM = (
@@ -79,11 +80,15 @@ async def review_one(data, key, model, endpoint):
                            {"role":"user","content":json.dumps(data,ensure_ascii=False)}]}
     if model.startswith("openai/gpt-oss-"):
         payload.update(reasoning_effort="low",include_reasoning=False)
+    if not MODEL_BUDGET.reserve("semantic_review", payload):
+        return {"status":"INSUFFICIENT_EVIDENCE","method":"MODEL_REVIEW_UNAVAILABLE"}
     try:
         async with httpx.AsyncClient(timeout=12,follow_redirects=False) as client:
             response=await client.post(endpoint,headers={"Authorization":"Bearer "+key},json=payload)
             response.raise_for_status()
-            raw=safe_model_content(response.json()["choices"][0]["message"], credential=key)
+            response_data=response.json()
+            MODEL_BUDGET.observe("semantic_review", response_data)
+            raw=safe_model_content(response_data["choices"][0]["message"], credential=key)
         return assess_response(raw,data)
     except (httpx.HTTPError,ValueError,TypeError,KeyError,IndexError):
         return {"status":"INSUFFICIENT_EVIDENCE","method":"MODEL_REVIEW_UNAVAILABLE"}
