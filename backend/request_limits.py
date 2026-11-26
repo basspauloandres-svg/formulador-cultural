@@ -23,7 +23,7 @@ class ResourceLimits:
         path = scope["path"]
         if path.startswith("/documents/"):
             group, limit = "export", 2 * 1024 * 1024
-        elif path.startswith("/assistant/") or path == "/territory/resolve":
+        elif path.startswith("/assistant/") or path in {"/territory/resolve", "/territory/catalog"}:
             group, limit = "research", 64 * 1024
         elif path == "/vester/calculate":
             group, limit = "calculate", 512 * 1024
