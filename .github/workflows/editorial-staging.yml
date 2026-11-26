@@ -2,7 +2,7 @@ name: Editorial staging isolation
 on:
   pull_request:
     branches: [design/2026-11-26-editorial-integrated, staging/2026-11-26-editorial-review]
-    paths: [backend/staging_preview.py, backend/staging_transforms.py, index.html, app.js, welcome_turquoise.css, welcome_turquoise.js, brand_intro.js, unified_workspace.css, e2e/unified-workspace.cjs, .github/workflows/editorial-staging.yml]
+    paths: [backend/**, section_review_ui.js, backend/staging_preview.py, backend/staging_transforms.py, index.html, app.js, welcome_turquoise.css, welcome_turquoise.js, brand_intro.js, unified_workspace.css, e2e/unified-workspace.cjs, .github/workflows/editorial-staging.yml]
 permissions:
   contents: read
 jobs:
@@ -17,6 +17,10 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r backend/requirements.txt
+      - name: Backend regression without model calls
+        run: |
+          pip install pytest
+          cd backend && pytest -q
       - name: Check isolated preview and deny unlisted paths
         env:
           PYTHONPATH: backend
