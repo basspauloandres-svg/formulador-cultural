@@ -51,6 +51,32 @@ window.fcLocalProjects=()=>parse(rawGet(registryKey),[]).map(p=>({...p}));
 window.fcCreateLocalProject=create;
 window.fcSwitchLocalProject=switchTo;
 window.fcLocalProjectStorageKeys=keys;
+function territoryWarning(){
+ const fields=document.querySelector('#fields');
+ if(!fields||typeof active==='undefined'||active!=='S01')return;
+ const city=fields.querySelector('[data-field="municipio"]'),title=fields.querySelector('[data-field="nombre_del_proyecto"]'),idea=fields.querySelector('[data-field="idea_inicial_usuario"]'),dept=fields.querySelector('[data-field="departamento"]');
+ if(!city||!title||!idea)return;
+ let box=fields.querySelector('#h01TerritoryWarning');
+ const normalize=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+ // Explicit place mentions only: conservative Caldas pilot, not a national gazetteer.
+ const names=['Aguadas','Anserma','Aranzazu','Belalcázar','Chinchiná','Filadelfia','La Dorada','La Merced','Manizales','Manzanares','Marmato','Marquetalia','Marulanda','Neira','Norcasia','Pácora','Palestina','Pensilvania','Riosucio','Risaralda','Salamina','Samaná','San José','Supía','Victoria','Villamaría','Viterbo'];
+ const declared=normalize(city.value),department=normalize(dept?.value);
+ const mentioned=names.filter(n=>new RegExp('(?:^|[^a-z])'+normalize(n)+'(?:$|[^a-z])').test(normalize(title.value+' '+idea.value+' '+(draft.S02?.territorio_o_lugar_de_intervencion||''))));
+ const conflicts=mentioned.filter(n=>normalize(n)!==declared);
+ const applicable=names.some(n=>normalize(n)===declared)&&(!department||department==='caldas')&&conflicts.length>0;
+ if(!applicable){if(box)box.hidden=true;return}
+ const signature=JSON.stringify([city.value,dept?.value,title.value,idea.value,draft.S02?.territorio_o_lugar_de_intervencion||'']);
+ if(!box){box=document.createElement('div');box.id='h01TerritoryWarning';box.className='vt-territory-check';box.setAttribute('role','status');city.closest('.field')?.append(box)}
+ if(box.dataset.signature===signature){box.hidden=false;return}
+ box.dataset.signature=signature;box.hidden=false;box.replaceChildren();
+ const message=document.createElement('p');message.textContent='Posible discrepancia territorial: municipio declarado '+city.value+'; otros lugares mencionados: '+conflicts.join(', ')+'. Revisa la idea, el nombre y el contexto. Puede tratarse de un proyecto intermunicipal. Los datos se conservan.';
+ const accept=document.createElement('button');accept.type='button';accept.textContent='Conservar con justificación';
+ const note=document.createElement('span');
+ const previous=draft.S01?.h01_territory_decision;
+ if(previous?.signature===signature)note.textContent=' Decisión registrada: '+previous.reason;
+ accept.onclick=()=>{const reason=prompt('Justifica por qué deben conservarse los lugares indicados:');if(!reason?.trim())return;draft.S01.h01_territory_decision={signature,reason:reason.trim(),at:new Date().toISOString()};saveLocal();note.textContent=' Decisión registrada: '+reason.trim()};
+ box.append(message,accept,note);
+}
 function mount(){
  const host=document.querySelector('#authCard');if(!host)return;
  const box=document.createElement('section');box.className='guided-journey';box.id='h01Projects';box.style.cssText='position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px;margin:12px 0';
@@ -67,7 +93,7 @@ function mount(){
  box.append(info,select,open,add,status);document.querySelector('#guidedJourney').before(box);update();
  document.addEventListener('input',e=>{if(e.target.matches?.('[data-field]')){status.textContent='Cambios pendientes de guardar';clearTimeout(window.__h01SaveTimer);window.__h01SaveTimer=setTimeout(safe(()=>{flush();status.textContent='Guardado local';update()}),450)}});
  document.addEventListener('focusout',e=>{if(e.target.matches?.('[data-field]'))safe(()=>{flush();status.textContent='Guardado local';update()})()});
- const observer=new MutationObserver(update);observer.observe(document.querySelector('#fields'),{childList:true});
+ const observer=new MutationObserver(()=>{update();territoryWarning()});observer.observe(document.querySelector('#fields'),{childList:true});document.addEventListener('input',e=>{if(e.target.matches?.('[data-field]'))territoryWarning()});territoryWarning();
  window.addEventListener('pagehide',()=>{try{if(typeof dirty!=='undefined'&&dirty)flush()}catch{}});
 }
 document.addEventListener('DOMContentLoaded',mount,{once:true});
