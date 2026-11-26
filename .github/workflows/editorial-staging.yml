@@ -21,6 +21,7 @@ jobs:
         run: |
           pip install pytest
           cd backend && pytest -q
+          pytest -q -s test_territory_registry.py::test_index_benchmark_reports_paired_cpu_time_without_network
       - name: Check isolated preview and deny unlisted paths
         env:
           PYTHONPATH: backend
