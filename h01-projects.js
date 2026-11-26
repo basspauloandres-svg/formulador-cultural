@@ -10,7 +10,9 @@ const managed=k=>typeof k==='string'&&(k.startsWith('formulador-cultural-')||k.s
 const rawGet=k=>get.call(storage,k),rawSet=(k,v)=>set.call(storage,k,v);
 const parse=(v,f)=>{try{return JSON.parse(v)||f}catch{return f}};
 let registry=parse(rawGet(registryKey),[]);
-let id=rawGet(activeKey);
+// The URL anchors each document to its project even when another tab changes selection.
+const requested=new URL(location.href).searchParams.get('project');
+let id=registry.some(p=>p.id===requested)?requested:rawGet(activeKey);
 const uuid=()=>crypto.randomUUID();
 const ns=(p,k)=>prefix+p+':'+k;
 if(!registry.some(p=>p.id===id)){
@@ -23,6 +25,9 @@ if(!registry.some(p=>p.id===id)){
  rawSet(registryKey,JSON.stringify(registry));rawSet(activeKey,id);
 }
 const current=id;
+const currentUrl=new URL(location.href);
+if(currentUrl.searchParams.get('project')!==current){currentUrl.searchParams.set('project',current);history.replaceState(history.state,'',currentUrl)}
+const navigateTo=target=>{const url=new URL(location.href);url.searchParams.set('project',target);location.assign(url)};
 const keys=()=>{const result=[];for(let i=0;i<storage.length;i++){const k=key.call(storage,i);if(k?.startsWith(prefix+current+':'))result.push(k.slice((prefix+current+':').length))}return result};
 const refreshMeta=()=>{
  const list=parse(rawGet(registryKey),[]),d=parse(rawGet(ns(current,draftKey)),{});
@@ -38,13 +43,13 @@ const flush=()=>{if(typeof saveLocal==='function')saveLocal();refreshMeta()};
 const switchTo=target=>{
  if(!parse(rawGet(registryKey),[]).some(p=>p.id===target))throw Error('Proyecto no disponible');
  if(target===current)return;
- flush();rawSet(activeKey,target);location.reload();
+ flush();rawSet(activeKey,target);navigateTo(target);
 };
 const create=()=>{
  flush();const next=uuid(),now=new Date().toISOString();
  rawSet(ns(next,draftKey),'{}');rawSet(ns(next,'fc_active'),'S01');
  const list=parse(rawGet(registryKey),[]);list.push({id:next,title:'Proyecto sin nombre',createdAt:now,updatedAt:now,sections:0});
- rawSet(registryKey,JSON.stringify(list));rawSet(activeKey,next);location.reload();
+ rawSet(registryKey,JSON.stringify(list));rawSet(activeKey,next);navigateTo(next);
 };
 window.fcLocalProjectId=()=>current;
 window.fcLocalProjects=()=>parse(rawGet(registryKey),[]).map(p=>({...p}));
