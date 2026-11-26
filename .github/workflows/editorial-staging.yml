@@ -2,7 +2,7 @@ name: Editorial staging isolation
 on:
   pull_request:
     branches: [design/2026-11-26-editorial-integrated, staging/2026-11-26-editorial-review]
-    paths: [backend/**, section_review_ui.js, backend/staging_preview.py, backend/staging_transforms.py, index.html, app.js, welcome_turquoise.css, welcome_turquoise.js, brand_intro.js, unified_workspace.css, e2e/unified-workspace.cjs, .github/workflows/editorial-staging.yml]
+    paths: ['backend/**', '*.js', '*.css', 'index.html', 'e2e/**', '.github/workflows/editorial-staging.yml']
 permissions:
   contents: read
 jobs:
@@ -134,7 +134,7 @@ jobs:
               const frameB=await mobile.locator('#vtIntro canvas').evaluate(c=>c.toDataURL());
               if(frameA===frameB)throw Error('canvas frames did not evolve');
               if(!await mobile.locator('#vtIntro').isVisible())throw Error('cinematic intro ended too early');
-              await mobile.waitForTimeout(5000);
+              await mobile.waitForTimeout(3800);
               if(!await mobile.locator('#vtIntro').isVisible())throw Error('logo hold missing');
               await mobile.locator('#vtIntro').waitFor({state:'hidden',timeout:2800});
               const elapsed=Date.now()-began;
