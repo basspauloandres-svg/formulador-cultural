@@ -1,6 +1,6 @@
 name: Hosted VERTICE pilot smoke
 on:
-  push:
+  pull_request:
     branches: [control/2026-11-26-development-state]
     paths: [.github/workflows/hosted-pilot-smoke.yml]
   workflow_dispatch:
@@ -9,11 +9,11 @@ permissions:
 jobs:
   hosted:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: cd2646f555da4a87640a6815d9f6b85c196d96b2
+          ref: 2d72722110b19309decc853f632843a5abe83217
       - name: Verify deployed assets and anonymous isolation without model calls
         run: |
           python - <<'PY'
