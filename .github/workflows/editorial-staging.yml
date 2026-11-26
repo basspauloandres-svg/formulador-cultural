@@ -2,7 +2,7 @@ name: Editorial staging isolation
 on:
   pull_request:
     branches: [design/2026-11-26-editorial-integrated]
-    paths: [backend/staging_preview.py, .github/workflows/editorial-staging.yml]
+    paths: [backend/staging_preview.py, backend/staging_transforms.py, .github/workflows/editorial-staging.yml]
 permissions:
   contents: read
 jobs:
@@ -29,7 +29,7 @@ jobs:
           assert health['status'] == 'ok' and not health['cloud'] and not health['generative_ai']
           root = c.get('/')
           assert root.status_code == 200 and 'Entorno de prueba' in root.text
-          assert 'workspace-preview' in root.text and '@supabase/supabase-js' not in root.text
+          assert 'workspace-preview' in root.text and '@supabase/supabase-js' in root.text
           assert "connect-src 'self'" in root.headers['content-security-policy']
           assert len(ASSETS) >= 30
           for asset in ASSETS:
@@ -38,8 +38,12 @@ jobs:
               assert 'formulador-cultural-api.onrender.com' not in response.text, asset
           for path in ['/backend/main.py','/README.md','/AGENTS.md','/.env','/docs','/openapi.json','/projects']:
               assert c.get(path).status_code in (404,405), path
-          for path in ['/assistant/knowledge','/assistant/s02/guide','/assistant/s02','/assistant/section/review','/projects']:
-              assert c.post(path,json={}).status_code in (404,405), path
+          assert c.post('/projects',json={}).status_code in (404,405)
+          assert c.post('/assistant/knowledge',json={'section':'S01','question':'Qué es un indicador'}).status_code == 401
+          assert 'Object.freeze({auth:stageAuthClient.auth})' in c.get('/app.js').text
+          assert "async function save(){saveLocal();}" in c.get('/app.js').text
+          assert "vt-staging-evidence-v1" in c.get('/evidence.js').text
+          assert not c.get('/assistant/status').json()['external_ai_available']
           print('STAGING_ISOLATION_PASS', len(ASSETS), health['candidate'])
           PY
       - uses: actions/setup-node@v4
@@ -76,7 +80,17 @@ jobs:
               await page.reload({waitUntil:'domcontentloaded'});
               await page.locator('#guidedJourney [data-code="S01"]').click();
               if(await field.inputValue()!=='QA staging — synthetic')throw Error('local draft did not persist');
-              if(await page.locator('#authSignedOut').isVisible())throw Error('cloud login visible');
+              if(!await page.locator('#passwordLoginBtn').isVisible())throw Error('existing-account login absent');
+              for(const selector of ['#signupBtn','#syncBtn','#setPasswordBtn','#loginBtn'])if(await page.locator(selector).isVisible())throw Error('cloud operation visible: '+selector);
+              await page.locator('#guidedJourney [data-code="S04"]').click();
+              await page.locator('#evTitle').fill('Registro sintético QA');
+              await page.locator('#evText').fill('Observación de prueba; no verificada');
+              await page.locator('#evSave').click();
+              await page.locator('#evidenceList').getByText('Registro sintético QA').waitFor();
+              await page.reload({waitUntil:'domcontentloaded'});
+              await page.locator('#guidedJourney [data-code="S04"]').click();
+              await page.locator('#evidenceList').getByText('Registro sintético QA').waitFor();
+              if(await page.evaluate(()=>typeof sb.from)!=='undefined')throw Error('cloud data client exposed');
               if(blocked.length||errors.length)throw Error(JSON.stringify({blocked,errors}));
               console.log('STAGING_LOCAL_BROWSER_PASS');
             } finally {await browser.close()}
