@@ -1,0 +1,44 @@
+name: Workspace integration validation
+on:
+  pull_request:
+    branches: [s02-research-first-20261124]
+    paths:
+      - index.html
+      - workspace_preview.css
+      - e2e/workspace-preview.spec.cjs
+      - .github/workflows/workspace-preview.yml
+permissions:
+  contents: read
+jobs:
+  visual-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test dependency
+        run: |
+          npm install --no-save --no-package-lock @playwright/test@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Run existing browser regression and workspace tests
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/workspace-preview.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8765/ >/dev/null && break; sleep 1; done
+          cat > workspace-test.config.cjs <<'EOF'
+          const base=require('./playwright.config.cjs');
+          module.exports={...base,testMatch:[...base.testMatch,'**/workspace-preview.spec.cjs'],globalTimeout:240000};
+          EOF
+          npx playwright test --config workspace-test.config.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: workspace-integrated-synthetic
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 3
+          if-no-files-found: ignore
