@@ -23,6 +23,7 @@ from assistant_pilot import AssistantRequest, assist, groq_key, reserve, verifie
 from source_research import ResearchRequest, research
 from source_verifier import validate_pdf_url, MAX_PDF_BYTES, MAX_PAGES
 from municipal_sources import municipal_passages
+from institutional_sources import has_private_contact
 from national_sources import cultural_registry
 from citation_audit import audit_citations
 from semantic_review import packet, review_one
@@ -140,7 +141,7 @@ def passages_from_pdf(content: bytes, field: str, municipality: str = "") -> lis
                 before = lines[index - 1] if index > 0 else ""
                 after = lines[index + 1] if index + 1 < len(lines) else ""
                 passage = " ".join((before, line, after)).strip()[:470]
-                if len(passage) < 35:
+                if len(passage) < 35 or has_private_contact(passage):
                     continue
                 local = bool(municipality and re.search(r"\b" + re.escape(clean_text(municipality)) + r"\b", clean_text(passage)))
                 if municipality and not local:
@@ -350,30 +351,33 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
                 "locator":identity["divipola"],"scope":"RECORD_EXISTENCE_ONLY"})
         for doc in docs[:1]:
             for passage in doc["passages"][:3]:
-                excerpts.append(f"[F1, p.{passage['page']}] {passage['excerpt']}")
+                excerpts.append(f"[F1, p.{passage['page']}] Fecha del documento: {doc.get('year') or 'no determinada'}. Extracto: {passage['excerpt']}")
                 provenance.append({"citation":f"F1, p.{passage['page']}","kind":"pdf",
                     "url":doc["url"],"sha256":doc.get("document_sha256"),
-                    "locator":passage["page"],"divipola":identity["divipola"],
+                    "locator":passage["page"],"publication_year":doc.get("year"),"divipola":identity["divipola"],
                     "scope":"EXCERPT_UNVERIFIED"})
         for i, passage in enumerate(live_passages[:2], 1):
             provenance.append({"citation":f"M{i}","kind":"municipal_html",
                 "url":passage["url"],"sha256":passage["sha256"],
-                "locator":passage["locator"],"divipola":identity["divipola"],
+                "locator":passage["locator"],"publication_date":passage.get("publication_date"),"divipola":identity["divipola"],
                 "scope":"EXCERPT_UNVERIFIED"})
             excerpts.append(
                 f"[M{i}] Fuente: {passage['publisher']}; "
                 f"{passage['title']}; {passage['url']}; "
-                f"{passage['locator']}; Extracto: {passage['excerpt']}"
+                f"{passage['locator']}; fecha: {passage.get('publication_date') or 'no determinada'}; Extracto: {passage['excerpt']}"
             )
         selected = []
-        for excerpt, source in zip(excerpts, provenance, strict=True):
+        # Preserve N1 first for the existing citation contract; dated HTML ahead of historical PDF.
+        pairs = list(zip(excerpts, provenance, strict=True))
+        pairs.sort(key=lambda pair: (0 if pair[1]['kind']=='administrative_registry' else 1 if pair[1].get('publication_date') else 2))
+        for excerpt, source in pairs:
             # Do not change an excerpt after hashing/manifest creation.
             if contains_directive(excerpt):
                 flags.append(quarantine_flag())
                 continue
             if not re.fullmatch(r"[0-9a-f]{64}", source.get("sha256") or ""):
                 continue
-            if len("\n".join(selected + [excerpt])) <= 1400:
+            if len("\n".join(selected + [excerpt])) <= 2200:
                 selected.append(excerpt)
                 evidence_manifest.append({**source, "prompt_excerpt":excerpt,
                     "excerpt_sha256":sha256(excerpt.encode("utf-8")).hexdigest()})
