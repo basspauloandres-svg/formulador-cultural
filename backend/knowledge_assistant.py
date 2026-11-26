@@ -13,6 +13,7 @@ import unicodedata
 from pydantic import BaseModel, Field
 from assistant_pilot import verified_user
 from knowledge_index import KnowledgeIndex
+from knowledge_topics import general_answer
 from prompt_boundary import contains_directive
 
 logger = logging.getLogger("vertice.knowledge")
@@ -90,6 +91,13 @@ def route_knowledge(req,index):
     if key in CONCEPT_LOOKUP:
         answer,refs=CONCEPT_LOOKUP[key]
         return {**base,"route":"REFERENCED_GUIDANCE","status":"EDITORIAL_SUMMARY_REVIEW_REQUIRED","answer":answer,"source":"Síntesis editorial con referencias identificadas; no equivale a recuperación documental en tiempo real.","references":refs}
+    general=general_answer(key)
+    if general:
+        answer,refs=general
+        return {**base,"route":"REFERENCED_GUIDANCE" if refs else "DETERMINISTIC_GUIDANCE",
+                "status":"EDITORIAL_SUMMARY_REVIEW_REQUIRED" if refs else "OPERATIONAL_RULE",
+                "answer":answer,"source":("Orientación editorial de VÉRTICE con referencias identificadas; no es recuperación en tiempo real." if refs else "Orientación operativa VÉRTICE, no evidencia externa."),
+                "references":refs}
     result=index.retrieve(req.question)
     if result["passages"]:
         # Curator identity is not necessary for the learner's consultation.
