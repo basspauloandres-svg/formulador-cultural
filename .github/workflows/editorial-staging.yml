@@ -1,14 +1,14 @@
 name: Editorial staging isolation
 on:
   pull_request:
-    branches: [design/2026-11-26-editorial-integrated]
-    paths: [backend/staging_preview.py, backend/staging_transforms.py, .github/workflows/editorial-staging.yml]
+    branches: [design/2026-11-26-editorial-integrated, staging/2026-11-26-editorial-review]
+    paths: [backend/staging_preview.py, backend/staging_transforms.py, index.html, app.js, welcome_turquoise.css, welcome_turquoise.js, .github/workflows/editorial-staging.yml]
 permissions:
   contents: read
 jobs:
   isolation:
     runs-on: ubuntu-24.04
-    timeout-minutes: 6
+    timeout-minutes: 9
     steps:
       - uses: actions/checkout@v4
         with:
@@ -71,6 +71,28 @@ jobs:
                 blocked.push(url.hostname);return route.abort();
               });
               await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
+              await page.locator('#vtWelcome').waitFor();
+              if(await page.locator('#panel').isVisible())throw Error('workspace visible behind welcome');
+              if(!await page.locator('#vtStart').isDisabled())throw Error('empty idea accepted');
+              const example=page.locator('[data-vt-example]').first();
+              await example.hover();
+              await page.waitForTimeout(250);
+              if(await example.evaluate(el=>getComputedStyle(el).boxShadow)==='none')throw Error('hover not illuminated');
+              await page.keyboard.press('Tab');
+              await example.click();
+              const original=await page.locator('#vtIdea').inputValue();
+              if(!original.includes('formación musical'))throw Error('example not editable');
+              const typed=original+' Caso sintético.';
+              await page.locator('#vtIdea').fill(typed);
+              await page.locator('#vtStart').click();
+              await page.locator('#vtWelcome').waitFor({state:'hidden'});
+              await page.locator('#fields [data-field="idea_inicial_usuario"]').waitFor();
+              if(await page.locator('#fields [data-field="idea_inicial_usuario"]').inputValue()!==typed)throw Error('original idea changed');
+              await page.locator('.vt-home-button').click();
+              await page.locator('#vtResume').waitFor();
+              if(await page.locator('#vtNewIdea').isVisible())throw Error('existing draft can be overwritten');
+              await page.locator('#vtResume').click();
+              if(await page.locator('#fields [data-field="idea_inicial_usuario"]').inputValue()!==typed)throw Error('resume changed idea');
               await page.locator('#guidedJourney .guided-subsection[data-code="S01"]').waitFor();
               if(await page.locator('#guidedJourney .guided-subsection[data-code]').count()!==16)throw Error('navigation count');
               await page.locator('#guidedJourney [data-code="S01"]').click();
@@ -92,6 +114,22 @@ jobs:
               await page.locator('#evidenceList').getByText('Registro sintético QA').waitFor();
               if(await page.evaluate(()=>typeof sb.from)!=='undefined')throw Error('cloud data client exposed');
               if(blocked.length||errors.length)throw Error(JSON.stringify({blocked,errors}));
+              const mobile=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+              await mobile.route('**/*',route=>{const url=new URL(route.request().url());return url.origin==='http://127.0.0.1:8765'||url.hostname==='cdn.jsdelivr.net'?route.continue():route.abort()});
+              await mobile.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
+              await mobile.locator('#vtWelcome').waitFor();
+              if(await mobile.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('mobile horizontal overflow');
+              await mobile.locator('#vtContinueTop').click();
+              await mobile.locator('#guidedJourney .guided-subsection[data-code="S01"]').waitFor();
+              await mobile.close();
+              const reduced=await browser.newPage({viewport:{width:1024,height:768},reducedMotion:'reduce'});
+              await reduced.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
+              const button=reduced.locator('[data-vt-example]').first();
+              await button.focus();
+              if(await button.evaluate(el=>getComputedStyle(el).transitionDuration)!=='0s')throw Error('reduced motion not honored');
+              if(await button.evaluate(el=>getComputedStyle(el).outlineStyle)==='none')throw Error('no keyboard focus');
+              await reduced.close();
+              console.log('WELCOME_INTERACTION_PASS');
               console.log('STAGING_LOCAL_BROWSER_PASS');
             } finally {await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)})
