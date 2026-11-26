@@ -1,9 +1,10 @@
 const {chromium}=require('@playwright/test');
 const assert=require('node:assert/strict');
 (async()=>{const browser=await chromium.launch();try{
- const page=await browser.newPage({reducedMotion:'reduce'});
- await page.route('**/*',r=>{const u=new URL(r.request().url());return u.origin==='http://127.0.0.1:8765'||u.hostname==='cdn.jsdelivr.net'?r.continue():r.abort()});
- await page.addInitScript(()=>{if(!localStorage.getItem('qa-h01-seeded')){localStorage.setItem('formulador-cultural-prototipo-v1',JSON.stringify({S01:{nombre_del_proyecto:'Neira histórico',municipio:'Neira'},S02:{territorio_o_lugar_de_intervencion:'Neira'},S16:{review_state:{confirmed:false}}}));localStorage.setItem('qa-h01-seeded','1')}});
+ const context=await browser.newContext({reducedMotion:'reduce'});
+ const page=await context.newPage();
+ await context.route('**/*',r=>{const u=new URL(r.request().url());return u.origin==='http://127.0.0.1:8765'||u.hostname==='cdn.jsdelivr.net'?r.continue():r.abort()});
+ await context.addInitScript(()=>{if(!localStorage.getItem('qa-h01-seeded')){localStorage.setItem('formulador-cultural-prototipo-v1',JSON.stringify({S01:{nombre_del_proyecto:'Neira histórico',municipio:'Neira'},S02:{territorio_o_lugar_de_intervencion:'Neira'},S16:{review_state:{confirmed:false}}}));localStorage.setItem('qa-h01-seeded','1')}});
  await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
  await page.locator('#vtContinueTop').click();
  const title=page.locator('#fields [data-field="nombre_del_proyecto"]');
