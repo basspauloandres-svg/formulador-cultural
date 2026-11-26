@@ -1,0 +1,56 @@
+name: Hosted VERTICE pilot smoke
+on:
+  push:
+    branches: [control/2026-11-26-development-state]
+    paths: [.github/workflows/hosted-pilot-smoke.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  hosted:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cd2646f555da4a87640a6815d9f6b85c196d96b2
+      - name: Verify deployed assets and anonymous isolation without model calls
+        run: |
+          python - <<'PY'
+          import urllib.request as u, urllib.error as e, json, time, hashlib
+          from pathlib import Path
+          origin='https://vertice-e01-staging.onrender.com'
+          def get(path, body=None):
+              req=u.Request(origin+path, data=None if body is None else json.dumps(body).encode(), headers={'Content-Type':'application/json','User-Agent':'VERTICE-hosted-smoke/1.0'})
+              try:
+                  with u.urlopen(req,timeout=60) as r: return r.status,r.headers,r.read()
+              except e.HTTPError as r: return r.code,r.headers,r.read()
+          # Allow for deployment propagation; never accept the old asset as the candidate.
+          expected=Path('brand_intro.js').read_bytes()
+          for attempt in range(3):
+              status,headers,actual=get('/brand_intro.js')
+              if status==200 and actual==expected: break
+              if attempt<2: time.sleep(12)
+          assert status==200 and actual==expected,'Exact hosted brand asset mismatch'
+          for path in ['welcome_turquoise.css','unified_workspace.css']:
+              code,_,data=get('/'+path)
+              assert code==200 and data==Path(path).read_bytes(),path
+          print('HOSTED_ASSETS_MATCH',hashlib.sha256(actual).hexdigest())
+          code,headers,data=get('/')
+          assert code==200 and b'Entorno de prueba' in data and b'workspace-preview' in data
+          assert "connect-src 'self'" in headers.get('Content-Security-Policy','')
+          assert headers.get('Cache-Control')=='no-store'
+          code,_,data=get('/health')
+          health=json.loads(data)
+          assert code==200 and health['status']=='ok' and health['cloud'] is False and health['auth']=='existing-account-only'
+          code,_,data=get('/assistant/status')
+          ai=json.loads(data)
+          assert code==200
+          print('HOSTED_AI_CONFIGURED',bool(ai.get('external_ai_available')),'MODEL_CALLS',0)
+          code,_,_=get('/assistant/knowledge',{'section':'S01','question':'Qué es un indicador'})
+          assert code==401,'Anonymous assistant request not denied'
+          for path in ['/projects','/openapi.json','/backend/main.py']:
+              code,_,_=get(path)
+              assert code in (404,405),path
+          print('HOSTED_PILOT_SMOKE_PASS')
+          PY
