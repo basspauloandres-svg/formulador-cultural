@@ -47,6 +47,7 @@ jobs:
           ai=json.loads(data)
           assert code==200
           print('HOSTED_AI_CONFIGURED',bool(ai.get('external_ai_available')),'MODEL_CALLS',0)
+          assert ai.get('external_ai_available') is True,'Hosted Groq configuration is not available'
           code,_,_=get('/assistant/knowledge',{'section':'S01','question':'Qué es un indicador'})
           assert code==401,'Anonymous assistant request not denied'
           for path in ['/projects','/openapi.json','/backend/main.py']:
