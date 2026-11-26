@@ -19,6 +19,9 @@ def test_paired_usage_and_unknown_cost():
 def test_missing_or_noncomparable_observations():
     a,b=pair()
     b["cached_prompt_tokens"]=None
+    assert compare([a,b])["total_tokens_saved"]==600
+    assert compare([a,b])["cases"][0]["cost_saved_usd"] is None
+    b["prompt_tokens"]=None
     assert compare([a,b])["total_tokens_saved"] is None
     b["evidence_sha256"]="different"
     assert compare([a,b])["cases"][0]["reason"]=="PROVENANCE_MISMATCH"
@@ -40,3 +43,15 @@ def test_cost_calculation_and_review_gate():
     rows[1]["human_reviews"][0]["critical_defects"]=[]
     rows[1]["human_reviews"][0]["type"]="MODEL"
     assert not compare(rows)["quality_ready"]
+
+
+def test_failed_outcome_does_not_certify_quality_or_savings_as_efficacy():
+    rows=pair()
+    for row in rows:
+        row["human_reviews"]=[{"reviewer_code":str(n),"type":"INDEPENDENT_HUMAN",
+                               "scores":dict(CRITERIA),"critical_defects":[]} for n in range(2)]
+    rows[1]["outcome"]="ERROR"
+    result=compare(rows)
+    assert result["total_tokens_saved"]==600
+    assert result["successful_paired_cases"]==0
+    assert not result["quality_ready"]
