@@ -119,6 +119,34 @@ jobs:
               await page.reload({waitUntil:'domcontentloaded'});
               await page.locator('#guidedJourney [data-code="S04"]').click();
               await page.locator('#evidenceList').getByText('Registro sintético QA').waitFor();
+              // Verify real downloaded deliverables from the same isolated draft after reload.
+              await page.locator('#guidedJourney [data-code="S16"]').click();
+              const fs=require('node:fs');
+              const path=require('node:path');
+              const out='test-results/functional-deliverables';
+              fs.mkdirSync(out,{recursive:true});
+              const beforeExport=await page.evaluate(()=>JSON.stringify(draft));
+              for(const [selector,ext,magic] of [['#expDocx','docx','504b0304'],['#expPdf','pdf','25504446'],['#expXlsx','xlsx','504b0304'],['#expHtml','html','']]){
+                const promise=page.waitForEvent('download',{timeout:90000});
+                await page.locator(selector).click();
+                const download=await promise;
+                if(!download.suggestedFilename().endsWith('.'+ext))throw Error('Unexpected export name '+download.suggestedFilename());
+                const target=path.join(out,'synthetic.'+ext);
+                await download.saveAs(target);
+                const bytes=fs.readFileSync(target);
+                if(bytes.length<300||(magic&&bytes.subarray(0,4).toString('hex')!==magic))throw Error('Invalid export '+ext);
+                if(ext==='html'&&!bytes.toString('utf8').includes('QA staging'))throw Error('HTML missing project title');
+                if(['docx','pdf'].includes(ext)&&!(await page.evaluate(()=>window.fcGetDocumentGeneratorStatus().mode==='python')))throw Error('Professional document fallback '+ext);
+                console.log('DELIVERABLE_PASS',ext,bytes.length);
+              }
+              const afterExport=await page.evaluate(()=>JSON.stringify(draft));
+              if(beforeExport!==afterExport)throw Error('Export modified the draft');
+              await page.reload({waitUntil:'domcontentloaded'});
+              await page.locator('#guidedJourney [data-code="S01"]').click();
+              if(await field.inputValue()!=='QA staging — synthetic')throw Error('Title lost after exports');
+              await page.locator('#guidedJourney [data-code="S04"]').click();
+              await page.locator('#evidenceList').getByText('Registro sintético QA').waitFor();
+              console.log('EXPORT_PERSISTENCE_PASS');
               if(await page.evaluate(()=>typeof sb.from)!=='undefined')throw Error('cloud data client exposed');
               if(blocked.length||errors.length)throw Error(JSON.stringify({blocked,errors}));
               const mobile=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
@@ -279,5 +307,6 @@ jobs:
           path: |
             test-results/unified-workspace/
             test-results/vertice-intro/
+            test-results/functional-deliverables/
           if-no-files-found: ignore
           retention-days: 7
