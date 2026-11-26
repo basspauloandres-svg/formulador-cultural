@@ -10,6 +10,7 @@ import re
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, Response
 from request_limits import ResourceLimits
+from structured_s02 import catalogo, proponer_contexto
 from main import (
     document_docx, document_pdf, vester_calculate, territorial_identity,
     assistant_status, assistant_knowledge, assistant_section_review, assistant_s02,
@@ -61,6 +62,8 @@ app.add_api_route("/documents/docx", document_docx, methods=["POST"])
 app.add_api_route("/documents/pdf", document_pdf, methods=["POST"])
 app.add_api_route("/vester/calculate", vester_calculate, methods=["POST"])
 app.add_api_route("/territory/resolve", territorial_identity, methods=["POST"])
+app.add_api_route("/territory/catalog", catalogo, methods=["POST"])
+app.add_api_route("/assistant/s02/contexto-territorial", proponer_contexto, methods=["POST"])
 app.add_api_route("/assistant/knowledge", assistant_knowledge, methods=["POST"])
 app.add_api_route("/assistant/section/review", assistant_section_review, methods=["POST"])
 app.add_api_route("/assistant/s02", assistant_s02, methods=["POST"])
