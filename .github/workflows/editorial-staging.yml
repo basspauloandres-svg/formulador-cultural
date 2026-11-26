@@ -2,7 +2,7 @@ name: Editorial staging isolation
 on:
   pull_request:
     branches: [design/2026-11-26-editorial-integrated, staging/2026-11-26-editorial-review]
-    paths: [backend/staging_preview.py, backend/staging_transforms.py, index.html, app.js, welcome_turquoise.css, welcome_turquoise.js, .github/workflows/editorial-staging.yml]
+    paths: [backend/staging_preview.py, backend/staging_transforms.py, index.html, app.js, welcome_turquoise.css, welcome_turquoise.js, brand_intro.js, .github/workflows/editorial-staging.yml]
 permissions:
   contents: read
 jobs:
@@ -72,6 +72,10 @@ jobs:
               });
               await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
               await page.locator('#vtWelcome').waitFor();
+              await page.locator('#vtIntro').waitFor();
+              await page.locator('#vtIntro button').click();
+              await page.locator('#vtIntro').waitFor({state:'hidden'});
+              if(await page.evaluate(()=>sessionStorage.getItem('vt-intro-played-v1'))!=='1')throw Error('intro not recorded');
               if(await page.locator('#panel').isVisible())throw Error('workspace visible behind welcome');
               if(!await page.locator('#vtStart').isDisabled())throw Error('empty idea accepted');
               const example=page.locator('[data-vt-example]').first();
@@ -118,12 +122,17 @@ jobs:
               await mobile.route('**/*',route=>{const url=new URL(route.request().url());return url.origin==='http://127.0.0.1:8765'||url.hostname==='cdn.jsdelivr.net'?route.continue():route.abort()});
               await mobile.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
               await mobile.locator('#vtWelcome').waitFor();
+              await mobile.locator('#vtIntro').waitFor();
+              await mobile.locator('#vtIntro').waitFor({state:'hidden',timeout:3500});
+              await mobile.reload({waitUntil:'domcontentloaded'});
+              if(await mobile.locator('#vtIntro').isVisible())throw Error('intro repeated in same session');
               if(await mobile.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('mobile horizontal overflow');
               await mobile.locator('#vtContinueTop').click();
               await mobile.locator('#guidedJourney .guided-subsection[data-code="S01"]').waitFor();
               await mobile.close();
               const reduced=await browser.newPage({viewport:{width:1024,height:768},reducedMotion:'reduce'});
               await reduced.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
+              if(await reduced.locator('#vtIntro').isVisible())throw Error('intro violates reduced motion');
               const button=reduced.locator('[data-vt-example]').first();
               await button.focus();
               if(await button.evaluate(el=>getComputedStyle(el).transitionDuration)!=='0s')throw Error('reduced motion not honored');
