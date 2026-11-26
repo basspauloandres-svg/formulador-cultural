@@ -2,13 +2,13 @@ name: Editorial staging isolation
 on:
   pull_request:
     branches: [design/2026-11-26-editorial-integrated, staging/2026-11-26-editorial-review]
-    paths: [backend/staging_preview.py, backend/staging_transforms.py, index.html, app.js, welcome_turquoise.css, welcome_turquoise.js, brand_intro.js, .github/workflows/editorial-staging.yml]
+    paths: [backend/staging_preview.py, backend/staging_transforms.py, index.html, app.js, welcome_turquoise.css, welcome_turquoise.js, brand_intro.js, unified_workspace.css, e2e/unified-workspace.cjs, .github/workflows/editorial-staging.yml]
 permissions:
   contents: read
 jobs:
   isolation:
     runs-on: ubuntu-24.04
-    timeout-minutes: 9
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
@@ -143,3 +143,11 @@ jobs:
             } finally {await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)})
           JS
+          node e2e/unified-workspace.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unified-workspace-visual-audit
+          path: test-results/unified-workspace/
+          if-no-files-found: ignore
+          retention-days: 7
