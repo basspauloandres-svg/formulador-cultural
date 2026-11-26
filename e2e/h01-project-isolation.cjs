@@ -48,4 +48,22 @@ const assert=require('node:assert/strict');
  assert.equal(await page.locator('#fields [data-field="municipio"]').inputValue(),'Neira');
  assert.equal(await page.evaluate(()=>draft.S01.h01_territory_decision.reason),'Proyecto intermunicipal sintético');
  console.log('H01_11_CALDAS_WARNING_PASS');
+ const other=await page.context().newPage();
+ try{
+  await other.goto('http://127.0.0.1:8765/?project='+b,{waitUntil:'domcontentloaded'});
+  const otherTitle=other.locator('#fields [data-field="nombre_del_proyecto"]');
+  await otherTitle.waitFor({state:'attached'});
+  assert.equal(await other.evaluate(()=>window.fcLocalProjectId()),b);
+  assert.equal(await otherTitle.inputValue(),'Talleres Villamaría');
+  assert.equal(await active(),a);
+  await other.evaluate(()=>{draft.S01.nombre_del_proyecto='Villamaría segunda pestaña';localStorage.setItem(storeKey,JSON.stringify(draft))});
+  await page.reload({waitUntil:'domcontentloaded'});
+  await title.waitFor();
+  assert.equal(await active(),a);assert.equal(await title.inputValue(),'Neira editado sin conexión');
+  await other.reload({waitUntil:'domcontentloaded'});
+  assert.equal(await other.evaluate(()=>window.fcLocalProjectId()),b);
+  assert.equal(await otherTitle.inputValue(),'Villamaría segunda pestaña');
+  console.log('H01_CROSS_TAB_IDENTITY_PASS');
+ }finally{await other.close()}
+
  }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
