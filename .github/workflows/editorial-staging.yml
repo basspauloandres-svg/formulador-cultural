@@ -75,7 +75,6 @@ jobs:
               await page.locator('#vtIntro').waitFor();
               await page.locator('#vtIntro button').click();
               await page.locator('#vtIntro').waitFor({state:'hidden'});
-              if(await page.evaluate(()=>sessionStorage.getItem('vt-intro-played-v1'))!=='1')throw Error('intro not recorded');
               if(await page.locator('#panel').isVisible())throw Error('workspace visible behind welcome');
               if(!await page.locator('#vtStart').isDisabled())throw Error('empty idea accepted');
               const example=page.locator('[data-vt-example]').first();
@@ -131,14 +130,16 @@ jobs:
               const frameB=await mobile.locator('#vtIntro canvas').evaluate(c=>c.toDataURL());
               if(frameA===frameB)throw Error('canvas frames did not evolve');
               if(!await mobile.locator('#vtIntro').isVisible())throw Error('cinematic intro ended too early');
-              await mobile.waitForTimeout(3000);
+              await mobile.waitForTimeout(4000);
               if(!await mobile.locator('#vtIntro').isVisible())throw Error('logo hold missing');
               await mobile.locator('#vtIntro').waitFor({state:'hidden',timeout:2800});
               const elapsed=Date.now()-began;
-              if(elapsed<5450||elapsed>7800)throw Error('unexpected cinematic duration: '+elapsed);
+              if(elapsed<6450||elapsed>8800)throw Error('unexpected cinematic duration: '+elapsed);
               console.log('CINEMATIC_INTRO_DURATION_MS',elapsed);
               await mobile.reload({waitUntil:'domcontentloaded'});
-              if(await mobile.locator('#vtIntro').isVisible())throw Error('intro repeated in same session');
+              await mobile.locator('#vtIntro').waitFor({state:'visible'});
+              await mobile.locator('#vtIntro button').click();
+              await mobile.locator('#vtIntro').waitFor({state:'hidden'});
               if(await mobile.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('mobile horizontal overflow');
               await mobile.locator('#vtContinueTop').click();
               await mobile.locator('#guidedJourney .guided-subsection[data-code="S01"]').waitFor();
