@@ -98,6 +98,8 @@ class GuidedRequest(BaseModel):
     context: str = Field(min_length=2, max_length=200)
     include_web: bool = True
     generate: bool = True
+    question: str = Field(default='', max_length=3000)
+    codigo_divipola: str | None = Field(default=None, pattern=r'^[0-9]{5}$')
 
 
 def municipality_key(context: str) -> tuple[str, str] | None:
@@ -270,16 +272,17 @@ def research_only_input(text: str) -> bool:
                 re.fullmatch(unknown + r" (?:por favor )?(?:investiga|busca|consulta|averigua)(?: por favor)?", value) or
                 re.fullmatch(r"(?:no se|no conozco|desconozco|no tengo informacion|no tengo datos)", value))
 
-async def guide(req: GuidedRequest, bearer: str) -> dict:
+async def guide(req: GuidedRequest, bearer: str, *, user_id: str | None = None) -> dict:
     if req.section != "S02" or req.field not in GUIDANCE:
         raise HTTPException(422, "La asistencia automática está limitada a S02.")
     research_only = research_only_input(req.text)
     participant_text = "" if research_only else req.text
     # research() verifica sesión y consume únicamente la cuota de investigación.
     search_text = participant_text.strip() if len(participant_text.strip()) >= 10 else ("Información territorial de " + req.context)
-    found = await research(ResearchRequest(section="S02", field=req.field,
-        text=search_text, context=req.context, include_web=req.include_web), bearer)
-    territorial_result = await resolve_territory(req.context)
+    research_request = ResearchRequest(section="S02", field=req.field,
+        text=search_text, context=req.context, include_web=req.include_web, question=req.question)
+    found = await research(research_request, bearer, user_id=user_id) if user_id else await research(research_request, bearer)
+    territorial_result = await resolve_territory(req.codigo_divipola or req.context)
     identity = territorial_result.get("identity")
     key = ((territory_normalized(identity["municipality"]),
             territory_normalized(identity["department"])) if identity else None)
@@ -313,17 +316,18 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     # Rutas municipales HTML: las referencias preindexadas se muestran, pero
     # jamás se inyectan como pruebas en el prompt generativo.
     text_normalized = clean_text(req.text)
+    topic_text = clean_text(req.text + " " + req.question)
     topics = {
         "territorio_o_lugar_de_intervencion": {"TERRITORIO"},
         "caracteristicas_culturales": {"PRACTICAS_MUSICALES", "GASTRONOMIA"},
         "principales_dinamicas_sociales": {"PRACTICAS_MUSICALES"},
         "antecedentes": {"PRACTICAS_MUSICALES"},
     }[req.field].copy()
-    if re.search(r"manizales|cerca|ubicad|territor|l[ií]mite|casco", text_normalized):
+    if re.search(r"manizales|cerca|ubicad|territor|l[ií]mite|casco", topic_text):
         topics.add("TERRITORIO")
-    if re.search(r"gastronom|plato|culinari", text_normalized):
+    if re.search(r"gastronom|plato|culinari", topic_text):
         topics.add("GASTRONOMIA")
-    if re.search(r"music|banda|orquesta|agrupacion", text_normalized):
+    if re.search(r"music|banda|orquesta|agrupacion", topic_text):
         topics.add("PRACTICAS_MUSICALES")
     local_references = await municipal_passages(key, topics) if key and topics else []
     if req.include_web and key and req.field in {'caracteristicas_culturales', 'antecedentes'}:

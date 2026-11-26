@@ -21,6 +21,7 @@ jobs:
         run: |
           pip install pytest
           cd backend && pytest -q
+          pytest -q -s test_territory_registry.py::test_index_benchmark_reports_paired_cpu_time_without_network
       - name: Check isolated preview and deny unlisted paths
         env:
           PYTHONPATH: backend
@@ -56,7 +57,16 @@ jobs:
       - run: |
           npm install --no-save --no-package-lock --ignore-scripts @playwright/test@1.56.1
           npx playwright install chromium
-      - name: Browser smoke — isolated local draft
+      - name: Functional browser acceptance independent of animation
+        run: |
+          (cd backend && python -m uvicorn staging_preview:app --host 127.0.0.1 --port 8765) > /tmp/staging-functional.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          curl --retry 15 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:8765/health
+          node e2e/s02-structured-territory.cjs
+          node e2e/unified-workspace.cjs
+      - name: Visual and welcome smoke — isolated local draft
+        if: always()
         run: |
           (cd backend && python -m uvicorn staging_preview:app --host 127.0.0.1 --port 8765) > /tmp/staging.log 2>&1 &
           pid=$!
@@ -201,7 +211,7 @@ jobs:
             }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
-          node e2e/unified-workspace.cjs
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:

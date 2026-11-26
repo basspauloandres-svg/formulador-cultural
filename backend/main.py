@@ -12,6 +12,7 @@ from assistant_pilot import AssistantRequest, assist, configured
 from source_research import ResearchRequest, research
 from source_verifier import ExcerptRequest, verify_excerpt
 from automatic_assistant import GuidedRequest, guide
+from structured_s02 import catalogo, proponer_contexto
 from section_review import SectionReviewRequest, review_section
 from territory_registry import resolve_territory
 
@@ -119,6 +120,9 @@ class TerritoryResolveRequest(BaseModel):
 async def territorial_identity(payload: TerritoryResolveRequest) -> dict:
     """Identificación administrativa pública; sin cifras ni datos personales."""
     return await resolve_territory(payload.context)
+
+app.add_api_route("/territory/catalog", catalogo, methods=["POST"])
+app.add_api_route("/assistant/s02/contexto-territorial", proponer_contexto, methods=["POST"])
 
 @app.post("/assistant/knowledge")
 async def assistant_knowledge(payload: KnowledgeRequest, authorization: str = Header(default="")) -> dict:

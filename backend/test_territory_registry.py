@@ -102,3 +102,40 @@ def test_explicit_conflicts_preserve_homonyms_and_numbers():
     assert registry.explicit_conflicts("En Granada, Meta", "05010", records)[0]["divipola"]=="50313"
     assert registry.explicit_conflicts("Código DANE 50313", "05010", records)[0]["divipola"]=="50313"
     assert registry.explicit_conflicts("En Granada, Antioquia", "05010", records)==[]
+
+
+def test_index_preserves_all_catalog_codes_names_and_ambiguity():
+    rows=registry.parse_dataset(fixture_rows())
+    rows=[r for r in rows if r["divipola"]!="05313"]
+    rows.extend([registry.parse_row(row("05313","GRANADA","ANTIOQUIA","05")),
+                 registry.parse_row(row("50313","GRANADA","META","50"))])
+    queries=[r["divipola"] for r in rows]+["Granada","Granada Meta","Municipio de Villamaria Caldas","Bogotá D.C.","","no existe"]
+    # Establish equivalence to the original scan, including ambiguous inputs.
+    expected=[registry.resolve_from_records(q,rows) for q in queries]
+    assert [registry.resolve_indexed(q,rows) for q in queries]==expected
+    assert registry.resolve_indexed("Granada",rows)["status"]=="AMBIGUOUS_MUNICIPALITY"
+    replacement=[r for r in rows if r["divipola"]!="50313"]
+    assert registry.resolve_indexed("Granada",replacement)["identity"]["department"]=="ANTIOQUIA"
+    assert registry.resolve_indexed("50313",replacement)["status"]=="NOT_FOUND"
+
+
+def test_index_benchmark_reports_paired_cpu_time_without_network():
+    from time import perf_counter
+    from statistics import median
+    rows=registry.parse_dataset(fixture_rows())
+    queries=[r["divipola"] for r in rows[::11]]
+    start=perf_counter()
+    registry.resolve_indexed(queries[0],rows)
+    build_ms=(perf_counter()-start)*1000
+    scan=[]; indexed=[]
+    for _ in range(3):
+        start=perf_counter()
+        a=[registry.resolve_from_records(q,rows) for q in queries]
+        scan.append((perf_counter()-start)*1000)
+        start=perf_counter()
+        b=[registry.resolve_indexed(q,rows) for q in queries]
+        indexed.append((perf_counter()-start)*1000)
+        assert a==b
+    print("DIVIPOLA_INDEX_BENCHMARK", {"records":len(rows),"queries":len(queries),"repetitions":3,
+          "build_and_first_ms":round(build_ms,3),"scan_median_ms":round(median(scan),3),
+          "indexed_median_ms":round(median(indexed),3),"model_calls":0,"network_calls":0})
