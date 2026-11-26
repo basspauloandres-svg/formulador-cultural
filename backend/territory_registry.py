@@ -153,3 +153,25 @@ async def resolve_territory(context: str) -> dict:
     result["source"] = SOURCE_PAGE
     result["dataset_id"] = DATASET
     return result
+
+
+def explicit_conflicts(text: str, current_code: str, records: list[dict]) -> list[dict]:
+    """Only explicit municipality/department pairs or labelled DIVIPOLA codes.
+    Bare names can be ambiguous or ordinary words; a mention is not a factual error.
+    """
+    value = normalized(text)
+    found = []
+    for record in records:
+        if record["divipola"] == current_code:
+            continue
+        pair = _strip_prefix(record["municipality"]) + " " + normalized(record["department"])
+        code = record["divipola"]
+        if re.search(r"\b" + re.escape(pair) + r"\b", value) or re.search(r"\b(?:divipola|codigo dane)\s+" + re.escape(code) + r"\b", value):
+            found.append({k:record[k] for k in ("municipality","department","divipola")})
+    return found[:12]
+
+
+def cached_explicit_conflicts(text: str, current_code: str) -> list[dict]:
+    # The request's resolution already obtained the national registry.
+    # No secondary network call or substitution of an ambiguous identity.
+    return explicit_conflicts(text, current_code, _REGISTRY or [])

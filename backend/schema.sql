@@ -79,3 +79,10 @@ create index if not exists idx_projects_user on public.projects(user_id);
 create index if not exists idx_sections_project on public.sections(project_id);
 create index if not exists idx_evidence_project on public.evidence(project_id);
 create index if not exists idx_evidence_project_status on public.evidence(project_id, verification_status);
+
+
+-- S01: reproduce the effective privileges already authorized for production.
+-- Required explicitly in fresh environments; RLS alone does not revoke grants.
+revoke all privileges on table public.projects, public.sections, public.evidence from anon;
+revoke all privileges on table public.projects, public.sections, public.evidence from authenticated;
+grant select, insert, update, delete on table public.projects, public.sections, public.evidence to authenticated;

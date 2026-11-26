@@ -109,3 +109,19 @@ def test_s02_unverified_input_is_always_explicitly_attributed_to_author():
     assert result["suggestion"].startswith("Según la información preliminar aportada por el formador,")
     assert "[POR VERIFICAR]" in result["suggestion"]
     assert any(flag["type"]=="USER_ASSERTIONS_UNVERIFIED" for flag in result["review_flags"])
+
+
+def test_context_budget_excludes_unsent_passages_and_keeps_contiguous_ids():
+    base = {"passage_status":"EXCERPT_FOUND_CLAIM_UNVERIFIED",
+            "sha256":"a"*64, "title":"Fuente", "publisher":"Institución",
+            "locator":"p. 1", "url":"https://example.org/doc"}
+    a = {**base, "excerpt":"Primero " + "a"*500}
+    oversized = {**base, "excerpt":"NO_ENVIADO " + "b"*1300}
+    b = {**base, "excerpt":"Segundo " + "c"*400}
+    text, selected = drafting.live_context([a, oversized, b])
+    assert selected == [a,b]
+    assert len(text) <= 1250
+    assert a["excerpt"] in text and b["excerpt"] in text
+    assert "[E1]" in text and "[E2]" in text
+    assert "NO_ENVIADO" not in text and "[E3]" not in text
+    assert drafting.live_context([oversized]) == (None, [])

@@ -53,7 +53,13 @@ def guard_generated_claims(generated: str, original: str,
                  if re.search(regex, normalized) and not re.search(regex, authorized)]
         # Nunca introducir cifras o años que el formador no aportó y que
         # tampoco aparecen en un extracto obtenido durante esta petición.
-        de_cited = re.sub(r"\[(?:F\d+,\s*p\.\d+|M\d+)\]", "", normalized)
+        de_cited = re.sub(r"\[(?:F\d+,\s*p\.\d+|M\d+|N\d+)\]", "", normalized, flags=re.I)
+        # The identifier is exempt only in a labelled DIVIPOLA position.
+        # Reusing the same digits as an attendance count is still a new claim.
+        if re.search(r"\[n1\]", normalized):
+            national = re.search(r"^\[N1\].*?DIVIPOLA (\d{5})\.", live_evidence or "", re.M)
+            if national:
+                de_cited = re.sub(r"\bdivipola\s+" + re.escape(national.group(1)) + r"\b", "divipola", de_cited)
         numbers = set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)*(?!\w)", de_cited))
         known = set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)*(?!\w)", authorized))
         if numbers - known:
@@ -76,4 +82,9 @@ def guard_generated_claims(generated: str, original: str,
             "status": "INSUFFICIENT_EVIDENCE",
             "instruction": "El modelo introdujo afirmaciones nuevas. Se conserva el texto original como aporte sin verificar.",
         })
-    return " ".join(approved)[:1600], flags[:10]
+    # The fallback marker is a classification invariant, not an optional
+    # detail. Reserve its place when the diagnostic list is truncated.
+    limited = flags[:10]
+    if flags and flags[-1]["type"] == "GENERATIVE_FALLBACK_ORIGINAL" and flags[-1] not in limited:
+        limited = flags[:9] + [flags[-1]]
+    return " ".join(approved)[:1600], limited

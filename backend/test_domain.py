@@ -26,3 +26,25 @@ def test_vester_is_deterministic():
 def test_vester_justification_is_optional():
     relation = VesterRelation("A", "B", 2)
     assert relation.justification is None
+
+
+def test_vester_rejects_duplicate_directed_pair():
+    import pytest
+    with pytest.raises(ValueError, match="duplicada"):
+        calculate_vester([VesterRelation("A", "B", 1), VesterRelation("A", "B", 2)])
+
+
+def test_vester_rejects_invalid_score_and_diagonal():
+    import pytest
+    for value in [-1, 4, True, 1.0, "2"]:
+        with pytest.raises(ValueError):
+            VesterRelation("A", "B", value)
+    with pytest.raises(ValueError):
+        VesterRelation("A", "A", 0)
+
+
+def test_vester_permutation_and_zero():
+    rels = [VesterRelation("A", "B", 0), VesterRelation("B", "A", 3),
+            VesterRelation("B", "C", 1), VesterRelation("C", "B", 2)]
+    assert calculate_vester(rels) == calculate_vester(list(reversed(rels)))
+    assert calculate_vester(rels)["A"] == {"influence": 0, "dependence": 3}

@@ -51,6 +51,7 @@ def test_model_output_with_unverified_causality_is_qualified():
     pilot._times.clear()
     assert result["blocked_for_evidence"] is False
     assert result["suggestion"] == req.text
+    assert result["suggestion_origin"] == "USER_TEXT_FALLBACK"
     assert "cohesión social" not in result["suggestion"]
     assert any(flag["type"] == "GENERATIVE_CONTENT_NOT_IN_SOURCE" for flag in result["review_flags"])
     assert result["requires_approval"] is True
@@ -64,3 +65,16 @@ def test_only_causal_sentence_is_qualified():
     assert rewritten.startswith("La banda municipal participa en encuentros.")
     assert "Se plantea como hipótesis por verificar que la posición" in rewritten
     assert flags
+
+
+def test_hypothesis_in_neighbor_sentence_does_not_exempt_causality():
+    assert claim_audit.audit_claims("La primera observación es una hipótesis. La música genera bienestar.")
+    assert claim_audit.audit_claims("La música genera bienestar. Se plantea una hipótesis diferente.")
+
+def test_generic_modal_does_not_exempt_independent_causal_claim():
+    assert claim_audit.audit_claims("Puede realizar talleres y la música transforma la comunidad.")
+    assert claim_audit.audit_claims("La música genera cohesión social [POR VERIFICAR].")
+
+def test_explicit_hypothesis_is_not_qualified_twice():
+    draft = "Se plantea como hipótesis por verificar que la música genera bienestar."
+    assert claim_audit.qualify_claims(draft) == (draft, [])

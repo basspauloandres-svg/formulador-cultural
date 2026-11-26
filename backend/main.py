@@ -15,12 +15,17 @@ from automatic_assistant import GuidedRequest, guide
 from section_review import SectionReviewRequest, review_section
 from territory_registry import resolve_territory
 
+from request_limits import ResourceLimits
+from knowledge_assistant import KnowledgeRequest, answer_knowledge
+
 app = FastAPI(title="Formulador Cultural API", version="0.3.0")
+app.add_middleware(ResourceLimits)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://basspauloandres-svg.github.io",
         "https://www.vtcultural.com",
+        "https://vtcultural.com",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "http://localhost:5500",
@@ -29,6 +34,7 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
+    expose_headers=["Retry-After"],
 )
 repo = InMemoryProjectRepository()
 
@@ -49,7 +55,7 @@ class SectionUpdate(BaseModel):
 class VesterInput(BaseModel):
     source: str
     target: str
-    score: int = Field(ge=0, le=3)
+    score: int = Field(ge=0, le=3, strict=True)
     justification: str = Field(min_length=1)
 
 def current_user(x_user_id: str | None) -> UUID:
@@ -114,6 +120,10 @@ async def territorial_identity(payload: TerritoryResolveRequest) -> dict:
     """Identificación administrativa pública; sin cifras ni datos personales."""
     return await resolve_territory(payload.context)
 
+@app.post("/assistant/knowledge")
+async def assistant_knowledge(payload: KnowledgeRequest, authorization: str = Header(default="")) -> dict:
+    return await answer_knowledge(payload, authorization)
+
 @app.post("/assistant/section/review")
 async def assistant_section_review(payload: SectionReviewRequest, authorization: str = Header(default="")) -> dict:
     return await review_section(payload, authorization)
@@ -154,8 +164,12 @@ def document_pdf(payload: dict) -> StreamingResponse:
 
 @app.post("/vester/calculate")
 def vester_calculate(payload: list[VesterInput]) -> dict:
-    relations = [VesterRelation(**item.model_dump()) for item in payload]
-    return {"result": calculate_vester(relations), "note": "Cálculo determinístico; la valoración 0–3 es decisión humana."}
+    try:
+        relations = [VesterRelation(**item.model_dump()) for item in payload]
+        result = calculate_vester(relations)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    return {"result": result, "note": "Cálculo determinístico; la valoración 0–3 es decisión humana."}
 
 def serialize(project: Project) -> dict:
     return {

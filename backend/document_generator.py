@@ -130,7 +130,11 @@ def normalized_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "sources": clean(payload.get("sources")),
         "problem": clean(payload.get("problem")),
         "problem_description": clean(payload.get("problem_description")),
-        "document_status": clean(payload.get("document_status") or "Proyecto en revisión"),
+        # The public export endpoint cannot authenticate a browser-side approval.
+        # Preserve the reported internal review, never certify a call-specific status.
+        "document_status": ("Proyecto maestro revisado (según revisión declarada; requiere cotejo de convocatoria)"
+                            if payload.get("document_status") == "Proyecto maestro revisado"
+                            else "Proyecto en revisión"),
         "strategy": clean(payload.get("strategy")),
         "objective_general": clean(payload.get("objective_general")),
         "objectives": rows(payload.get("objectives")),
@@ -400,7 +404,9 @@ def _docx_resource_entries(doc: Document, budget: list[dict[str, Any]]) -> None:
             f"{activity} — Recurso: {description}; Unidad: {clean(item.get('unit'))}; "
             f"Cantidad: {clean(item.get('quantity'))}; Veces: {clean(item.get('frequency'))}; "
             f"Costo unitario: {clean(item.get('unitCost'))}; Total: {clean(item.get('totalCost'))}; "
-            f"Tipo: {clean(item.get('costType'))}; Fuente: {source}."
+            f"Tipo: {clean(item.get('costType'))}; Financiación: {source}; "
+            f"Soporte de tarifa declarado: {clean(item.get('priceStatus'))}; "
+            f"Referencia: {clean(item.get('priceSource'))}; Fecha: {clean(item.get('priceDate'))}."
         )
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -855,7 +861,10 @@ def _pdf_resource_entries(story: list[Any], budget: list[dict[str, Any]], styles
             f"Costo unitario: {xml_escape(clean(item.get('unitCost')))}; "
             f"Total: {xml_escape(clean(item.get('totalCost')))}; "
             f"Tipo: {xml_escape(clean(item.get('costType')))}; "
-            f"Fuente: {xml_escape(clean(item.get('fundingSource')))}."
+            f"Financiación: {xml_escape(clean(item.get('fundingSource')))}; "
+            f"Soporte de tarifa declarado: {xml_escape(clean(item.get('priceStatus')))}; "
+            f"Referencia: {xml_escape(clean(item.get('priceSource')))}; "
+            f"Fecha: {xml_escape(clean(item.get('priceDate')))}."
         )
         story.append(Paragraph(line, styles["FC_Record"]))
 

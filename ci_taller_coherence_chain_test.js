@@ -102,3 +102,117 @@ snapshot.sections.S04={evidencia_disponible:'REGISTRO QA simulado'};
 
 assert.strictEqual(report().score,100,'Regresar a conexiones válidas debe restaurar coherencia');
 console.log('PASS coherencia sintética: cadena válida + 8 perturbaciones dirigidas + recuperación del diagnóstico');
+
+snapshot.derived.results.push({id:'R2',objectiveId:'INVALID',confirmed:true,text:'Resultado huérfano'});
+assert.strictEqual(check('Objetivos → resultados').status,'REQUIERE AJUSTE');
+snapshot=project();
+snapshot.derived.activities.push({id:'A2',resultId:'INVALID',confirmed:true,text:'Actividad huérfana'});
+assert.strictEqual(check('Resultados → actividades').status,'REQUIERE AJUSTE');
+snapshot=project();
+snapshot.derived.objectives.items[1].sourceText='CAUSA DISTINTA';
+assert.strictEqual(check('Causas directas → objetivos específicos').status,'REQUIERE AJUSTE');
+snapshot=project();
+snapshot.derived.risks[0].owner='';
+assert.strictEqual(check('Riesgos prioritarios con respuesta').status,'REQUIERE AJUSTE');
+snapshot=project();
+snapshot.derived.results=[];
+snapshot.derived.activities=[];
+snapshot.derived.indicators=[];
+snapshot.derived.schedule=[];
+snapshot.derived.budget=[];
+assert(report().score<100);
+assert.strictEqual(report().structuralComplete,false);
+snapshot=project();
+assert.strictEqual(report().structuralComplete,true);
+assert.strictEqual(report().qualityValidated,false);
+console.log('PASS Q02: orphan links, cause mapping, risk ownership and incomplete score');
+
+vm.runInContext(fs.readFileSync('planning.js','utf8'),context);
+const audit=context.window.fcBudgetAudit;
+const base={id:'B1',activityId:'A1',description:'Material',unit:'unidad',quantity:3,frequency:2,unitCost:1000,totalCost:6000,resourceType:'Materiales',fundingSource:'Recursos propios',priceSource:'Cotización sintética QA 01',priceDate:'2025-01-01',priceStatus:'quote',costType:'Monetario',confirmed:true};
+const budgetAudit=items=>audit({items});
+assert.strictEqual(budgetAudit([base]).summary.total,6000);
+assert.strictEqual(budgetAudit([base]).breakdown.byCat.Materiales,6000);
+for(const patch of [{unitCost:''},{unitCost:-1},{quantity:0},{frequency:-1},{fundingSource:'[POR VERIFICAR]'},{totalCost:7000},{confirmed:false},{costType:'desconocido'}]){
+ const x=budgetAudit([{...base,...patch}]);
+ assert.strictEqual(x.summary.total,0);
+ assert.strictEqual(x.summary.pending,1);
+ assert.strictEqual(Object.keys(x.breakdown.byCat).length,0);
+}
+const zero=budgetAudit([{...base,unitCost:0,totalCost:0}]);
+assert.strictEqual(zero.items[0].ready,true);
+assert.strictEqual(zero.summary.pending,0);
+assert.strictEqual(budgetAudit([{...base,unitCost:''}]).items[0].calculated,null);
+const mixed=budgetAudit([base,{...base,id:'B2',costType:'Aporte en especie'}]);
+assert.strictEqual(mixed.summary.total,12000);
+assert.strictEqual(mixed.summary.monetary,6000);
+assert.strictEqual(mixed.summary.inKind,6000);
+console.log('PASS Q03: budget arithmetic, unknown versus zero, partial totals and funding');
+
+
+// M01: independent targeted controls; no live project data.
+snapshot=project();
+snapshot.derived.indicators[0].lineaBase=0;
+assert.strictEqual(check('Fichas técnicas de indicadores').status,'COHERENTE');
+snapshot.derived.indicators.push({...snapshot.derived.indicators[0],id:'I-ORPHAN',linkedId:'UNKNOWN'});
+assert.strictEqual(check('Indicadores vinculados').status,'REQUIERE AJUSTE');
+snapshot=project();
+assert.strictEqual(check('Indicadores vinculados').status,'COHERENTE');
+const scheduleAudit=context.window.fcAuditSchedule;
+const a={activityId:'A1',startDate:'2026-11-25',endDate:'2026-11-26',responsible:'Equipo',dependencyIds:[]};
+const b={activityId:'A2',startDate:'2026-11-27',endDate:'2026-11-28',responsible:'Equipo',dependencyIds:['A1']};
+const auditSchedule=items=>scheduleAudit({items});
+assert.strictEqual(auditSchedule([a,b]).length,0);
+assert.strictEqual(auditSchedule([a,b]).length,0,'Cálculo repetible');
+for(const [patch,pattern] of [
+ [{endDate:''},/cierre ausente/],
+ [{endDate:'2026-02-30'},/cierre ausente/],
+ [{endDate:'2026-11-24'},/cierre anterior/],
+ [{dependencyIds:['MISSING']},/dependencia ausente/],
+ [{dependencyIds:['A2']},/ciclo/],
+ [{responsible:'[POR DEFINIR]'},/falta responsable/],
+ [{startDate:'2026-11-25'},/inicia antes/]
+])assert(auditSchedule([a,{...b,...patch}]).some(x=>pattern.test(x)),String(pattern));
+assert(auditSchedule([{...a,dependencyIds:['A2']},b]).some(x=>/ciclo/.test(x)));
+assert(auditSchedule([a,{...a}]).some(x=>/duplicada/.test(x)));
+const before=JSON.stringify([a,b]);auditSchedule([a,b]);assert.strictEqual(JSON.stringify([a,b]),before);
+console.log('PASS M01: indicator zero and orphan, calendar validity, dependencies, cycles and repeatability');
+
+
+const coverage=context.window.fcAuditBudgetCoverage,active=[{id:'A1',confirmed:true}];
+assert(coverage({activityStatus:{A1:'cost'},items:[base]},active).ok);
+assert(coverage({activityStatus:{A1:'nocost'},items:[]},active).ok);
+for(const [st,items,kind] of [
+ ['cost',[],'SIN_RUBROS'],['nocost',[base],'SIN_COSTO_CON_RUBROS'],
+ ['cost',[{...base,totalCost:7000}],'RUBRO_INCOMPLETO_O_INCONSISTENTE'],
+ ['inkind',[base],'TIPO_INCOMPATIBLE'],['pending',[],'TRATAMIENTO_PENDIENTE'],
+ ['cost',[base,{...base}],'RUBRO_DUPLICADO_O_SIN_ID']
+]){const r=coverage({activityStatus:{A1:st},items},active);assert(!r.ok);assert(r.issues.some(x=>x.kind===kind),kind)}
+snapshot=project();snapshot.derived.budget=[];snapshot.derived.budget_state.activityStatus={A1:'nocost'};
+assert.strictEqual(check('Rubros vinculados a actividades').status,'COHERENTE');
+snapshot.derived.budget_state.activityStatus={A1:'cost'};
+assert.strictEqual(check('Rubros vinculados a actividades').status,'AÚN NO EVALUABLE');
+console.log('PASS M01: budget coverage and explicit no-cost distinction');
+
+const rateReady=context.window.fcRateEvidenceReady;
+assert(rateReady(base));
+for(const patch of [{priceSource:''},{priceDate:'2025-02-30'},{priceDate:'9999-01-01'},{priceStatus:'pending'},{priceStatus:'declared_zero'},{priceSource:'[POR VERIFICAR]'}]){
+ const item={...base,...patch};
+ assert(!rateReady(item));
+ const c=coverage({activityStatus:{A1:'cost'},items:[item]},active);
+ assert(!c.ok&&c.issues.some(x=>x.kind==='TARIFA_SIN_PROCEDENCIA'));
+ assert.strictEqual(budgetAudit([item]).summary.total,6000,'La estimación aritmética se conserva sin certificar la tarifa');
+}
+assert(rateReady({...base,priceStatus:'declared_zero',unitCost:0,totalCost:0,priceSource:'Declaración sintética de disponibilidad'}));
+assert(!rateReady({...base,priceStatus:'declared_zero',unitCost:'',totalCost:null}));
+console.log('PASS Q03: provenance blocks final review without discarding estimated arithmetic');
+
+const mixedRows=[base,{...base,id:'B2',costType:'Aporte en especie',fundingSource:'Aliado sintético'}];
+assert(coverage({activityStatus:{A1:'mixed'},items:mixedRows},active).ok);
+for(const st of ['cost','inkind']){
+ assert(coverage({activityStatus:{A1:st},items:mixedRows},active).issues.some(x=>x.kind==='TIPO_INCOMPATIBLE'));
+}
+assert(coverage({activityStatus:{A1:'mixed'},items:[base]},active).issues.some(x=>x.kind==='TIPO_INCOMPATIBLE'));
+assert(coverage({activityStatus:{A1:'mixed'},items:[base,{...mixedRows[1],priceStatus:'pending'}]},active).issues.some(x=>x.kind==='TARIFA_SIN_PROCEDENCIA'));
+assert.strictEqual(budgetAudit(mixedRows).summary.total,12000);
+console.log('PASS Q03: mixed monetary and in-kind resources retain separate totals and require both types');

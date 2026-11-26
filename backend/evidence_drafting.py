@@ -13,6 +13,8 @@ from fastapi import HTTPException
 from assistant_pilot import configured, groq_key, reserve, GROQ_ENDPOINT
 from generative_grounding import guard_generated_claims
 from claim_audit import qualify_claims
+from model_usage import MODEL_BUDGET
+from prompt_boundary import BOUNDARY, data_message, safe_model_content, quarantine_directives, quarantine_flag, contains_directive
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -22,20 +24,37 @@ def live_context(passages: list[dict]) -> tuple[str | None, list[dict]]:
               p.get("passage_status") == "EXCERPT_FOUND_CLAIM_UNVERIFIED"
               and p.get("sha256") and p.get("excerpt") and p.get("locator")
               and p.get("url")]
-    chosen = usable[:3]
-    chunks = [
-        f"[E{i}] Fuente: {p.get('publisher', '')}; {p.get('title', '')}; "
-        f"localizador: {p['locator']}; url: {p['url']}; Extracto: {p['excerpt']}"
-        for i, p in enumerate(chosen, 1)
-    ]
-    return ("\n".join(chunks)[:1250] or None), chosen
+    # Preserve whole passages and contiguous citation IDs within the budget.
+    chosen, chunks = [], []
+    for p in usable:
+        if len(chosen) >= 3:
+            break
+        i = len(chosen) + 1
+        chunk = (
+            f"[E{i}] Fuente: {p.get('publisher', '')}; {p.get('title', '')}; "
+            f"localizador: {p['locator']}; url: {p['url']}; Extracto: {p['excerpt']}"
+        )
+        if len("\n".join(chunks + [chunk])) > 1250:
+            continue
+        chunks.append(chunk)
+        chosen.append(p)
+    return ("\n".join(chunks) or None), chosen
 
 
 async def compose_section_draft(*, section: str, field: str, text: str,
                                 territory: str, claims: list[dict],
                                 passages: list[dict], user_id: str) -> dict:
     """Genera y controla una propuesta; tolera falta de proveedor o cuota."""
-    evidence, used = live_context(passages)
+    text, text_flag = quarantine_directives(text)
+    territory, territory_flag = quarantine_directives(territory)
+    clean_claims = [c for c in claims if not contains_directive(c.get("statement",""))]
+    clean_passages = [p for p in passages if not any(contains_directive(str(p.get(k,""))) for k in ("title","publisher","excerpt","locator","url"))]
+    quarantine = text_flag or territory_flag or len(clean_claims)!=len(claims) or len(clean_passages)!=len(passages)
+    claims = clean_claims
+    evidence, used = live_context(clean_passages)
+    if quarantine and not text.strip() and not evidence:
+        return {"suggestion":None,"draft_status":"UNTRUSTED_DIRECTIVE_QUARANTINED",
+                "review_flags":[quarantine_flag()],"evidence_used":used}
     if not configured():
         return {"suggestion": None, "draft_status": "MODEL_NOT_CONFIGURED",
                 "review_flags": [], "evidence_used": used}
@@ -63,21 +82,22 @@ async def compose_section_draft(*, section: str, field: str, text: str,
         "puedes citarlos con [E1], [E2], [E3] según identificadores realmente presentes. "
         "No inventes páginas ni citas. Máximo 170 palabras. No incluyas explicaciones."
     )
-    message = (
-        f"Sección {section}, campo {field}. Municipio declarado: {territory}.\n"
-        f"Texto original: {text}\nAfirmaciones identificadas:\n{claim_description}\n"
-        + (f"Extractos realmente descargados:\n{evidence}\n" if evidence else
-           "Sin extractos documentales descargados. No atribuyas verificación.\n")
-    )
-    model = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
-    payload = {"model": model, "temperature": 0.1, "max_completion_tokens": 600,
+    system += BOUNDARY
+    message = data_message(section=section, field=field, territory=territory,
+                           participant_text=text, claim_descriptions=claim_description[:2200],
+                           recovered_evidence=evidence or "")
+    model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
+    payload = {"model": model, "temperature": 0.1, "max_completion_tokens": 1024,
                "messages": [{"role": "system", "content": system},
-                            {"role": "user", "content": message[:4300]}]}
+                            {"role": "user", "content": message}]}
     if model.startswith("openai/gpt-oss-"):
         payload["reasoning_effort"] = "low"
         payload["include_reasoning"] = False
+    if not MODEL_BUDGET.reserve("section_draft", payload):
+        return {"suggestion": None, "draft_status": "MODEL_QUOTA_EXCEEDED",
+                "review_flags": [], "evidence_used": used}
     try:
-        async with httpx.AsyncClient(timeout=18) as client:
+        async with httpx.AsyncClient(timeout=18, follow_redirects=False) as client:
             response = await client.post(
                 GROQ_ENDPOINT,
                 headers={"Authorization": "Bearer " + groq_key(),
@@ -86,12 +106,19 @@ async def compose_section_draft(*, section: str, field: str, text: str,
             logger.info("section_draft_upstream_status=%s", response.status_code)
             return {"suggestion": None, "draft_status": "MODEL_UNAVAILABLE",
                     "review_flags": [], "evidence_used": used}
-        raw = response.json()["choices"][0]["message"].get("content", "")
+        data = response.json()
+        MODEL_BUDGET.observe("section_draft", data)
+        raw = safe_model_content(data["choices"][0]["message"], credential=groq_key())
         if not isinstance(raw, str) or not raw.strip():
             raise ValueError("Empty model response")
         draft, flags = guard_generated_claims(raw.strip()[:1600], text, evidence)
         draft, causal_flags = qualify_claims(draft)
         flags.extend(causal_flags)
+        if quarantine:
+            flags.insert(0, quarantine_flag())
+        if contains_directive(draft):
+            return {"suggestion":None,"draft_status":"UNTRUSTED_DIRECTIVE_QUARANTINED",
+                    "review_flags":[quarantine_flag()],"evidence_used":used}
         # Referencias no presentes, incluso en frases sin adiciones léxicas,
         # no se podrán aprobar como una supuesta fuente.
         identifiers = re.findall(r"\[E(\d+)\]", draft)

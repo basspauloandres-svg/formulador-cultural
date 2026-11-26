@@ -129,6 +129,20 @@ function integrityReport(snapshot){
 window.fcGetProjectIntegrityReport=()=>integrityReport(build());
 window.fcAuditProjectSnapshot=integrityReport;
 
+// Local change detection for human review, not a cryptographic authorization.
+function reviewFingerprint(snapshot){
+  const s=snapshot||build(),sections={...s.sections},derived={...s.derived};
+  delete sections.S16;delete derived.review;
+  return fnv1a(stable({project_id:s.project?.project_id||null,sections,derived}));
+}
+function reviewApprovalCurrent(snapshot){
+  const s=snapshot||build(),r=s.sections?.S16?.review_state;
+  return !!(r?.confirmed===true&&r?.reviewFingerprint&&r.reviewFingerprint===reviewFingerprint(s));
+}
+window.fcGetReviewFingerprint=()=>reviewFingerprint(build());
+window.fcReviewApprovalCurrent=()=>reviewApprovalCurrent(build());
+window.fcReviewFingerprint=reviewFingerprint;
+window.fcAuditReviewApproval=reviewApprovalCurrent;
 window.fcGetProjectSnapshot=build;
 window.fcGetProjectSnapshotHash=()=>hash(build());
 window.fcProjectSnapshotStableStringify=stable;

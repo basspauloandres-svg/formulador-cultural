@@ -29,7 +29,9 @@ def isolated_national_divipola():
             "url":"https://www.datos.gov.co/Mapas-Nacionales/DIVIPOLA-C-digos-municipios/gdxc-w37w",
             "status":"ADMINISTRATIVE_REGISTRY_MATCH",
         }}
-    with patch.object(guided,"resolve_territory",new=fake_resolve):
+    with patch.object(guided,"resolve_territory",new=fake_resolve), \
+         patch.object(guided,"cultural_registry",new=AsyncMock(return_value={"status":"NO_RECORDS_RETURNED","records":[]})), \
+         patch.object(guided,"municipal_passages",new=AsyncMock(return_value=[])):
         yield
 
 
@@ -107,6 +109,9 @@ def test_pdf_passage_used_as_server_provided_context_not_user_supplied_citation(
     assert result["suggestion"]=="Texto para revisar [F1, p.1]."
     assert result["claim_status"]=="INSUFFICIENT_EVIDENCE"
     assert result["requires_approval"]
+    assert result["evidence_manifest"][0]["sha256"] == "a"*64
+    assert result["evidence_manifest"][0]["prompt_excerpt"] in evidence
+    assert result["claim_audit"][0]["status"] == "INSUFFICIENT_EVIDENCE"
 
 
 def test_generated_causality_remains_blocked():
@@ -222,3 +227,36 @@ def test_territory_switch_flags_old_neira_text_without_erasing_it():
     assert "Neira" in result["review_flags"][0]["instruction"]
     assert result["suggestion"] is None
     fetch.assert_not_called()
+
+
+def test_national_record_citations_require_actual_retrieval():
+    req=guided.GuidedRequest(field="caracteristicas_culturales",context="Anserma Caldas",text="")
+    record={"status":"RECORDS_RETRIEVED","records":[{"divipola":"17042"}],"response_sha256":"a"*64}
+    with patch.object(guided,"research",new=AsyncMock(return_value=research_result())), \
+         patch.object(guided,"cultural_registry",new=AsyncMock(return_value=record)), \
+         patch.object(guided,"assist",new=AsyncMock()) as model:
+        for citation, blocked in [("[N1]",False),("[N2]",True),("",True)]:
+            model.return_value={"suggestion":"Existen registros asociados al código "+citation}
+            result=asyncio.run(guided.guide(req,"Bearer synthetic"))
+            assert result["blocked_for_evidence"] == blocked
+            assert result["evidence_input_status"] == "NATIONAL_RECORDS_AVAILABLE"
+            assert result["claim_status"] == "INSUFFICIENT_EVIDENCE"
+            assert "[N1]" in model.await_args.kwargs["evidence"]
+            if not blocked:
+                assert result["claim_audit"][0]["status"] == "REGISTRY_FACT_REVIEW_REQUIRED"
+                assert result["suggestion_origin"] == "DETERMINISTIC_REGISTRY_FACT"
+                assert "17042" in result["suggestion"]
+                assert result["evidence_manifest"][0]["scope"] == "RECORD_EXISTENCE_ONLY"
+
+
+def test_unhashed_document_does_not_reach_model_for_empty_field():
+    req=guided.GuidedRequest(field="antecedentes",context="Neira Caldas",text="")
+    doc={**guided.INSTITUTIONAL_DOCUMENTS[("neira","caldas")][0],
+         "passages":[{"page":1,"excerpt":"Documento sin huella válida."}]}
+    with patch.object(guided,"research",new=AsyncMock(return_value=research_result())), \
+         patch.object(guided,"fetch_document",new=AsyncMock(return_value=doc)), \
+         patch.object(guided,"assist",new=AsyncMock()) as model:
+        result=asyncio.run(guided.guide(req,"Bearer synthetic"))
+    model.assert_not_called()
+    assert result["blocked_for_evidence"]
+    assert not result["evidence_manifest"]

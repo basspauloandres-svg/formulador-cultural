@@ -22,7 +22,8 @@ function selectedProblems(){return state.selected||[]}
 function comparisons(){const p=selectedProblems(),out=[];for(let i=0;i<p.length;i++){for(let j=i+1;j<p.length;j++){out.push({source:p[i],target:p[j]});out.push({source:p[j],target:p[i]})}}return out}
 function relationKey(a,b){return `${a.id}>${b.id}`}
 function currentComparison(){return comparisons()[Math.max(0,Math.min(state.cursor,comparisons().length-1))]||null}
-function answeredCount(){return comparisons().filter(c=>Number.isInteger(state.relations[relationKey(c.source,c.target)]?.score)).length}
+function validScore(n){return Number.isInteger(n)&&n>=0&&n<=3}
+function answeredCount(){return comparisons().filter(c=>validScore(state.relations[relationKey(c.source,c.target)]?.score)).length}
 function allAnswered(){const c=comparisons();return c.length>0&&answeredCount()===c.length}
 function scoreLabel(n){return ['No cambia','Cambia poco','Cambia bastante','Cambia mucho'][n]||''}
 function quadrantLabel(q){return {critical:'Crítico',active:'Activo',passive:'Pasivo',indifferent:'Indiferente'}[q]}
@@ -37,7 +38,7 @@ function calculate(){
   const totals=Object.fromEntries(ps.map(p=>[p.id,{id:p.id,text:p.text,influence:0,dependence:0}]));
   for(const c of comparisons()){
     const r=state.relations[relationKey(c.source,c.target)];
-    if(!Number.isInteger(r?.score))continue;
+    if(!validScore(r?.score))continue;
     totals[c.source.id].influence+=r.score;totals[c.target.id].dependence+=r.score;
   }
   const rows=Object.values(totals);
@@ -73,7 +74,7 @@ function renderBody(){
   bindBody();
 }
 function saveCurrentJustification(){const c=currentComparison(),ta=$('#vesterJustification');if(!c||!ta)return;const k=relationKey(c.source,c.target);state.relations[k]=state.relations[k]||{};state.relations[k].justification=ta.value.trim();saveState()}
-function firstMissing(){const comps=comparisons();const i=comps.findIndex(c=>!Number.isInteger(state.relations[relationKey(c.source,c.target)]?.score));return i<0?0:i}
+function firstMissing(){const comps=comparisons();const i=comps.findIndex(c=>!validScore(state.relations[relationKey(c.source,c.target)]?.score));return i<0?0:i}
 function selectProblemsFromUI(){const candidates=problemsFromS05();const map=new Map(candidates.map(p=>[p.id,p]));state.selected=[...document.querySelectorAll('[data-problem]:checked')].map(x=>map.get(x.dataset.problem)).filter(Boolean);const valid=new Set(state.selected.map(p=>p.id));Object.keys(state.relations).forEach(k=>{const [a,b]=k.split('>');if(!valid.has(a)||!valid.has(b))delete state.relations[k]});saveState()}
 function reviewJustification(){const c=currentComparison();if(!c){assist('Primero abre una comparación.');return}saveCurrentJustification();const r=state.relations[relationKey(c.source,c.target)]||{},t=(r.justification||'').trim();if(!t){assist('La justificación es opcional. Si quieres documentar el juicio, explica el mecanismo por el que A podría producir un cambio en B. Si falta respaldo, marca la información como [POR VERIFICAR].');return}const notes=[];if(t.length<35)notes.push('La justificación es muy breve; puede ser difícil auditar el razonamiento después.');if(/al mismo tiempo|coincid|simult|se relacionan|están relacionados/i.test(t))notes.push('Revisa si estás describiendo simultaneidad o asociación. Eso por sí solo no demuestra influencia directa.');if(/siempre|demuestra|comprobado|sin duda|definitivamente/i.test(t))notes.push('La redacción parece más concluyente que la matriz permite sostener. Considera expresar el juicio como una valoración de influencia.');if(/según estudios|la evidencia demuestra|está comprobado/i.test(t)&&!/https?:|fuente|documento|registro|entrevista/i.test(t))notes.push('Se menciona respaldo sin identificarlo. Añade la fuente o conserva ese punto como [POR VERIFICAR].');if(!notes.length)notes.push('La justificación describe un razonamiento de influencia de forma suficientemente concreta. Aun así, la puntuación sigue siendo una decisión metodológica del usuario.');assist(notes.join(' '))}
 function assist(text){const box=$('#vesterAssist');box.classList.remove('hidden');box.innerHTML=`<strong>Ayuda para razonar</strong><p>${esc(text)}</p><small>Esta ayuda no modifica tu puntuación ni añade evidencia.</small>`}
