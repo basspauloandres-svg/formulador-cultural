@@ -49,3 +49,37 @@ class ResourceLimitsTests(unittest.IsolatedAsyncioTestCase):
                 release.set()
                 await asyncio.gather(*tasks)
             self.assertEqual((await client.post("/documents/pdf", json={})).status_code, 200)
+
+
+    async def test_40_concurrent_research_requests_recovery_and_independent_group(self):
+        app = FastAPI()
+        entered = asyncio.Event()
+        release = asyncio.Event()
+        reached = 0
+        @app.post("/assistant/test")
+        async def work():
+            nonlocal reached
+            reached += 1
+            if reached == 8:
+                entered.set()
+            await release.wait()
+            return {"ok": True}
+        @app.post("/vester/calculate")
+        async def calc():
+            return {"ok": True}
+        protected = ResourceLimits(app)
+        protected.groups["research"] = asyncio.Semaphore(8)
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=protected), base_url="http://test") as client:
+            first = [asyncio.create_task(client.post("/assistant/test", json={})) for _ in range(8)]
+            try:
+                await asyncio.wait_for(entered.wait(), 3)
+                excess = await asyncio.wait_for(asyncio.gather(*[
+                    client.post("/assistant/test",json={}) for _ in range(32)]), 3)
+                self.assertTrue(all(r.status_code==429 and r.headers["Retry-After"]=="5" for r in excess))
+                self.assertEqual(reached,8)
+                self.assertEqual((await client.post("/vester/calculate",json={})).status_code,200)
+            finally:
+                release.set()
+                accepted=await asyncio.gather(*first)
+            self.assertTrue(all(r.status_code==200 for r in accepted))
+            self.assertEqual((await client.post("/assistant/test",json={})).status_code,200)
