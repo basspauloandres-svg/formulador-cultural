@@ -103,7 +103,7 @@ body.workspace-preview:not(.vt-welcome-open) :where(button,input,textarea,select
 body.workspace-preview:not(.vt-welcome-open) :where(input:not([type='checkbox']):not([type='radio']):not([type='range']),textarea,select){
  background:#09212a!important;color:#eff8f5!important;border-color:#52747c!important;caret-color:#50e0c3;border-radius:10px
 }
-body.workspace-preview:not(.vt-welcome-open) :where(input::placeholder,textarea::placeholder){
+body.workspace-preview:not(.vt-welcome-open) :where(input,textarea)::placeholder{
  color:#a9c4c9!important;opacity:1
 }
 body.workspace-preview:not(.vt-welcome-open) :where(input[type='checkbox'],input[type='radio']){
