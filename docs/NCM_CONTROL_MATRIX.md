@@ -137,3 +137,26 @@ Candidato verificado 38aa68e483308ab026755cc99bfb7f2c379009d0, rama checkpoint/2
 - 74 % estimado; 75 % formal pendiente de Q01–Q07, en particular revisión independiente, corpus aprobado y perfil de convocatoria verificable. Objetivo 80 % vigente; no confundir checkpoint técnico con cierre de hitos.
 - Ruta crítica propuesta para cumplir el 30 de noviembre: 26/11 concluir CI del cambio de presupuesto y realizar revisión humana de los tres casos (dos revisores independientes, sin asignar puntajes automáticos); 27/11 ejecutar carga representativa y comparación V01 con recursos autorizados; 28/11 congelar candidato verde, completar acta de aceptación o delimitar piloto supervisado y comprobar recuperación; 29/11 ensayo del taller, contingencia manual y verificación de disponibilidad. El 30/11 solo publicar con autorización explícita. Si faltan corpus/convocatoria, mantener abstención y estado de proyecto maestro en revisión. Si falta validación humana o carga representativa, declarar piloto asistido, sujeto a decisión del investigador; no rebajar puertas de aceptación.
 - Base main c9839baa24afe0817d04e5574eb8a60153d369e1; PR #135 no fusionada. Sin publicación ni gastos adicionales.
+
+## Validación de integración y diplomado — 2026-11-26
+
+Candidato de integración `ea0e1577f6cea6ab4c76e9cd23103b7b34d22938` (PR #138), descendiente de la base funcional `6bad6998` (PR #135). Checkpoint `checkpoint/2026-11-26-editorial-qa`. Las referencias base, I02 y V01 conservan sus SHA y entornos propios. CI del candidato: run 45833566956.
+
+| Control | Estado | Evidencia y alcance |
+| --- | --- | --- |
+| S01–S16, navegación plegable y persistencia en navegador | PASS | Chromium local en 1440×900, 1024×768 y 390×844. Guardado y recarga local. |
+| Tres borradores C01–C03, cuatro formatos | PASS | Desde la interfaz local con datos sintéticos. Se verificaron 12 archivos, con nombre, territorio, fragmento de evidencia y estado en revisión. No hubo aprobación simulada ni escritura directa en base de datos. |
+| XLSX sin estado documental | FAIL → PASS | Reproducido en 3 de 3 XLSX. Hoja 00_Resumen incorpora el estado común. Regresión con dos snapshots, sin mutación, y reexportación 3 de 3. |
+| Exportación PDF durante saturación | FAIL → PASS | Un POST local devolvió 429 y no hubo descarga en el ensayo previo. Se añadió un reintento acotado con Retry-After y el mismo cuerpo. Regresión con 429 controlado y descarga posterior por el generador real. |
+| Criterios automatizados de accesibilidad en S01 y S16 | FAIL → PASS | axe-core 4.11.1 reprodujo atributos ARIA incompatibles y falta de contraste. Tras el ajuste, cero infracciones automáticas en seis escaneos; tres comprobaciones de contraste requieren revisión manual. |
+| Revisión humana de accesibilidad, uso de tecnologías de asistencia | NOT_RUN | El navegador de Work no alcanzó la instancia local. Las pruebas de Chromium fueron automatizadas. |
+| Q01, Q02, Q03, Q04 y Q06 integrales | INSUFFICIENT_EVIDENCE | Casos con datos escasos, techo presupuestal y fuentes contradictorias como entradas de ensayo. Queda pendiente completar la cadena operativa estructurada, valorar tarifas y verificar la correspondencia integral en documentos. |
+| Q05 aplicado a convocatoria | INSUFFICIENT_EVIDENCE | Falta perfil verificable con términos oficiales aplicables. |
+| Q07 independiente | NOT_RUN | Quedan seis fichas para dos revisores humanos. No se registraron puntajes humanos. |
+| I02 carga local autenticada | PASS | PR #136, f46b142e, run 45821079836. 40 identidades desechables, 8 HTTP 200 iniciales, 32 HTTP 429 recuperados, 40 finales, 5502 ms, cero llamadas del modelo. |
+| I02 carga alojada y concurrencia generativa | NOT_RUN | Hace falta una instancia QA aislada accesible desde Work y con cuotas autorizadas. |
+| V01 brazo local | PASS | PR #137, eeb2fe5, run 45823662572: 40 observaciones, 10 tareas sintéticas, 0 llamadas generativas. |
+| V01 emparejado | INSUFFICIENT_EVIDENCE | Cero pares observados. Línea base equivalente, corpus autorizado, calidad humana y costo efectivo pendientes. |
+| P01 simulacro alojado y contingencia del diplomado | NOT_RUN | Disponibles antecedentes de recuperación local. Falta ensayo integral del taller sobre un candidato alojado en QA. |
+
+Se mantiene 74 % estimado. Hito formal 75 %, objetivo 80 % y habilitación del diplomado pendientes. No se fusionó ni desplegó; main se verificó en `c9839baa`. Se aplicaron los procedimientos del repositorio, incluida la trazabilidad por SHA y el uso de Supabase aislado como alcance de la evidencia I02 existente.
