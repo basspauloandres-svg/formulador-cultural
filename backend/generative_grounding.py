@@ -82,4 +82,9 @@ def guard_generated_claims(generated: str, original: str,
             "status": "INSUFFICIENT_EVIDENCE",
             "instruction": "El modelo introdujo afirmaciones nuevas. Se conserva el texto original como aporte sin verificar.",
         })
-    return " ".join(approved)[:1600], flags[:10]
+    # The fallback marker is a classification invariant, not an optional
+    # detail. Reserve its place when the diagnostic list is truncated.
+    limited = flags[:10]
+    if flags and flags[-1]["type"] == "GENERATIVE_FALLBACK_ORIGINAL" and flags[-1] not in limited:
+        limited = flags[:9] + [flags[-1]]
+    return " ".join(approved)[:1600], limited
