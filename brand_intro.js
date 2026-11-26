@@ -10,8 +10,9 @@
  const canvas=intro.querySelector('canvas'),ctx=canvas.getContext('2d');
  if(!ctx)return;
  const W=1000,H=340;
+ const dpr=Math.min(2,window.devicePixelRatio||1);
  const TIMING=Object.freeze({solidStart:4.75,solidEnd:5.25,fadeStart:5.65,end:6.25});
- canvas.width=W;canvas.height=H;
+ canvas.width=W*dpr;canvas.height=H*dpr;ctx.scale(dpr,dpr);
  const logo=document.createElement('canvas');logo.width=W;logo.height=H;
  const l=logo.getContext('2d',{willReadFrequently:true});if(!l)return;
  const symbol=(c)=>{
@@ -32,8 +33,9 @@
   const angle=rand()*Math.PI*2,rad=180+rand()*490;
   const sx=W/2+Math.cos(angle)*rad,sy=H/2+Math.sin(angle)*rad*.53;
   const dx=x-sx,dy=y-sy,turn=(rand()-.5)*220;
-  const start=.65+rand()*1.55,arrival=3.88+rand()*.89;
-  particles.push({x,y,sx,sy,z,front,back,start,arrival,
+  const isSymbol=x<300;
+  const start=isSymbol?.18+rand()*1.2:1.15+rand()*1.8,arrival=isSymbol?2.45+rand()*.8:3.65+rand()*.9;
+  particles.push({x,y,sx,sy,z,front,back,start,arrival,isSymbol,
    c1x:sx+dx*.18+turn,c1y:sy+dy*.08-turn*.5,
    c2x:x-dx*.19-turn*.22,c2y:y-dy*.23+turn*.23,
    phase:rand()*Math.PI*2,spin:(rand()-.5)*2.4,
@@ -89,12 +91,23 @@
   atmosphere.addColorStop(.57,'rgba(20,73,83,.055)');
   atmosphere.addColorStop(1,'rgba(7,27,35,0)');
   ctx.fillStyle=atmosphere;ctx.fillRect(0,0,W,H);
-  const solid=smooth((t-TIMING.solidStart)/(TIMING.solidEnd-TIMING.solidStart));
+  const solid=smooth((t-4.55)/.4);
+  // Slow layered turquoise mist, without stars or celestial objects.
+  for(let j=0;j<18;j++){
+   const x=(j*173)%1100-50+Math.sin(t*.23+j*1.7)*55;
+   const y=H*.78+Math.sin(j*.88+t*.31)*48;
+   const r=95+(j*29)%95;
+   const cloud=ctx.createRadialGradient(x,y,0,x,y,r);
+   cloud.addColorStop(0,'rgba(13,130,119,.075)');cloud.addColorStop(.45,'rgba(12,104,101,.045)');cloud.addColorStop(1,'rgba(5,55,58,0)');
+   ctx.fillStyle=cloud;ctx.fillRect(x-r,y-r,r*2,r*2);
+  }
   const camera=.94+.085*ease(t/4.6)-.025*ease((t-4.5)/.85);
-  ctx.save();ctx.translate(W/2,H/2);ctx.scale(camera,camera);ctx.translate(-W/2,-H/2);
+  const floating=smooth((t-4.55)/.6);
+  ctx.save();ctx.translate(W/2+Math.sin(t*1.15)*4*floating,H/2+Math.sin((t-4.55)*2.1)*7*floating);ctx.scale(camera,camera);ctx.translate(-W/2,-H/2);
   if(solid<1){
    for(const p of particles){
-    const alpha=(1-solid)*smooth((t-p.start*.31)/.9)*(p.back?.35+.65*smooth((t-p.start)/(p.arrival-p.start)):p.front?.65:.74+.26*smooth(t/4));
+    const partSolid=p.isSymbol?smooth((t-3.15)/.35):solid;
+    const alpha=(1-partSolid)*smooth((t-p.start*.31)/.9)*(p.back?.35+.65*smooth((t-p.start)/(p.arrival-p.start)):p.front?.65:.74+.26*smooth(t/4));
     if(alpha<.012)continue;
     const q=pose(p,t),s=q.size;
     if(q.x<-70||q.x>W+70||q.y<-70||q.y>H+70)continue;
@@ -108,11 +121,16 @@
     ctx.fillStyle=p.color;ctx.globalAlpha=alpha*(p.front?.10:.055);
     ctx.fillRect(-s*.76,-s*.76,s*1.52,s*1.52);
     ctx.globalAlpha=alpha;ctx.fillRect(-s/2,-s/2,s,s);
+    const depth=s*.32*(1-smooth((t-p.start)/(p.arrival-p.start)));
+    ctx.beginPath();ctx.moveTo(-s/2,-s/2);ctx.lineTo(-s/2+depth,-s/2-depth);ctx.lineTo(s/2+depth,-s/2-depth);ctx.lineTo(s/2,-s/2);ctx.closePath();ctx.fillStyle='#b4f8e9';ctx.globalAlpha=alpha*.58;ctx.fill();
+    ctx.beginPath();ctx.moveTo(s/2,-s/2);ctx.lineTo(s/2+depth,-s/2-depth);ctx.lineTo(s/2+depth,s/2-depth);ctx.lineTo(s/2,s/2);ctx.closePath();ctx.fillStyle='#075c60';ctx.globalAlpha=alpha*.85;ctx.fill();
     if(p.front&&s>10){ctx.fillStyle='#d5fff4';ctx.globalAlpha=alpha*.18;ctx.fillRect(-s/2,-s/2,s,Math.max(1,s*.075));}
     ctx.restore();
    }
   }
-  if(solid>0){ctx.globalAlpha=solid;ctx.drawImage(logo,0,0)}
+  const symbolSolid=smooth((t-3.15)/.35);
+  if(symbolSolid>0){ctx.globalAlpha=symbolSolid;symbol(ctx)}
+  if(solid>0){ctx.globalAlpha=solid;ctx.drawImage(logo,300,0,W-300,H,300,0,W-300,H)}
   ctx.restore();ctx.globalAlpha=1;
   if(t>TIMING.fadeStart)intro.style.opacity=String(1-smooth((t-TIMING.fadeStart)/(TIMING.end-TIMING.fadeStart)));
   frame=requestAnimationFrame(render);
