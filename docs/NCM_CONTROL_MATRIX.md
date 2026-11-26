@@ -145,3 +145,7 @@ Estado OPEN_CRITICAL. Base recuperable d64265cc7c7a4bbe69e2c128084d2c8823fb0137.
 
 ### H01 — evidencia incremental
 Auditorías 56 (2da2ebc), 58 (3acdec2) y 59 (6bdb764): PASS. Checkpoint checkpoint/2026-11-26-H01-local-audit58. Siete escenarios locales positivos; H01-09 HTML exclusivamente, H01-10 persistencia local sin conexión, H01-11 advertencia Caldas con excepción humana: parciales. H01-06, 07, 08 OPEN: sin evidencia de recuperación remota, conservación de respuestas IA en tránsito ni aislamiento de cuentas. Auditoría 60 (5e1c0ba) pendiente para prueba multipestaña. El porcentaje de cierre estricto no debe confundirse con escenarios parcialmente cubiertos. No se autoriza cierre ni promoción a producción por estos resultados.
+
+
+### H01 — auditorías 60, 62, 64 y 65
+60 FAIL por configuración Playwright multipestaña; 62 PASS con contexto explícito y H01_CROSS_TAB_IDENTITY_PASS. 64 PASS regresión tras integrar bandeja de consultas. 65 PASS candidato 28abd19e77b2d13277cf7d14231e2c5ec9a6f55d, 247 pruebas backend, H01_07_SYNTHETIC_DEFERRED_REVIEW_PASS: respuesta sintética diferida asociada al proyecto y usuario de origen, recuperación tras recarga, rechazo funcional de otra identidad simulada, sin incorporación automática. H01-07 parcial: no prueba IA real ni seguridad de almacenamiento ante otra cuenta. H01-06/08 pendientes; nube de proyectos deshabilitada. Checkpoint checkpoint/2026-11-26-H01-audit65. Mantener OPEN_CRITICAL y no promover a producción. Auditoría https://github.com/basspauloandres-svg/formulador-cultural/actions/runs/45894590434.
