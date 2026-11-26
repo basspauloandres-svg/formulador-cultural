@@ -99,7 +99,7 @@ class GuidedRequest(BaseModel):
     include_web: bool = True
     generate: bool = True
     question: str = Field(default='', max_length=3000)
-    codigo_divipola: str | None = Field(default=None, pattern=r'^[0-9]{5}
+    codigo_divipola: str | None = Field(default=None, pattern=r"^[0-9]{5}$")
 
 
 def municipality_key(context: str) -> tuple[str, str] | None:
