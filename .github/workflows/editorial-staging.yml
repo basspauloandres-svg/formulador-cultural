@@ -185,6 +185,28 @@ jobs:
               });
               if(JSON.stringify(planningCases)!==JSON.stringify(['complete','progress','progress','progress','complete']))throw Error('S14/S15 coverage regression '+JSON.stringify(planningCases));
               console.log('S14_S15_COVERAGE_PASS',JSON.stringify(planningCases));
+              const earlyCases=await mobile.evaluate(()=>{
+                const old=[draft.S06,draft.S07,draft.S08,draft.S09,draft.S10],gate=window.fcS09TransitionStatus;
+                try{
+                  const central={id:'C',zone:'central',text:'Problema'},cause={id:'D',zone:'direct_cause',text:'Causa',parentId:'C'};
+                  const tree=nodes=>{draft.S07={tree_state:{nodes}};return window.fcSectionStatus('S07')};
+                  const out=[tree([central]),tree([central,{...central,id:'X'},cause]),tree([central,cause])];
+                  draft.S08={enunciado:'[POR VERIFICAR]'};out.push(window.fcSectionStatus('S08'));
+                  draft.S06={vester_state:{selected:[{id:'A'},{id:'B'}],relations:{'A>B':{score:0},'B>A':{score:2}}}};
+                  out.push(window.fcSectionStatus('S06'));
+                  draft.S06.vester_state.selected=[{id:'A'},{id:'A'}];out.push(window.fcSectionStatus('S06'));
+                  window.fcS09TransitionStatus=()=>({ok:true});
+                  const objectives=[central,cause].map(x=>({...x,sourceText:x.text,text:'Cambio '+x.id,confirmed:true}));
+                  draft.S09={objectives_state:{items:objectives.slice(0,1)}};out.push(window.fcSectionStatus('S09'));
+                  draft.S09.objectives_state.items=objectives;out.push(window.fcSectionStatus('S09'));
+                  const alt={id:'A1',selected:true,confirmed:true,text:'Estrategia',sourceIds:['D']};
+                  const strategy=items=>{draft.S10={completion_state:{items}};return window.fcSectionStatus('S10')};
+                  out.push(strategy([{...alt,sourceIds:['X']}]),strategy([alt,{...alt,id:'A2'}]),strategy([alt]));
+                  return out;
+                }finally{[draft.S06,draft.S07,draft.S08,draft.S09,draft.S10]=old;window.fcS09TransitionStatus=gate}
+              });
+              if(JSON.stringify(earlyCases)!==JSON.stringify(['progress','progress','complete','missing','complete','progress','progress','complete','progress','progress','complete']))throw Error('S06-S10 regression '+JSON.stringify(earlyCases));
+              console.log('S06_S10_PROVENANCE_PASS',JSON.stringify(earlyCases));
               await mobile.locator('#guidedJourney .guided-subsection[data-code="S01"]').waitFor();
               await mobile.close();
               const reduced=await browser.newPage({viewport:{width:1024,height:768},reducedMotion:'reduce'});
