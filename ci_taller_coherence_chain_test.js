@@ -206,3 +206,13 @@ for(const patch of [{priceSource:''},{priceDate:'2025-02-30'},{priceDate:'9999-0
 assert(rateReady({...base,priceStatus:'declared_zero',unitCost:0,totalCost:0,priceSource:'Declaración sintética de disponibilidad'}));
 assert(!rateReady({...base,priceStatus:'declared_zero',unitCost:'',totalCost:null}));
 console.log('PASS Q03: provenance blocks final review without discarding estimated arithmetic');
+
+const mixedRows=[base,{...base,id:'B2',costType:'Aporte en especie',fundingSource:'Aliado sintético'}];
+assert(coverage({activityStatus:{A1:'mixed'},items:mixedRows},active).ok);
+for(const st of ['cost','inkind']){
+ assert(coverage({activityStatus:{A1:st},items:mixedRows},active).issues.some(x=>x.kind==='TIPO_INCOMPATIBLE'));
+}
+assert(coverage({activityStatus:{A1:'mixed'},items:[base]},active).issues.some(x=>x.kind==='TIPO_INCOMPATIBLE'));
+assert(coverage({activityStatus:{A1:'mixed'},items:[base,{...mixedRows[1],priceStatus:'pending'}]},active).issues.some(x=>x.kind==='TARIFA_SIN_PROCEDENCIA'));
+assert.strictEqual(budgetAudit(mixedRows).summary.total,12000);
+console.log('PASS Q03: mixed monetary and in-kind resources retain separate totals and require both types');
