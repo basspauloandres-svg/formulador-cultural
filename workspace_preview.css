@@ -94,3 +94,12 @@ body.workspace-preview{
 @media(prefers-reduced-motion:reduce){
  .workspace-preview *{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
+
+/* The navigation toggle is UI-only and never changes project completion. */
+.workspace-preview #workspaceJourneySections[hidden]{display:none!important}
+.workspace-preview .workspace-journey-toggle{
+ width:100%;min-height:44px;padding:9px 12px;border:1px solid #789b86;
+ border-radius:8px;background:#fff;color:#174d3a;font:inherit;font-weight:650;
+ text-align:left;cursor:pointer
+}
+.workspace-preview .workspace-journey-toggle:hover{background:#e7f1e9}
