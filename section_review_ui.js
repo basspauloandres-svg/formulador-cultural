@@ -107,7 +107,7 @@ function mount(){
        if(!response.ok){status.textContent=String(data.detail||'No se pudo completar la revisión.').slice(0,220);return}
        if(data.section!==requestedSection||(isS02&&(data.territory_context!==context||data.field!==field.dataset.field))){status.textContent='La respuesta no corresponde al campo o territorio solicitado. Repite la consulta.';return;}
        const claims=Array.isArray(data.claims)?data.claims:[];
-       results.appendChild(node('strong','Afirmaciones detectadas · evaluación preliminar'));
+       if(claims.length||!isS02)results.appendChild(node('strong','Afirmaciones detectadas · evaluación preliminar'));
        if(!claims.length&&!isS02)results.appendChild(node('p','No se identificaron oraciones completas; amplía la descripción.'));
        const list=node('ul');
        claims.slice(0,10).forEach(claim=>{
@@ -125,7 +125,7 @@ function mount(){
          results.appendChild(node('strong','Referencias institucionales localizadas'));
          primary.slice(0,4).forEach(source=>{
            const wrapper=node('div','','vt-evidence-passages');
-           const a=node('a',String(source.title||'Fuente institucional')+' · '+String(source.locator||''));
+           const a=node('a',String(source.title||'Fuente institucional')+' · '+String(source.locator||'')+(source.publication_date?' · '+source.publication_date:source.year?' · '+source.year:''));
            if(typeof source.url==='string'&&source.url.startsWith('https://')){
              a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';
              wrapper.appendChild(a);
@@ -189,10 +189,16 @@ function mount(){
        });
        details.appendChild(links);
        if(candidates.length)results.appendChild(details);
-       else if(!primary.length&&!manifest.length)results.appendChild(node('p','No se localizaron fuentes institucionales pertinentes en esta consulta. La afirmación continúa sin respaldo documental.','vt-evidence-detail'));
+       else if(!primary.length&&!manifest.length)results.appendChild(node('p','No se recuperaron pasajes institucionales pertinentes. Las decisiones del proyecto pueden continuar; los datos externos siguen pendientes de verificación.','vt-evidence-detail'));
        results.appendChild(node('p','Los pasajes institucionales identifican fragmentos consultables, pero su coincidencia temática no equivale a corroboración. Las afirmaciones y las observaciones siguen diferenciadas.','vt-evidence-detail'));
        results.hidden=false;
-       const suggestion=!data.blocked_for_evidence&&typeof data.suggestion==='string'?data.suggestion.trim():'';
+       if(isS02&&Array.isArray(data.guidance)&&data.guidance.length){
+          const guidance=node('details');guidance.open=!!data.blocked_for_evidence;
+          guidance.appendChild(node('summary','Cómo continuar la formulación'));
+          data.guidance.forEach(item=>guidance.appendChild(node('p',String(item),'vt-evidence-detail')));
+          results.appendChild(guidance);
+        }
+        const suggestion=!data.blocked_for_evidence&&typeof data.suggestion==='string'?data.suggestion.trim():'';
        if(suggestion){
          pendingAudit=isS02?{context,divipola:data.territory?.divipola||null,
            origin:data.suggestion_origin||'UNKNOWN',manifest,claim_audit:audited,semantic_support_status:data.semantic_support_status||'NOT_ASSESSED',
