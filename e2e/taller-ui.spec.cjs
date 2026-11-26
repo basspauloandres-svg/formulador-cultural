@@ -90,7 +90,7 @@ test('TALLER-VKE-01: consulta metodológica aislada, procedencia, saturación y 
     const body=route.request().postDataJSON();
     calls.push(body);
     const headers={'access-control-allow-origin':'*'};
-    if(scenario==='busy'){await route.fulfill({status:429,headers,json:{detail:'busy'}});return}
+    if(scenario==='busy'){await route.fulfill({status:429,headers:{...headers,'Retry-After':'5','Access-Control-Expose-Headers':'Retry-After'},json:{detail:'busy'}});return}
     if(scenario==='delayed'){received();await gate;}
     const doc=scenario==='doc';
     try{await route.fulfill({status:200,headers,json:{section:body.section,generation_used:false,
@@ -121,6 +121,15 @@ test('TALLER-VKE-01: consulta metodológica aislada, procedencia, saturación y 
   await question.fill('cronograma');
   await ask.click();
   await expect(out).toContainText('Capacidad temporalmente ocupada');
+  await expect(out).toContainText('5 segundos');
+  await expect(ask).toBeDisabled();
+  const afterBusy=calls.length;
+  await question.fill('meta');
+  await expect(ask).toBeDisabled();
+  await ask.evaluate(b=>b.click());
+  expect(calls.length).toBe(afterBusy);
+  await expect(ask).toBeEnabled({timeout:8000});
+  expect(calls.length).toBe(afterBusy); // No automatic retry.
   scenario='delayed';
   await question.fill('meta');
   await ask.click();
