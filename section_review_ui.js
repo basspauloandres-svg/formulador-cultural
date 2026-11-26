@@ -257,28 +257,31 @@ const root=document.getElementById('vtKnowledge');
 if(!root)return;
 const question=document.getElementById('vtKnowledgeQuestion'),ask=document.getElementById('vtKnowledgeAsk'),out=document.getElementById('vtKnowledgeResult');
 const API='https://formulador-cultural-api.onrender.com';
-let seq=0;
+let seq=0,activeRequest=null;
 function section(){return String(document.getElementById('counter')?.textContent||'').match(/S(?:0[1-9]|1[0-6])/)?.[0]||null;}
 function add(tag,value,parent=out){const el=document.createElement(tag);el.textContent=String(value||'');parent.appendChild(el);return el;}
-function clear(){seq++;out.replaceChildren();ask.disabled=false;}
+function clear(){seq++;activeRequest?.abort();activeRequest=null;out.replaceChildren();ask.disabled=false;}
 question.addEventListener('input',clear);
 root.addEventListener('toggle',()=>{if(!root.open)clear()});
 ask.addEventListener('click',async()=>{
  const value=question.value.trim(),current=section(),id=++seq;
+ activeRequest?.abort();activeRequest=null;
  out.replaceChildren();
  if(value.length<2){add('p','Escribe una pregunta metodológica.');return}
  if(!current){add('p','Abre una sección de formulación.');return}
  ask.disabled=true;add('p','Consultando orientación y documentos…');
  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),20000);
+ activeRequest=controller;
  const stale=()=>id!==seq||question.value.trim()!==value||section()!==current||!root.open;
  try{
-  const token=(await sb.auth.getSession())?.data?.session?.access_token;
+  const token=(await sb?.auth?.getSession())?.data?.session?.access_token;
   if(stale())return;
   if(!token){out.replaceChildren();add('p','Inicia sesión para consultar la biblioteca metodológica. Puedes seguir usando las ayudas locales.');return}
   const response=await fetch(API+'/assistant/knowledge',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({section:current,question:value})});
   if(stale())return;
   if(!response.ok){out.replaceChildren();add('p',response.status===429?'Capacidad temporalmente ocupada. Continúa con las ayudas locales y vuelve a consultar.':'Consulta documental no disponible. Utiliza la orientación local.');return}
-  const data=await response.json();if(stale()||data.section!==current)return;
+  const data=await response.json();if(stale())return;
+  if(data.section!==current||!['DETERMINISTIC_GUIDANCE','DOCUMENT_RETRIEVAL','ABSTAIN'].includes(data.route)||data.generation_used!==false){out.replaceChildren();add('p','La respuesta no corresponde a una consulta documental válida. Repite la consulta.');return;}
   out.replaceChildren();
   add('strong',data.route==='DETERMINISTIC_GUIDANCE'?'Orientación operativa':data.route==='DOCUMENT_RETRIEVAL'?'Documentos recuperados · cotejo pendiente':'Evidencia insuficiente');
   add('p',data.answer);
@@ -288,8 +291,9 @@ ask.addEventListener('click',async()=>{
    try{const url=new URL(p.url);if(url.protocol==='https:'&&!url.username&&!url.password){const a=add('a','Consultar documento original',card);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer'}}catch{}
    add('small','Fragmento SHA-256: '+String(p.excerpt_sha256||''),card);
   }
- }catch{if(!stale()){out.replaceChildren();add('p','Consulta documental no disponible. Utiliza la orientación local.')}}finally{clearTimeout(timeout);if(id===seq)ask.disabled=false}
+ }catch{if(!stale()){out.replaceChildren();add('p','Consulta documental no disponible. Utiliza la orientación local.')}}finally{clearTimeout(timeout);if(id===seq){activeRequest=null;ask.disabled=false}}
 });
 const counter=document.getElementById('counter');
-if(counter)new MutationObserver(()=>{clear();question.value='';root.open=false}).observe(counter,{childList:true,characterData:true,subtree:true});
+let lastSection=section();
+if(counter)new MutationObserver(()=>{const current=section();if(current===lastSection)return;lastSection=current;clear();question.value='';root.open=false}).observe(counter,{childList:true,characterData:true,subtree:true});
 })();
