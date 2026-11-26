@@ -51,8 +51,8 @@
 
 /* Brief opening animation; underlying workspace remains available. */
 #vtIntro[hidden]{display:none!important}
-#vtIntro{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:#071b23;pointer-events:none}
-#vtIntro canvas{display:block;width:min(88vw,1000px);height:auto;max-height:70vh;filter:drop-shadow(0 0 8px #50e0c35e)}
+#vtIntro{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 50%,#102e39 0%,#071b23 46%,#030c12 100%);pointer-events:none}
+#vtIntro canvas{display:block;width:min(92vw,1180px);height:auto;max-height:70vh;filter:drop-shadow(0 0 10px #50e0c345)}
 #vtIntro .vt-intro-skip{position:absolute;bottom:max(24px,env(safe-area-inset-bottom));right:max(24px,env(safe-area-inset-right));pointer-events:auto;min-height:44px;padding:10px 16px;color:#d8f3ed;background:#112c37;border:1px solid #47717a;border-radius:12px;font:600 .85rem system-ui;cursor:pointer}
 #vtIntro .vt-intro-skip:focus-visible{outline-color:#50e0c3!important}
 @media(hover:hover) and (pointer:fine){#vtIntro .vt-intro-skip:hover{border-color:#50e0c3;box-shadow:0 0 16px #50e0c366}}
