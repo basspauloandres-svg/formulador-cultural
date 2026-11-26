@@ -325,3 +325,13 @@ def test_historical_alternative_versions_preserved_in_generated_documents():
             assert value in xml
     pdf = generate_pdf(payload)
     assert pdf.startswith(b"%PDF")
+
+
+def test_export_status_does_not_certify_caller_supplied_eligibility():
+    from document_generator import normalized_payload
+    for forged in ("LISTO_PARA_PRESENTAR", "Proyecto listo para presentar",
+                   "ADAPTADO_A_CONVOCATORIA", {"approved": True}, None):
+        assert normalized_payload({"document_status": forged})["document_status"] == "Proyecto en revisión"
+    declared = normalized_payload({"document_status": "Proyecto maestro revisado"})["document_status"]
+    assert "según revisión declarada" in declared
+    assert "requiere cotejo de convocatoria" in declared
