@@ -79,7 +79,8 @@ async def catalogo():
     records = await registry()
     if records is None:
         raise HTTPException(503, "Catálogo DIVIPOLA no disponible; conserva tu proyecto.")
-    return {"dataset":DATASET,"source":SOURCE_PAGE,"cutoff":SOURCE_CUTOFF,
+    digest=sha256(json.dumps(records,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
+    return {"dataset":DATASET,"snapshot_sha256":digest,"source":SOURCE_PAGE,"cutoff":SOURCE_CUTOFF,
             "data_updated":SOURCE_DATA_UPDATED,"count":len(records),
             "territorios":[{"codigo":r["divipola"],"nombre":r["municipality"],
                            "departamento":r["department"],"tipo":r["territory_type"]} for r in records]}
@@ -170,7 +171,8 @@ async def generate_json(user_id,entrada):
         raw=safe_model_content(data["choices"][0]["message"],credential=key)
         if len(raw)>18000 or contains_directive(raw):
             raise ValueError("Invalid output")
-        usage=data.get("usage",{})
+        usage=data.get("usage")
+        if not isinstance(usage,dict): usage={}
         metrics={k:usage.get(k) if type(usage.get(k)) is int and 0<=usage[k]<=10_000_000 else None for k in ("prompt_tokens","completion_tokens")}
         return SalidaModelo.model_validate_json(raw),metrics
     except (httpx.HTTPError,ValueError,KeyError,IndexError,TypeError) as exc:
