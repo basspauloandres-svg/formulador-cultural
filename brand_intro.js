@@ -9,7 +9,7 @@
  if(!ctx)return;
  const W=1000,H=340;
  const dpr=Math.min(4,Math.max(1,Math.min(innerWidth*.92,1180)* (window.devicePixelRatio||1)/W));
- const TIMING=Object.freeze({solidStart:4.75,solidEnd:5.25,fadeStart:6.65,end:7.25});
+ const TIMING=Object.freeze({solidStart:4.75,solidEnd:5.25,fadeStart:7.65,end:8.25});
  canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.scale(canvas.width/W,canvas.height/H);
  const logo=document.createElement('canvas');logo.width=W;logo.height=H;
  const l=logo.getContext('2d',{willReadFrequently:true});if(!l)return;
@@ -204,6 +204,6 @@
   if(t>TIMING.fadeStart)intro.style.opacity=String(1-smooth((t-TIMING.fadeStart)/(TIMING.end-TIMING.fadeStart)));
   frame=requestAnimationFrame(render);
  }
- timer=setTimeout(finish,7550);
+ timer=setTimeout(finish,8550);
  frame=requestAnimationFrame(render);
 })();
