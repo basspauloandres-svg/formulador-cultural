@@ -17,7 +17,7 @@ import httpx
 from fastapi import Header, HTTPException
 from pydantic import BaseModel, Field, HttpUrl, ConfigDict
 
-from automatic_assistant import GuidedRequest, guide, GUIDANCE
+from automatic_assistant import GuidedRequest, guide, GUIDANCE, research_only_input
 from assistant_pilot import verified_user, reserve, groq_key, GROQ_ENDPOINT
 from model_usage import MODEL_BUDGET
 from prompt_boundary import BOUNDARY, contains_directive, safe_model_content
@@ -257,7 +257,7 @@ async def proponer_contexto(payload: Solicitud, authorization: str = Header(defa
                         "metrics":{"elapsed_ms":round((monotonic()-start)*1000),"model_calls":0}}
             # No private draft in the public search, and only safe explicit input in model data.
             # The source manifest contains only exactly the fragments sent to the model.
-            aporte=payload.aporte if not contains_directive(payload.aporte) and not has_private_contact(payload.aporte) else ""
+            aporte=payload.aporte if not research_only_input(payload.aporte) and not contains_directive(payload.aporte) and not has_private_contact(payload.aporte) else ""
             entrada=json.dumps({"territorio":identity,"consulta":question,"aporte_no_verificado":aporte,
                       "fuentes":[f.model_dump(mode="json") for f in sources.values()]},ensure_ascii=False)
             output,usage=await generate_json(user,entrada)
