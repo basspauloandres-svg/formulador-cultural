@@ -22,8 +22,9 @@
 body.guided-mode #nav{display:none!important}
 body.guided-mode #guidedJourney{display:block;margin-top:14px}
 </style>
+<link rel="stylesheet" href="workspace_preview.css?v=20261126-preview" />
 </head>
-<body class="guided-mode">
+<body class="guided-mode workspace-preview">
 <div class="wrap">
   <section class="hero app-brand"><div class="app-brand-lockup"><span class="app-brand-symbol" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M16 27V14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M15 16C9 16 5 12 5 6c6 0 10 4 10 10Z" fill="currentColor" opacity=".92"/><path d="M17 13c0-6 4-10 10-10 0 6-4 10-10 10Z" fill="currentColor"/></svg></span><h1>Formulador <span>Cultural</span></h1></div><div class="app-brand-meta"><p>Construye tu proyecto paso a paso.</p><p class="app-brand-note">La herramienta conserva como <strong>[POR VERIFICAR]</strong> lo que todavía necesita respaldo.</p></div><div class="progress" aria-label="Progreso"><span id="progressBar"></span></div></section>
   <section class="auth-card" id="authCard"><div><strong id="authTitle">Guardar y continuar después</strong><div class="auth-help" id="authHelp">Puedes trabajar en este navegador o iniciar sesión para guardar tu proyecto en la nube.</div></div><div class="auth-actions auth-stack" id="authSignedOut"><input id="email" type="email" inputmode="email" autocomplete="email" placeholder="correo@ejemplo.com" aria-label="Correo electrónico" /><input id="password" type="password" autocomplete="current-password" placeholder="Contraseña" aria-label="Contraseña" minlength="8" /><div class="auth-button-row"><button id="passwordLoginBtn" class="primary">Entrar con contraseña</button><button id="signupBtn">Crear cuenta</button></div><div class="auth-divider"><span>o</span></div><button id="loginBtn">Enviar enlace de acceso</button></div><div class="auth-actions hidden" id="authSignedIn"><span id="userLabel"></span><button id="syncBtn">Guardar proyecto en la nube</button><button id="setPasswordBtn">Definir o cambiar contraseña</button><button id="logoutBtn">Cerrar sesión</button></div></section>
