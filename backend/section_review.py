@@ -13,6 +13,9 @@ from source_research import ResearchRequest, research
 from automatic_assistant import municipality_key, TERRITORIAL_IDENTITIES
 from municipal_sources import municipal_passages
 from evidence_drafting import compose_section_draft
+from knowledge_assistant import KnowledgeRequest, route_knowledge, load_index
+from prompt_boundary import contains_directive
+from typing import Literal
 from territory_registry import resolve_territory, normalized as territory_normalized
 
 REVIEW_FIELDS = {
@@ -65,6 +68,7 @@ class SectionReviewRequest(BaseModel):
     include_web: bool = True
     public_topic: str = Field(default="", max_length=90)
     compose: bool = False
+    operation: Literal['research', 'edit'] = 'research'
 
 
 def split_claims(value: str) -> list[str]:
@@ -122,6 +126,42 @@ def classify_claim(statement: str) -> dict:
     }
 
 
+def edit_user_contribution(req: SectionReviewRequest, claims: list[dict]) -> dict:
+    """Conservative editorial operation; no web, territorial lookup or model."""
+    base = {"section": req.section, "field": req.field,
+            "territory_context": req.context, "operation": "edit",
+            "suggestion_origin": "USER_CONTRIBUTION_EDITORIAL",
+            "evidence_status": "INSUFFICIENT_EVIDENCE", "verified_claims": [],
+            "primary_passages": [], "candidate_sources": [], "evidence_used": [],
+            "requires_approval": True, "claims": claims, "errors": [],
+            "review_flags": [], "model_calls": 0, "external_queries": 0}
+    raw = req.text.strip()
+    if contains_directive(raw) or not raw or raw.endswith("?") or re.match(
+        r"^(?:investiga|busca|averigua|consulta|dime|no s[eé]|no conozco|desconozco)\b", raw, re.I):
+        return {**base, "suggestion": None, "draft_status": "REQUIRES_USER_CONTRIBUTION",
+                "note": "Escribe tu aporte o utiliza la investigación para resolver preguntas factuales."}
+    if req.section == "S03" and req.field in ("poblacion_participante", "poblacion_afectada"):
+        value = " ".join(raw.split()).rstrip(".")
+        # Only normalize a known nominal opening; do not alter internal names,
+        # quantities, negations or qualifications.
+        match = re.match(r"^(niños y niñas|niñas y niños|estudiantes|jóvenes|personas|familias)\b", value, re.I)
+        if match and not re.search(r"[!?;\n]|\b(?:pero|aunque|excepto|sin embargo)\b", value, re.I):
+            label = "participante" if req.field == "poblacion_participante" else "afectada"
+            articles = {"niños y niñas":"los niños y las niñas", "niñas y niños":"las niñas y los niños", "estudiantes":"los estudiantes", "jóvenes":"los jóvenes", "personas":"las personas", "familias":"las familias"}
+            body = articles[match.group(0).casefold()] + value[match.end():]
+            suggestion = f"Según el aporte del docente, la población {label} comprende {body}."
+        else:
+            suggestion = raw
+        guidance = route_knowledge(KnowledgeRequest(section=req.section, question=req.field.replace("_", " ")), load_index())
+    else:
+        # No semantic reformulation of an arbitrary assertion without a model.
+        suggestion = raw
+        guidance = {"route":"ABSTAIN","status":"INSUFFICIENT_EVIDENCE","passages":[]}
+    return {**base, "suggestion": suggestion, "draft_status": "EDITABLE_USER_CONTRIBUTION",
+            "methodological_guidance": guidance,
+            "note": "Aporte docente pendiente de verificación; no constituye evidencia documental."}
+
+
 async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
     mapping = REVIEW_FIELDS.get(req.section)
     if mapping is None or req.field not in mapping:
@@ -129,6 +169,8 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
     # Verificar autenticación antes de consultar servicios externos.
     user_id = await verified_user(authorization)
     claims = [classify_claim(s) for s in split_claims(req.text)]
+    if req.operation == 'edit':
+        return edit_user_contribution(req, claims)
     territorial_result = await resolve_territory(req.context)
     identity = territorial_result.get("identity")
     key = ((territory_normalized(identity["municipality"]),
