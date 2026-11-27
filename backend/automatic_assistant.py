@@ -97,6 +97,7 @@ class GuidedRequest(BaseModel):
     text: str = Field(default="", max_length=1800)
     context: str = Field(min_length=2, max_length=200)
     include_web: bool = True
+    public_topic: str = Field(default="", max_length=90)
     generate: bool = True
 
 
@@ -278,7 +279,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     # research() verifica sesión y consume únicamente la cuota de investigación.
     search_text = participant_text.strip() if len(participant_text.strip()) >= 10 else ("Información territorial de " + req.context)
     found = await research(ResearchRequest(section="S02", field=req.field,
-        text=search_text, context=req.context, include_web=req.include_web), bearer)
+        text=search_text, context=req.context, include_web=req.include_web, public_topic=req.public_topic), bearer)
     territorial_result = await resolve_territory(req.context)
     identity = territorial_result.get("identity")
     key = ((territory_normalized(identity["municipality"]),
@@ -330,7 +331,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         regional = await institutional_passages(key, topics, found['sources'])
         local_references = regional + local_references
     if req.include_web and key:
-        local_references = await economic_profile_passages(key, req.text) + local_references
+        local_references = await economic_profile_passages(key, req.public_topic or req.text) + local_references
     live_passages = [p for p in local_references
                     if p.get("passage_status") == "EXCERPT_FOUND_CLAIM_UNVERIFIED"
                     and p.get("sha256") and p.get("excerpt")]
