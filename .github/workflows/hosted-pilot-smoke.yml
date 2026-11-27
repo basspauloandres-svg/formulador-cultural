@@ -1,6 +1,6 @@
 name: Hosted VERTICE pilot smoke
 on:
-  push:
+  pull_request:
     branches: [control/2026-11-26-development-state]
     paths: [.github/workflows/hosted-pilot-smoke.yml]
   workflow_dispatch:
@@ -9,11 +9,11 @@ permissions:
 jobs:
   hosted:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: cd2646f555da4a87640a6815d9f6b85c196d96b2
+          ref: 2d72722110b19309decc853f632843a5abe83217
       - name: Verify deployed assets and anonymous isolation without model calls
         run: |
           python - <<'PY'
@@ -47,6 +47,7 @@ jobs:
           ai=json.loads(data)
           assert code==200
           print('HOSTED_AI_CONFIGURED',bool(ai.get('external_ai_available')),'MODEL_CALLS',0)
+          assert ai.get('external_ai_available') is True,'Hosted Groq configuration is not available'
           code,_,_=get('/assistant/knowledge',{'section':'S01','question':'Qué es un indicador'})
           assert code==401,'Anonymous assistant request not denied'
           for path in ['/projects','/openapi.json','/backend/main.py']:
@@ -54,3 +55,101 @@ jobs:
               assert code in (404,405),path
           print('HOSTED_PILOT_SMOKE_PASS')
           PY
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --no-package-lock --ignore-scripts @playwright/test@1.56.1
+          npx playwright install chromium
+      - name: Hosted browser formulation and real document download (synthetic partial draft)
+        run: |
+          node <<'JS'
+          const {chromium}=require('@playwright/test');
+          const assert=require('node:assert/strict'),fs=require('node:fs');
+          const origin='https://vertice-e01-staging.onrender.com';
+          const idea='Caso sintético QA: fortalecer procesos de formación musical de niños y jóvenes de Neira, Caldas, mediante práctica musical colectiva.';
+          (async()=>{
+            const browser=await chromium.launch();
+            try{
+              const page=await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce',acceptDownloads:true});
+              const blocked=[],errors=[],posts=[];
+              page.on('pageerror',e=>errors.push(e.message));
+              await page.route('**/*',r=>{
+                const u=new URL(r.request().url()),m=r.request().method();
+                if(u.origin===origin){
+                  if(m!=='GET'&&m!=='HEAD'){
+                    posts.push(u.pathname);
+                    if(!['/documents/pdf','/documents/docx','/vester/calculate','/territory/resolve'].includes(u.pathname)){blocked.push(u.pathname);return r.abort()}
+                  }
+                  return r.continue()
+                }
+                if(u.hostname==='cdn.jsdelivr.net'&&m==='GET')return r.continue();
+                blocked.push(u.hostname);return r.abort();
+              });
+              await page.goto(origin+'/',{waitUntil:'domcontentloaded',timeout:90000});
+              await page.locator('#vtWelcome').waitFor();
+              await page.locator('#vtIdea').fill(idea);
+              await page.locator('#vtStart').click();
+              const nav=code=>page.locator('#guidedJourney [data-code="'+code+'"]');
+              const field=id=>page.locator('#fields [data-field="'+id+'"]');
+              await field('idea_inicial_usuario').waitFor();
+              assert.equal(await field('idea_inicial_usuario').inputValue(),idea);
+              await field('nombre_del_proyecto').fill('QA SINTETICO — Talleres musicales Neira');
+              await field('municipio').fill('Neira');
+              await field('departamento').fill('Caldas');
+              await page.locator('#save').click();
+              await nav('S02').click();
+              await field('territorio_o_lugar_de_intervencion').fill('Neira, Caldas (caso sintético; caracterización pendiente)');
+              await page.locator('#save').click();
+              await nav('S03').click();
+              await field('poblacion_afectada').fill('Niños y jóvenes; cantidad pendiente de verificar');
+              await page.locator('#save').click();
+              await nav('S04').click();
+              await field('evidencia_disponible').fill('Sin evidencia primaria verificada. Ejercicio sintético.');
+              await page.locator('#save').click();
+              await nav('S05').click();
+              await field('situaciones_observables').fill('Hipótesis por contrastar: acceso irregular a práctica musical colectiva.');
+              await page.locator('#save').click();
+              for(let n=6;n<=16;n++){
+                const code='S'+String(n).padStart(2,'0');
+                await nav(code).click();
+                await page.waitForFunction(c=>document.querySelector('#counter')?.textContent.startsWith(c),code);
+              }
+              const payload=await page.evaluate(()=>window.fcProjectDocumentPayload());
+              assert.equal(payload.document_status,'Proyecto en revisión','Incomplete project incorrectly approved');
+              const before=await page.evaluate(()=>localStorage.getItem('formulador-cultural-prototipo-v1'));
+              fs.mkdirSync('test-results/hosted-pilot',{recursive:true});
+              for(const kind of ['pdf','docx']){
+                const response=page.waitForResponse(r=>r.url()===origin+'/documents/'+kind&&r.request().method()==='POST'&&r.status()!==429,{timeout:90000});
+                const download=page.waitForEvent('download',{timeout:90000});
+                await page.locator(kind==='pdf'?'#expPdf':'#expDocx').click();
+                const r=await response;assert.equal(r.status(),200);
+                const file=await download,bytes=fs.readFileSync(await file.path());
+                assert(bytes.length>2500);
+                assert.equal(bytes.subarray(0,kind==='pdf'?5:2).toString(),kind==='pdf'?'%PDF-':'PK');
+                const state=await page.evaluate(()=>window.fcGetDocumentGeneratorStatus());
+                assert.equal(state.mode,'python');assert.equal(state.connected,true);
+                await file.saveAs('test-results/hosted-pilot/Neira-sintetico.'+kind);
+                console.log('HOSTED_EXPORT_PASS',kind,bytes.length);
+              }
+              assert.equal(await page.evaluate(()=>localStorage.getItem('formulador-cultural-prototipo-v1')),before,'Export modified saved draft');
+              await page.reload({waitUntil:'domcontentloaded'});
+              if(await page.locator('#vtWelcome').isVisible())await page.locator('#vtResume').click();
+              await nav('S01').click();
+              assert.equal(await field('idea_inicial_usuario').inputValue(),idea);
+              assert.equal(await field('nombre_del_proyecto').inputValue(),'QA SINTETICO — Talleres musicales Neira');
+              await nav('S03').click();
+              assert.equal(await field('poblacion_afectada').inputValue(),'Niños y jóvenes; cantidad pendiente de verificar');
+              assert.deepEqual(errors,[]);assert.deepEqual(blocked,[]);
+              console.log('HOSTED_BROWSER_PASS',JSON.stringify({sectionsVisited:16,sectionsWithInput:5,exported:2,documentStatus:payload.document_status,posts,modelCalls:0}));
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hosted-pilot-synthetic-exports
+          path: test-results/hosted-pilot/
+          if-no-files-found: ignore
+          retention-days: 7
