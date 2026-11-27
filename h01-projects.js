@@ -30,6 +30,25 @@ if(!registry.some(p=>p.id===id)){
  rawSet(registryKey,JSON.stringify(registry));rawSet(activeKey,id);
 }
 const current=id;
+const sectionStateContent={
+ vester_preparation:['items'],vester_preparation_v2:['items'],
+ vester_state:['selected','relations'],causal_validation:['pairs'],
+ tree_state:['nodes'],objectives_state:['items'],
+ completion_state:['items'],results_state:['items'],schedule_state:['items'],
+ budget_state:['items','activityStatus'],risk_state:['items','assessments']
+};
+const hasContent=value=>{
+ if(value==null)return false;
+ if(typeof value==='string')return Boolean(value.trim());
+ if(typeof value==='object')return Object.values(value).some(hasContent);
+ return true;
+};
+const sectionCount=draft=>Object.entries(draft).filter(([code,fields])=>
+ /^S(?:0[1-9]|1[0-6])$/.test(code)&&Object.entries(fields||{}).some(([field,value])=>{
+  const contentKeys=sectionStateContent[field];
+  return contentKeys?contentKeys.some(key=>hasContent(value?.[key])):hasContent(value);
+ })
+).length;
 const currentUrl=new URL(location.href);
 if(currentUrl.searchParams.get('project')!==current){currentUrl.searchParams.set('project',current);history.replaceState(history.state,'',currentUrl)}
 const navigateTo=target=>{const url=new URL(location.href);url.searchParams.set('project',target);location.assign(url)};
@@ -38,7 +57,7 @@ const refreshMeta=()=>{
  const list=parse(rawGet(registryKey),[]),d=parse(rawGet(ns(current,draftKey)),{});
  const item=list.find(x=>x.id===current);if(!item)return;
  item.title=String(d.S01?.nombre_del_proyecto||'Proyecto sin nombre').trim()||'Proyecto sin nombre';
- item.updatedAt=new Date().toISOString();item.sections=Object.keys(d).filter(k=>/^S(?:0[1-9]|1[0-6])$/.test(k)&&Object.values(d[k]||{}).some(v=>typeof v==='string'?v.trim():v!=null)).length;
+ item.updatedAt=new Date().toISOString();item.sections=sectionCount(d);
  rawSet(registryKey,JSON.stringify(list));
 };
 proto.getItem=function(k){return get.call(this,this===storage&&managed(String(k))?ns(current,k):k)};
@@ -100,7 +119,9 @@ window.addEventListener('storage',event=>{
  }
 });
 
-window.fcLocalProjects=()=>parse(rawGet(registryKey),[]).map(p=>({...p}));
+window.fcLocalProjects=()=>parse(rawGet(registryKey),[]).map(p=>p.id===current
+ ?{...p,sections:sectionCount(parse(rawGet(ns(current,draftKey)),{}))}
+ :{...p});
 window.fcCreateLocalProject=create;
 window.fcSwitchLocalProject=switchTo;
 window.fcLocalProjectStorageKeys=keys;
