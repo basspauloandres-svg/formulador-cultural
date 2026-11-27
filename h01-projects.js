@@ -145,10 +145,11 @@ function territoryWarning(){
  box.dataset.signature=signature;box.hidden=false;box.replaceChildren();
  const message=document.createElement('p');message.textContent='Posible discrepancia territorial: municipio declarado '+city.value+'; otros lugares mencionados: '+conflicts.join(', ')+'. Revisa la idea, el nombre y el contexto. Puede tratarse de un proyecto intermunicipal. Los datos se conservan.';
  const accept=document.createElement('button');accept.type='button';accept.textContent='Conservar con justificación';
- const note=document.createElement('span');
+ const note=document.createElement('p');note.hidden=true;
  const previous=draft.S01?.h01_territory_decision;
- if(previous?.signature===signature)note.textContent=' Decisión registrada: '+previous.reason;
- accept.onclick=()=>{const reason=prompt('Justifica por qué deben conservarse los lugares indicados:');if(!reason?.trim())return;draft.S01.h01_territory_decision={signature,reason:reason.trim(),at:new Date().toISOString()};saveLocal();note.textContent=' Decisión registrada: '+reason.trim()};
+ const showDecision=reason=>{note.textContent='Decisión registrada: '+reason;note.hidden=false};
+ if(previous?.signature===signature)showDecision(previous.reason);
+ accept.onclick=()=>{const reason=prompt('Justifica por qué deben conservarse los lugares indicados:')?.trim();if(!reason)return;draft.S01.h01_territory_decision={signature,reason,at:new Date().toISOString()};saveLocal();showDecision(reason)};
  box.append(message,accept,note);
 }
 function mount(){
