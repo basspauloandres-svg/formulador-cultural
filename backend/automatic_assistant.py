@@ -328,7 +328,9 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         topics.add("PRACTICAS_MUSICALES")
     local_references = await municipal_passages(key, topics) if key and topics else []
     if req.include_web and key and req.field in {'caracteristicas_culturales', 'antecedentes'}:
-        regional = await institutional_passages(key, topics, found['sources'])
+        # Source discovery aliases are bound to verified administrative codes.
+        institutional_key = ("tumaco", "narino") if identity["divipola"] == "52835" else key
+        regional = await institutional_passages(institutional_key, topics, found['sources'])
         local_references = regional + local_references
     if req.include_web and key:
         local_references = await economic_profile_passages(key, req.public_topic or req.text) + local_references
