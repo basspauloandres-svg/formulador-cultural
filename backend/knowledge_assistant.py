@@ -13,6 +13,7 @@ import unicodedata
 from pydantic import BaseModel, Field
 from assistant_pilot import verified_user
 from knowledge_index import KnowledgeIndex
+from knowledge_topics import general_answer
 from prompt_boundary import contains_directive
 
 logger = logging.getLogger("vertice.knowledge")
@@ -47,6 +48,17 @@ RULES = [
 ]
 LOCAL = {alias: answer for aliases,answer in RULES for alias in aliases}
 
+# Editorial summaries checked against named public sources. These are not
+# retrieved passages, curator-approved corpus entries, or model generations.
+CONCEPTS = (
+    (("cultura","que es cultura","que es la cultura","definicion de cultura","concepto de cultura"),
+     "La cultura comprende las expresiones, formas de vida, valores, conocimientos y creencias que caracterizan a los grupos humanos. En un proyecto cultural conviene identificar qué prácticas existen, quiénes participan, cómo se transmiten y qué condiciones permiten su desarrollo. Las características de un municipio requieren investigación territorial específica.",
+     [{"title":"Ley 397 de 1997","publisher":"Congreso de Colombia","locator":"Artículo 1, numeral 1","url":"https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=337"},
+      {"title":"El Sector de la Cultura","publisher":"UNESCO","locator":"Referencia a la Declaración de México de 1982","url":"https://www.unesco.org/es/culture/about"}]),
+)
+CONCEPT_LOOKUP = {alias:(answer,refs) for aliases,answer,refs in CONCEPTS for alias in aliases}
+
+
 @lru_cache(maxsize=1)
 def load_index():
     # The manifest is an operator configuration, never a user-supplied path.
@@ -76,6 +88,16 @@ def route_knowledge(req,index):
     if key in LOCAL:
         return {**base,"route":"DETERMINISTIC_GUIDANCE","status":"OPERATIONAL_RULE",
                 "answer":LOCAL[key],"source":"Regla operativa VÉRTICE, no evidencia externa."}
+    if key in CONCEPT_LOOKUP:
+        answer,refs=CONCEPT_LOOKUP[key]
+        return {**base,"route":"REFERENCED_GUIDANCE","status":"EDITORIAL_SUMMARY_REVIEW_REQUIRED","answer":answer,"source":"Síntesis editorial con referencias identificadas; no equivale a recuperación documental en tiempo real.","references":refs}
+    general=general_answer(key)
+    if general:
+        answer,refs=general
+        return {**base,"route":"REFERENCED_GUIDANCE" if refs else "DETERMINISTIC_GUIDANCE",
+                "status":"EDITORIAL_SUMMARY_REVIEW_REQUIRED" if refs else "OPERATIONAL_RULE",
+                "answer":answer,"source":("Orientación editorial de VÉRTICE con referencias identificadas; no es recuperación en tiempo real." if refs else "Orientación operativa VÉRTICE, no evidencia externa."),
+                "references":refs}
     result=index.retrieve(req.question)
     if result["passages"]:
         # Curator identity is not necessary for the learner's consultation.
@@ -84,7 +106,7 @@ def route_knowledge(req,index):
                 "passages":passages,
                 "answer":"Fragmentos documentales pertinentes por coincidencia léxica. Comprueba su alcance y contexto en la fuente original."}
     return {**base,"route":"ABSTAIN","status":"INSUFFICIENT_EVIDENCE",
-            "answer":"No se encontró un pasaje aprobado suficientemente pertinente. Conserva la pregunta pendiente o consulta la fuente original. No se generará una respuesta factual sin respaldo."}
+            "answer":"No encontramos respaldo suficiente para responder esta consulta. Puedes precisar el concepto que quieres comprender, por ejemplo: cultura, indicador, matriz de Vester o cronograma. Si buscas datos de un municipio, utiliza la investigación del campo correspondiente. Tu proyecto puede continuar con esta consulta pendiente."}
 
 async def answer_knowledge(req,bearer):
     await verified_user(bearer)

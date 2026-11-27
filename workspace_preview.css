@@ -48,7 +48,7 @@ body.workspace-preview{
  padding:14px 16px;border-radius:10px;margin:14px 0 22px;color:#234539
 }
 .workspace-preview #vtKnowledge summary{cursor:pointer;font-weight:700;min-height:30px}
-.workspace-preview #vtKnowledge input{width:100%;min-height:44px;font:inherit;border:1px solid #a7bcb0;border-radius:8px;padding:10px;margin:8px 0}
+.workspace-preview #vtKnowledgeQuestion{width:100%;min-height:44px;font:inherit;border:1px solid #a7bcb0;border-radius:8px;padding:10px;margin:8px 0}
 .workspace-preview #vtKnowledge button{font:inherit;background:#21664d;color:white;border:0;border-radius:8px;min-height:44px;padding:10px 16px}
 .workspace-preview .didactic-card,.workspace-preview .completion-card,.workspace-preview .plan-card{
  box-shadow:none;border-radius:10px

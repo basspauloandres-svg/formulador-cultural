@@ -45,12 +45,22 @@ class ResearchRequest(BaseModel):
     text: str = Field(min_length=10, max_length=1800)
     context: str = Field(default="", max_length=200)
     include_web: bool = True
+    public_topic: str = Field(default="", max_length=90)
+
+
+def public_topic_words(value: str) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(re.findall(r"\b[a-z]{3,}\b", normalize_metadata_text(value))))
 
 
 def search_terms(request: ResearchRequest) -> str:
     # Datos mínimos: municipio, no el texto completo del proyecto.
     location = re.sub(r"[^\w\sáéíóúñÁÉÍÓÚÑ-]", " ", request.context).strip()
     location = " ".join(location.split()[:5])
+    if request.public_topic:
+        topic = " ".join(request.public_topic.split())
+        if not re.fullmatch(r"[A-Za-záéíóúüñÁÉÍÓÚÜÑ0-9 ,()/-]+", topic) or not public_topic_words(topic):
+            raise HTTPException(422, "Escribe solo palabras clave públicas del tema de búsqueda.")
+        return (location or "Colombia") + " " + topic
     if not location:
         raise HTTPException(422, "Registra primero el municipio en S01 para buscar fuentes territoriales.")
     topic = {
@@ -84,7 +94,7 @@ def municipality_from_context(context: str) -> str:
     return " ".join(re.findall(r"[a-z0-9]+", normalized))
 
 
-def filter_relevant(items: list[dict], field: str, context: str = "") -> tuple[list[dict], int]:
+def filter_relevant(items: list[dict], field: str, context: str = "", public_topic: str = "") -> tuple[list[dict], int]:
     """Filtro conservador de municipio + tema en metadatos.
 
     Una coincidencia temática sola nunca acredita pertinencia territorial.
@@ -92,11 +102,13 @@ def filter_relevant(items: list[dict], field: str, context: str = "") -> tuple[l
     la lista; es un falso negativo aceptable antes que simular evidencia local.
     """
     terms = CULTURAL_TERMS if field == "caracteristicas_culturales" else OTHER_TERMS[field]
+    keywords = set(public_topic_words(public_topic)) - {"del", "las", "los", "para", "con", "por", "una", "sobre"}
     municipality = municipality_from_context(context)
     selected = []
     for item in items:
         value = normalize_metadata_text(f"{item.get('title', '')} {item.get('summary', '')}")
-        topic_found = any(term in value for term in terms)
+        topic_found = (bool(keywords.intersection(public_topic_words(value))) if public_topic
+                       else any(term in value for term in terms))
         if not topic_found:
             continue
         if municipality:
@@ -198,7 +210,7 @@ async def research(req: ResearchRequest, authorization: str) -> dict:
             try:
                 response = await client.get(WIKIPEDIA_URL, params={
                     "action": "query", "list": "search", "format": "json",
-                    "srsearch": " ".join(query.split()[:2]), "srlimit": 4,
+                    "srsearch": query if req.public_topic else " ".join(query.split()[:2]), "srlimit": 4,
                 }, headers={"User-Agent": "VerticeAcademicResearch/0.1 (public research pilot)"})
                 response.raise_for_status()
                 findings += normalize_wikipedia(response.json())
@@ -213,7 +225,7 @@ async def research(req: ResearchRequest, authorization: str) -> dict:
                 findings += normalize_brave(response.json())
             except (httpx.HTTPError, ValueError, TypeError, KeyError):
                 errors.append("La búsqueda web ampliada no respondió.")
-    findings, excluded = filter_relevant(findings, req.field, req.context)
+    findings, excluded = filter_relevant(findings, req.field, req.context, req.public_topic)
     # No se envía el texto del proyecto a motores de búsqueda y nunca se genera una cita falsa.
     return {
         "section": "S02", "query": query,

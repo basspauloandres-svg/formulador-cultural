@@ -38,9 +38,9 @@ function mount(){
  const city=document.querySelector('#fields textarea[data-field="municipio"]');
  const dept=document.querySelector('#fields textarea[data-field="departamento"]');
  if(!city||!dept)return;
- let area=document.querySelector('#fields .vt-territory-check');
+ let area=document.querySelector('#fields #vtDivipolaStatus');
  if(!area){
-   area=document.createElement('div');area.className='vt-territory-check';area.hidden=true;
+   area=document.createElement('div');area.id='vtDivipolaStatus';area.className='vt-territory-check';area.hidden=true;
    area.setAttribute('role','status');
    city.closest('.field')?.appendChild(area);
  }
@@ -48,30 +48,34 @@ function mount(){
  city.dataset.divipolaBound='true';
  const schedule=()=>{
    clearTimeout(debounce);
+   const current=++serial;
    const input=city.value.trim();
    const department=dept.value.trim();
    const context=input+(department?', '+department:'');
    if(!input){area.hidden=true;lastContext='';latestResult=null;return}
    if(context===lastContext&&latestResult){renderResult(area,latestResult);return}
-   const current=++serial;
+   area.hidden=true;
+   const isCurrent=()=>current===serial&&city.isConnected&&active==='S01'&&
+     city.value.trim()===input&&dept.value.trim()===department;
    debounce=setTimeout(async()=>{
      try{
        const response=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},
          body:JSON.stringify({context})});
        if(!response.ok)throw Error('remote registry unavailable');
        const data=await response.json();
-       if(current!==serial||typeof active==='undefined'||active!=='S01'||
-          city.value.trim()!==input||dept.value.trim()!==department)return;
+       if(!isCurrent())return;
        lastContext=context;latestResult=data;
        renderResult(area,data);
      }catch{
-       if(current!==serial)return;
+       if(!isCurrent())return;
        renderResult(area,{status:'REGISTRY_UNAVAILABLE'});
      }
    },550);
  };
  city.addEventListener('change',schedule);
  dept.addEventListener('change',schedule);
+ city.addEventListener('input',schedule);
+ dept.addEventListener('input',schedule);
  city.addEventListener('blur',schedule);
  dept.addEventListener('blur',schedule);
  if(city.value.trim())schedule();

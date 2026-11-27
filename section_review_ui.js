@@ -34,6 +34,11 @@ function mount(){
    panel.dataset.reviewField=field.dataset.field;
    const button=node('button',active==='S02'?'Investigar y generar propuesta':'Investigar y preparar redacción');
    button.type='button';button.dataset.reviewAction='verify';
+   const edit=node('button','Mejorar redacción sin investigar');edit.type='button';edit.dataset.reviewAction='edit';
+   const topicLabel=node('label','Tema público de búsqueda (opcional, sin datos personales) ');
+   const topic=node('input');topic.type='text';topic.maxLength=90;
+   topic.placeholder='Ej. movilidad rural o infraestructura educativa';
+   topicLabel.appendChild(topic);
    const status=node('p','','vt-evidence-audit-status');status.setAttribute('role','status');
    const results=node('div','','vt-evidence-audit-results');results.hidden=true;
    const proposal=node('div','','vt-evidence-draft');proposal.hidden=true;
@@ -48,12 +53,12 @@ function mount(){
    const savedReview=node('p','','vt-evidence-detail');savedReview.hidden=true;
    const savedSources=node('details','','vt-saved-evidence');savedSources.hidden=true;
    let renderedManifest='';
-   panel.append(button,status,savedReview,savedSources,results,proposal);
+   panel.append(edit,topicLabel,button,status,savedReview,savedSources,results,proposal);
    host.appendChild(panel);
-   let seq=0,lastContext=territory(),sourceValue='',sourceContext='',sourceSection='',sourceDraft='',needsReview=false,pendingAudit=null;
+   let seq=0,lastContext=territory(),sourceValue='',sourceContext='',sourceSection='',sourceDraft='',needsReview=false,pendingAudit=null,sourceProject=null;
    function showSavedReview(){
-     const record=draft?.S02?.evidence_review_state?.fields?.[field.dataset.field];
-     if(active!=='S02'||!record){savedReview.hidden=true;savedSources.hidden=true;return;}
+     const record=draft?.[active]?.evidence_review_state?.fields?.[field.dataset.field];
+     if(!record){savedReview.hidden=true;savedSources.hidden=true;return;}
      savedReview.hidden=false;
      const message=record.context!==territory()?'Cotejo anterior de otro territorio. Investiga de nuevo.':record.accepted_text!==field.value?'Texto modificado después de la revisión. Requiere nuevo cotejo.':'Borrador incorporado el '+String(record.accepted_at||'').slice(0,10)+'; '+(record.status==='EDITED_UNREVIEWED'?'edición posterior a la auditoría.':'afirmaciones pendientes de cotejo.')+' Fuentes registradas: '+String(record.manifest?.length||0)+'.';
      if(savedReview.textContent!==message)savedReview.textContent=message;
@@ -86,28 +91,62 @@ function mount(){
      return true;
    }
    panel.vtReviewInvalidate=clearIfChanged;
+   edit.onclick=async()=>{
+     clearIfChanged();
+     const input=field.value.trim(),context=territory(),section=active,fieldId=field.dataset.field,projectId=window.fcLocalProjectId?.(),request=++seq;
+     if(!input){status.textContent='Escribe primero tu aporte.';return;}
+     proposal.hidden=true;pendingAudit=null;results.replaceChildren();results.hidden=true;
+     edit.disabled=true;button.disabled=true;status.textContent='Preparando redacción desde tu aporte…';
+     const current=()=>request===seq&&field.isConnected&&active===section&&field.value.trim()===input&&territory()===context&&window.fcLocalProjectId?.()===projectId;
+     try{
+       const session=(await sb.auth.getSession())?.data?.session;
+       if(!session?.access_token){if(current())status.textContent='Inicia sesión para preparar la redacción.';return;}
+       const response=await fetch(API+'/assistant/section/review',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({section,field:fieldId,text:input,context,operation:'edit',compose:true,include_web:false})});
+       const data=await response.json();
+       if(!current())return;
+       if((await sb.auth.getSession())?.data?.session?.user?.id!==session.user?.id||!current())return;
+       if(!response.ok||data.section!==section||data.field!==fieldId||data.operation!=='edit'){status.textContent='No se pudo preparar la redacción. Tu aporte permanece intacto.';return;}
+       if(!data.suggestion){status.textContent=data.note||'Escribe un aporte concreto para redactar.';return;}
+       sourceValue=field.value;sourceContext=context;sourceSection=section;sourceProject=projectId;sourceDraft=data.suggestion;needsReview=true;
+       pendingAudit={context,origin:'USER_CONTRIBUTION_EDITORIAL',manifest:[],claim_audit:data.claims||[],methodological_guidance:data.methodological_guidance||null,reviewed_text:sourceDraft,original_input:input};
+       results.appendChild(node('p','Procedencia: aporte del docente. Verificación documental pendiente.','vt-evidence-detail'));
+       const g=data.methodological_guidance;
+       if(g?.answer){results.appendChild(node('p',g.answer,'vt-evidence-detail'));if(g.source)results.appendChild(node('p',g.source,'vt-evidence-detail'));for(const ref of (g.references||[])){if(typeof ref.url==='string'&&ref.url.startsWith('https://')){const a=node('a',String(ref.title||'Referencia metodológica')+' · '+String(ref.locator||''));a.href=ref.url;a.target='_blank';a.rel='noopener noreferrer';results.appendChild(a);}}}
+       results.hidden=false;proposalText.value=sourceDraft;proposal.hidden=false;status.textContent=sourceDraft===input?'Se conserva tu aporte; puedes editarlo antes de incorporarlo.':'Redacción preparada desde tu aporte. Revisa y confirma.';
+     }catch{if(current())status.textContent='No se pudo preparar la redacción. Tu aporte permanece intacto.';}
+     finally{edit.disabled=false;button.disabled=false;}
+   };
    button.onclick=async()=>{
      clearIfChanged();
-     const context=territory(),input=field.value.trim(),request=++seq,requestedSection=active;
+     const context=territory(),input=field.value.trim(),publicTopic=topic.value.trim(),request=++seq,requestedSection=active;
      results.hidden=true;results.replaceChildren();proposal.hidden=true;
      if(!context){status.textContent='Completa el municipio en S01 para contextualizar la revisión.';return}
      if(!input&&active!=='S02'){status.textContent='Escribe una observación o afirmación en este campo para contrastarla.';return}
-     button.disabled=true;status.textContent='Contrastando afirmaciones y preparando un borrador editable...';
+     button.disabled=true;topic.disabled=true;status.textContent='Contrastando afirmaciones y preparando un borrador editable...';
+     const projectId=window.fcLocalProjectId?.(),fieldId=field.dataset.field;
+     const requestId=window.fcH01BeginReview?.(requestedSection,fieldId);
+     let ownerId=null;
      try{
        const sessionResult=await sb.auth.getSession();
        const token=sessionResult?.data?.session?.access_token;
+       ownerId=sessionResult?.data?.session?.user?.id||null;
        if(!token){status.textContent='Inicia sesión para revisar fuentes.';return}
        const isS02=requestedSection==='S02';
        const response=await fetch(API+(isS02?'/assistant/s02/guide':'/assistant/section/review'),{
          method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-         body:JSON.stringify({section:requestedSection,field:field.dataset.field,text:input,context,include_web:true,compose:true,generate:true})
+         body:JSON.stringify({section:requestedSection,field:field.dataset.field,text:input,context,public_topic:publicTopic,include_web:true,compose:true,generate:true})
        });
        const data=await response.json();
-       if(request!==seq||active!==requestedSection||!field.isConnected||field.value.trim()!==input||territory()!==context)return;
        if(!response.ok){status.textContent=String(data.detail||'No se pudo completar la revisión.').slice(0,220);return}
        if(data.section!==requestedSection||(isS02&&(data.territory_context!==context||data.field!==field.dataset.field))){status.textContent='La respuesta no corresponde al campo o territorio solicitado. Repite la consulta.';return;}
+       if(requestId&&ownerId&&projectId&&window.fcLocalProjectId?.()===projectId){
+         const currentOwner=(await sb.auth.getSession())?.data?.session?.user?.id;
+         if(currentOwner!==ownerId)return;
+         window.fcH01StoreReview?.({projectId,ownerId,section:requestedSection,field:fieldId,requestId,input,context,data,receivedAt:new Date().toISOString()});
+       }
+       if(request!==seq||active!==requestedSection||!field.isConnected||field.value.trim()!==input||territory()!==context||window.fcLocalProjectId?.()!==projectId)return;
        const claims=Array.isArray(data.claims)?data.claims:[];
-       results.appendChild(node('strong','Afirmaciones detectadas · evaluación preliminar'));
+       if(claims.length||!isS02)results.appendChild(node('strong','Afirmaciones detectadas · evaluación preliminar'));
        if(!claims.length&&!isS02)results.appendChild(node('p','No se identificaron oraciones completas; amplía la descripción.'));
        const list=node('ul');
        claims.slice(0,10).forEach(claim=>{
@@ -125,7 +164,7 @@ function mount(){
          results.appendChild(node('strong','Referencias institucionales localizadas'));
          primary.slice(0,4).forEach(source=>{
            const wrapper=node('div','','vt-evidence-passages');
-           const a=node('a',String(source.title||'Fuente institucional')+' · '+String(source.locator||''));
+           const a=node('a',String(source.title||'Fuente institucional')+' · '+String(source.locator||'')+(source.publication_date?' · '+source.publication_date:source.year?' · '+source.year:''));
            if(typeof source.url==='string'&&source.url.startsWith('https://')){
              a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';
              wrapper.appendChild(a);
@@ -189,15 +228,23 @@ function mount(){
        });
        details.appendChild(links);
        if(candidates.length)results.appendChild(details);
-       else if(!primary.length&&!manifest.length)results.appendChild(node('p','No se localizaron fuentes institucionales pertinentes en esta consulta. La afirmación continúa sin respaldo documental.','vt-evidence-detail'));
-       results.appendChild(node('p','Los pasajes institucionales identifican fragmentos consultables, pero su coincidencia temática no equivale a corroboración. Las afirmaciones y las observaciones siguen diferenciadas.','vt-evidence-detail'));
+       else if(!primary.length&&!manifest.length)results.appendChild(node('p','No se recuperaron pasajes institucionales pertinentes. Las decisiones del proyecto pueden continuar; los datos externos siguen pendientes de verificación.','vt-evidence-detail'));
+       if(data.web_extended_enabled===false)results.appendChild(node('p','La búsqueda web ampliada no está configurada en este entorno. La consulta usa las fuentes públicas disponibles.','vt-evidence-detail'));
+       if(Array.isArray(data.errors))data.errors.forEach(message=>results.appendChild(node('p',String(message),'vt-evidence-detail')));
+       if(primary.length||manifest.length)results.appendChild(node('p','La coincidencia temática de un pasaje requiere cotejo antes de usarlo como respaldo de una afirmación.','vt-evidence-detail'));
        results.hidden=false;
-       const suggestion=!data.blocked_for_evidence&&typeof data.suggestion==='string'?data.suggestion.trim():'';
+       if(isS02&&Array.isArray(data.guidance)&&data.guidance.length){
+          const guidance=node('details');guidance.open=!!data.blocked_for_evidence;
+          guidance.appendChild(node('summary','Cómo continuar la formulación'));
+          data.guidance.forEach(item=>guidance.appendChild(node('p',String(item),'vt-evidence-detail')));
+          results.appendChild(guidance);
+        }
+        const suggestion=!data.blocked_for_evidence&&typeof data.suggestion==='string'?data.suggestion.trim():'';
        if(suggestion){
          pendingAudit=isS02?{context,divipola:data.territory?.divipola||null,
            origin:data.suggestion_origin||'UNKNOWN',manifest,claim_audit:audited,semantic_support_status:data.semantic_support_status||'NOT_ASSESSED',
            reviewed_text:suggestion}:null;
-         sourceValue=field.value;sourceContext=context;sourceSection=requestedSection;sourceDraft=suggestion;needsReview=isS02;
+         sourceValue=field.value;sourceContext=context;sourceSection=requestedSection;sourceProject=projectId;sourceDraft=suggestion;needsReview=isS02;
          proposalText.value=suggestion;
          proposal.hidden=false;
          status.textContent=data.suggestion_origin==='DETERMINISTIC_REGISTRY_FACT'?'Propuesta construida directamente a partir del registro administrativo; no corresponde a una redacción del modelo. Revisa su alcance antes de incorporar.':data.suggestion_origin==='USER_TEXT_FALLBACK'?'Se conserva el aporte original porque el modelo añadió contenido sin respaldo.':'Redacción preparada. Verifica los datos y aprueba para incorporarla al campo y guardarla.';
@@ -210,11 +257,30 @@ function mount(){
          status.textContent=data.blocked_for_evidence?'Evidencia insuficiente para formular una propuesta sustentada. Revisa las fuentes disponibles.':'La consulta no produjo un borrador utilizable. El campo permanece intacto.';
        }
      }catch{status.textContent='La consulta no respondió. El texto original sigue intacto.'}
-     finally{button.disabled=false}
+     finally{if(requestId)window.fcH01EndReview?.(requestId);button.disabled=false;topic.disabled=false}
    };
+   if(window.fcH01GetReview){
+     const restore=node('button','Recuperar consulta pendiente');restore.type='button';restore.dataset.reviewAction='restore';
+     panel.insertBefore(restore,status);
+     restore.onclick=async()=>{
+       const entry=window.fcH01GetReview?.(active,field.dataset.field);
+       const owner=(await sb?.auth?.getSession())?.data?.session?.user?.id;
+       if(!entry||!owner||entry.ownerId!==owner||entry.projectId!==window.fcLocalProjectId?.()){status.textContent='No hay consulta pendiente disponible para esta cuenta y proyecto.';return}
+       if(!field.isConnected||entry.section!==active||entry.input!==field.value.trim()||entry.context!==territory()){status.textContent='La consulta corresponde a una versión anterior del campo o territorio; requiere una nueva revisión.';return}
+       const d=entry.data,suggestion=!d.blocked_for_evidence&&typeof d.suggestion==='string'?d.suggestion.trim():'';
+       if(!suggestion){status.textContent='La consulta recuperada no contiene una propuesta utilizable.';return}
+       sourceValue=field.value;sourceContext=entry.context;sourceSection=entry.section;sourceProject=entry.projectId;sourceDraft=suggestion;needsReview=entry.section==='S02';
+       pendingAudit=needsReview?{context:entry.context,divipola:d.territory?.divipola||null,origin:d.suggestion_origin||'UNKNOWN',manifest:d.evidence_manifest||[],claim_audit:d.claim_audit||[],semantic_support_status:d.semantic_support_status||'NOT_ASSESSED',reviewed_text:suggestion}:null;
+       proposalText.value=suggestion;proposal.hidden=false;
+       results.replaceChildren(node('p','Consulta recuperada del proyecto de origen. Las afirmaciones requieren cotejo.','vt-evidence-detail'));
+       for(const item of (d.claim_audit||[])){results.appendChild(node('p',String(item.fragment||'')+' · '+String(item.status||'INSUFFICIENT_EVIDENCE'),'vt-evidence-detail'))}
+       for(const item of (d.evidence_manifest||[])){const div=node('div','','vt-evidence-passages');div.appendChild(node('p',String(item.prompt_excerpt||''),'vt-evidence-detail'));if(typeof item.url==='string'&&item.url.startsWith('https://')){const a=node('a','Consultar fuente original');a.href=item.url;a.target='_blank';a.rel='noopener noreferrer';div.appendChild(a)}results.appendChild(div)}
+       results.hidden=false;status.textContent='Respuesta recuperada. Pendiente de revisión y aprobación.';
+     };
+   }
    approve.onclick=()=>{
      if(clearIfChanged())return;
-     if(proposal.hidden||!field.isConnected||active!==sourceSection||territory()!==sourceContext||field.value!==sourceValue ){
+     if(proposal.hidden||!field.isConnected||active!==sourceSection||territory()!==sourceContext||field.value!==sourceValue||window.fcLocalProjectId?.()!==sourceProject ){
        status.textContent='Cambió el campo o el municipio. Repite la investigación antes de incorporar la redacción.';return;
      }
      const edited=proposalText.value.trim();
@@ -222,20 +288,22 @@ function mount(){
      if(needsReview&&!window.confirm(edited!==sourceDraft?'Editaste la propuesta después de la auditoría. Las nuevas afirmaciones no se han evaluado. ¿Incorporar como borrador pendiente de cotejo?':'La propuesta contiene afirmaciones pendientes de cotejo. ¿Incorporar como borrador sin declarar los hechos verificados?'))return;
      if(needsReview&&pendingAudit){
        const acceptedAt=new Date().toISOString();
-       draft.S02=draft.S02||{};
-       const previous=draft.S02.evidence_review_state||{};
-       draft.S02.evidence_review_state={updatedAt:acceptedAt,fields:{...previous.fields,
+       draft[sourceSection]=draft[sourceSection]||{};
+       const previous=draft[sourceSection].evidence_review_state||{};
+       draft[sourceSection].evidence_review_state={updatedAt:acceptedAt,fields:{...previous.fields,
          [field.dataset.field]:{...pendingAudit,accepted_text:edited,accepted_at:acceptedAt,
            status:edited===sourceDraft?'ACCEPTED_UNVERIFIED':'EDITED_UNREVIEWED'}}};
      }
      field.value=edited;
      field.dispatchEvent(new Event('input',{bubbles:true}));
      field.dispatchEvent(new Event('change',{bubbles:true}));
+     window.fcH01ClearReview?.(sourceSection,field.dataset.field);
      proposal.hidden=true;
      status.textContent='Redacción incorporada al campo. Se solicitó guardar el proyecto.';
      const save=document.getElementById('save');if(save)save.click();
    };
    discard.onclick=()=>{
+     window.fcH01ClearReview?.(active,field.dataset.field);
      proposal.hidden=true;pendingAudit=null;
      status.textContent='Propuesta descartada. El texto original continúa intacto.';
    };
@@ -259,44 +327,75 @@ const question=document.getElementById('vtKnowledgeQuestion'),ask=document.getEl
 const API='https://formulador-cultural-api.onrender.com';
 let seq=0,activeRequest=null,retryUntil=0,retryTimer=null;
 const askLabel=ask.textContent;
-function updateAsk(){const remaining=Math.max(0,Math.ceil((retryUntil-Date.now())/1000));ask.disabled=!!activeRequest||remaining>0;ask.textContent=remaining>0?'Consultar en '+remaining+' s':askLabel;clearTimeout(retryTimer);if(remaining>0)retryTimer=setTimeout(updateAsk,Math.min(1000,Math.max(1,retryUntil-Date.now())));}
+const web=document.createElement('button');web.type='button';web.textContent='Buscar fuentes web';
+const nationalLabel=document.createElement('label');
+const national=document.createElement('input');national.type='checkbox';
+nationalLabel.append(national,' Búsqueda nacional');
+ask.after(web,nationalLabel);
+function updateAsk(){const remaining=Math.max(0,Math.ceil((retryUntil-Date.now())/1000));ask.disabled=web.disabled=!!activeRequest||remaining>0;ask.textContent=remaining>0?'Consultar en '+remaining+' s':askLabel;clearTimeout(retryTimer);if(remaining>0)retryTimer=setTimeout(updateAsk,Math.min(1000,Math.max(1,retryUntil-Date.now())));}
 function setRetry(response){const raw=response.headers.get('Retry-After')||'';const seconds=/^[0-9]{1,6}$/.test(raw)?Math.max(5,Math.min(300,Number(raw))):10;retryUntil=Date.now()+seconds*1000;updateAsk();return seconds;}
 function section(){return String(document.getElementById('counter')?.textContent||'').match(/S(?:0[1-9]|1[0-6])/)?.[0]||null;}
 function add(tag,value,parent=out){const el=document.createElement(tag);el.textContent=String(value||'');parent.appendChild(el);return el;}
 function clear(){seq++;activeRequest?.abort();activeRequest=null;out.replaceChildren();updateAsk();}
 question.addEventListener('input',clear);
+national.addEventListener('change',clear);
 root.addEventListener('toggle',()=>{if(!root.open)clear()});
-ask.addEventListener('click',async()=>{
+async function consult(webSearch){
  if(activeRequest||Date.now()<retryUntil)return;
  const value=question.value.trim(),current=section(),id=++seq;
  activeRequest?.abort();activeRequest=null;
  out.replaceChildren();
- if(value.length<2){add('p','Escribe una pregunta metodológica.');return}
+ if(value.length<2){add('p',webSearch?'Escribe palabras clave públicas del tema.':'Escribe una pregunta metodológica.');return}
+ if(webSearch&&value.length>90){add('p','Reduce el tema público a 90 caracteres.');return}
  if(!current){add('p','Abre una sección de formulación.');return}
  ask.disabled=true;add('p','Consultando orientación y documentos…');
- const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),20000);
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),webSearch?55000:20000);
  activeRequest=controller;
+ updateAsk();
  const stale=()=>id!==seq||question.value.trim()!==value||section()!==current||!root.open;
  try{
   const token=(await sb?.auth?.getSession())?.data?.session?.access_token;
   if(stale())return;
   if(!token){out.replaceChildren();add('p','Inicia sesión para consultar la biblioteca metodológica. Puedes seguir usando las ayudas locales.');return}
-  const response=await fetch(API+'/assistant/knowledge',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({section:current,question:value})});
+  const identification=typeof draft==='undefined'?{}:(draft.S01||{});
+  const context=national.checked?'':(identification.municipio||'').trim();
+  const territory=context&&identification.departamento?.trim()?context+', '+identification.departamento.trim():context;
+  const payload=webSearch?{section:'S02',field:'antecedentes',text:'Consulta de fuentes públicas',context:territory,public_topic:value,include_web:true}:{section:current,question:value};
+  const response=await fetch(API+(webSearch?'/assistant/s02/research':'/assistant/knowledge'),{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)});
   if(stale())return;
-  if(!response.ok){out.replaceChildren();if(response.status===429){const seconds=setRetry(response);add('p','Capacidad temporalmente ocupada. Conserva tu trabajo y vuelve a consultar después de '+seconds+' segundos. No se realizará un reintento automático.');}else if(response.status===401){add('p','No se pudo validar tu sesión. Inicia sesión nuevamente si es necesario; conserva tu borrador.');}else{add('p','Consulta documental no disponible. Utiliza la orientación local.');}return}
+  if(!response.ok){out.replaceChildren();if(response.status===429){const seconds=setRetry(response);add('p','Capacidad temporalmente ocupada. Conserva tu trabajo y vuelve a consultar después de '+seconds+' segundos. No se realizará un reintento automático.');}else if(response.status===401){add('p','No se pudo validar tu sesión. Inicia sesión nuevamente si es necesario; conserva tu borrador.');}else if(webSearch&&response.status===422){add('p','Usa palabras clave públicas, sin enlaces ni datos personales.');}else{add('p','Consulta documental no disponible. Utiliza la orientación local.');}return}
   const data=await response.json();if(stale())return;
-  if(data.section!==current||!['DETERMINISTIC_GUIDANCE','DOCUMENT_RETRIEVAL','ABSTAIN'].includes(data.route)||data.generation_used!==false){out.replaceChildren();add('p','La respuesta no corresponde a una consulta documental válida. Repite la consulta.');return;}
+  if(webSearch){
+   out.replaceChildren();
+   const sources=Array.isArray(data.sources)?data.sources.slice(0,6):[];
+   add('strong',sources.length?'Fuentes candidatas · requieren cotejo':'No se encontraron fuentes candidatas');
+   add('p','Consulta: '+String(data.query||''));
+   if(data.web_extended_enabled===false)add('p','Búsqueda web ampliada sin configurar. Se consultaron los servicios públicos disponibles.');
+   for(const message of (Array.isArray(data.errors)?data.errors:[]))add('p',message);
+   for(const source of sources){
+    const card=add('article','');add('strong',source.title,card);add('p',source.publisher,card);
+    try{const url=new URL(source.url);if(url.protocol==='https:'&&!url.username&&!url.password){const a=add('a','Abrir fuente candidata',card);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer'}}catch{}
+   }
+   return;
+  }
+  if(data.section!==current||!['DETERMINISTIC_GUIDANCE','REFERENCED_GUIDANCE','DOCUMENT_RETRIEVAL','ABSTAIN'].includes(data.route)||data.generation_used!==false){out.replaceChildren();add('p','La respuesta no corresponde a una consulta documental válida. Repite la consulta.');return;}
   out.replaceChildren();
-  add('strong',data.route==='DETERMINISTIC_GUIDANCE'?'Orientación operativa':data.route==='DOCUMENT_RETRIEVAL'?'Documentos recuperados · cotejo pendiente':'Evidencia insuficiente');
+  add('strong',data.route==='DETERMINISTIC_GUIDANCE'?'Orientación operativa':data.route==='REFERENCED_GUIDANCE'?'Orientación conceptual con referencias':data.route==='DOCUMENT_RETRIEVAL'?'Documentos recuperados · cotejo pendiente':'Evidencia insuficiente');
   add('p',data.answer);
   if(data.source)add('small',data.source);
+  for(const ref of (Array.isArray(data.references)?data.references.slice(0,5):[])){
+   const card=add('article','');add('strong',ref.title,card);add('p',ref.publisher+' · '+ref.locator,card);
+   try{const url=new URL(ref.url);if(url.protocol==='https:'&&!url.username&&!url.password){const a=add('a','Consultar referencia',card);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer'}}catch{}
+  }
   for(const p of (Array.isArray(data.passages)?data.passages.slice(0,5):[])){
    const card=add('article','');add('strong',p.title,card);add('p',p.publisher+' · '+p.edition+' · '+p.locator,card);add('p',p.excerpt,card);
    try{const url=new URL(p.url);if(url.protocol==='https:'&&!url.username&&!url.password){const a=add('a','Consultar documento original',card);a.href=url.href;a.target='_blank';a.rel='noopener noreferrer'}}catch{}
    add('small','Fragmento SHA-256: '+String(p.excerpt_sha256||''),card);
   }
  }catch{if(!stale()){out.replaceChildren();add('p','Consulta documental no disponible. Utiliza la orientación local.')}}finally{clearTimeout(timeout);if(id===seq){activeRequest=null;updateAsk()}}
-});
+}
+ask.addEventListener('click',()=>consult(false));
+web.addEventListener('click',()=>consult(true));
 const counter=document.getElementById('counter');
 let lastSection=section();
 if(counter)new MutationObserver(()=>{const current=section();if(current===lastSection)return;lastSection=current;clear();question.value='';root.open=false}).observe(counter,{childList:true,characterData:true,subtree:true});

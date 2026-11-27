@@ -31,7 +31,8 @@ def isolated_national_divipola():
         }}
     with patch.object(guided,"resolve_territory",new=fake_resolve), \
          patch.object(guided,"cultural_registry",new=AsyncMock(return_value={"status":"NO_RECORDS_RETURNED","records":[]})), \
-         patch.object(guided,"municipal_passages",new=AsyncMock(return_value=[])):
+         patch.object(guided,"municipal_passages",new=AsyncMock(return_value=[])), \
+         patch.object(guided,"institutional_passages",new=AsyncMock(return_value=[])):
         yield
 
 
@@ -260,3 +261,42 @@ def test_unhashed_document_does_not_reach_model_for_empty_field():
     model.assert_not_called()
     assert result["blocked_for_evidence"]
     assert not result["evidence_manifest"]
+
+
+@pytest.mark.parametrize("text",[
+    "no conozco las dinamicas sociales investiga",
+    "No conozco las dinámicas sociales, investiga.",
+    "Investiga las dinámicas sociales",
+    "Busca información sobre el municipio",
+    "No sé",
+])
+def test_research_request_without_sources_never_invokes_model(text):
+    req=guided.GuidedRequest(field="principales_dinamicas_sociales", context="Neira, Caldas",text=text)
+    with patch.object(guided,"research",new=AsyncMock(return_value=research_result())), \
+         patch.object(guided,"fetch_document",new=AsyncMock(return_value=None)), \
+         patch.object(guided,"assist",new=AsyncMock()) as model:
+        result=asyncio.run(guided.guide(req,"Bearer synthetic"))
+    model.assert_not_called()
+    assert result["input_role"]=="RESEARCH_REQUEST"
+    assert result["blocked_for_evidence"] and result["suggestion"] is None
+    assert result["guidance"]
+
+
+def test_explicit_research_with_source_rejects_uncited_invention():
+    req=guided.GuidedRequest(field="caracteristicas_culturales",context="Neira, Caldas",text="Investiga las características culturales")
+    doc={**guided.INSTITUTIONAL_DOCUMENTS[("neira","caldas")][0],
+         "document_sha256":"a"*64,"passages":[{"page":31,"excerpt":"Neira cuenta con una banda estudiantil."}]}
+    generated={"suggestion":"Neira cuenta con una banda estudiantil [F1, p.31]. Se plantea como hipótesis que los jóvenes migran.","review_flags":[]}
+    with patch.object(guided,"research",new=AsyncMock(return_value=research_result())), \
+         patch.object(guided,"fetch_document",new=AsyncMock(return_value=doc)), \
+         patch.object(guided,"assist",new=AsyncMock(return_value=generated)) as model:
+        result=asyncio.run(guided.guide(req,"Bearer synthetic"))
+    assert model.await_args.args[0].text==""
+    assert result["blocked_for_evidence"] and result["suggestion"] is None
+    assert any(flag["type"]=="RESEARCH_UNSUPPORTED_ADDITION" for flag in result["review_flags"])
+
+
+def test_research_classifier_preserves_participant_statements():
+    assert not guided.research_only_input("El proyecto propone talleres musicales para niños de Neira.")
+    assert not guided.research_only_input("En la escuela observamos poca asistencia a ensayos.")
+    assert not guided.research_only_input("No conozco la cobertura rural. La escuela realiza talleres los sábados.")

@@ -1,0 +1,21 @@
+name: VWE live pilot
+on:
+  pull_request:
+    branches: [staging/2026-11-26-editorial-review]
+    paths: ['backend/institutional_sources.py', 'backend/test_vwe_pilot.py', '.github/workflows/vwe-pilot.yml']
+permissions:
+  contents: read
+jobs:
+  retrieval:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r backend/requirements.txt pytest
+      - run: cd backend && pytest -q test_vwe_pilot.py
+      - run: python backend/test_vwe_pilot.py

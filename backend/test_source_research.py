@@ -22,6 +22,29 @@ def test_search_does_not_leak_user_text():
     assert "agrupaciones" not in terms
 
 
+def test_open_topic_works_at_municipal_and_national_scopes():
+    local = request("Tumaco, Nariño").model_copy(update={"public_topic": "movilidad fluvial"})
+    national = local.model_copy(update={"context": ""})
+    assert research.search_terms(local) == "Tumaco Nariño movilidad fluvial"
+    assert research.search_terms(national) == "Colombia movilidad fluvial"
+    candidates = [
+        {"title": "Movilidad fluvial de Tumaco", "evidence_status": "INSUFFICIENT_EVIDENCE"},
+        {"title": "Prácticas culturales en Tumaco", "evidence_status": "INSUFFICIENT_EVIDENCE"},
+        {"title": "Movilidad fluvial en Guapi", "evidence_status": "INSUFFICIENT_EVIDENCE"},
+    ]
+    found, _ = research.filter_relevant(candidates, local.field, local.context, local.public_topic)
+    assert found == [{**candidates[0], "relevance_status": "MUNICIPAL_THEMATIC_CANDIDATE",
+                      "territorial_scope_status": "MUNICIPALITY_MENTIONED_IN_METADATA"}]
+    national_found, _ = research.filter_relevant(candidates, national.field, national.context, national.public_topic)
+    assert [item["title"] for item in national_found] == [candidates[0]["title"], candidates[2]["title"]]
+
+
+def test_open_topic_rejects_contact_or_url_syntax():
+    with pytest.raises(HTTPException) as err:
+        research.search_terms(request().model_copy(update={"public_topic": "persona@example.org"}))
+    assert err.value.status_code == 422
+
+
 def test_missing_location_fails_closed():
     with pytest.raises(HTTPException) as err:
         research.search_terms(request(context=""))

@@ -1,0 +1,314 @@
+name: Editorial staging isolation
+on:
+  pull_request:
+    branches: [design/2026-11-26-editorial-integrated, staging/2026-11-26-editorial-review]
+    paths: ['backend/**', '*.js', '*.css', 'index.html', 'e2e/**', '.github/workflows/editorial-staging.yml']
+permissions:
+  contents: read
+jobs:
+  isolation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r backend/requirements.txt
+      - name: Backend regression without model calls
+        run: |
+          pip install pytest
+          cd backend && pytest -q
+      - name: Check isolated preview and deny unlisted paths
+        env:
+          PYTHONPATH: backend
+        run: |
+          python - <<'PY'
+          from fastapi.testclient import TestClient
+          from staging_preview import app, ASSETS
+          c = TestClient(app)
+          health = c.get('/health').json()
+          assert health['status'] == 'ok' and not health['cloud'] and not health['generative_ai']
+          root = c.get('/')
+          assert root.status_code == 200 and 'Entorno de prueba' in root.text
+          assert 'workspace-preview' in root.text and '@supabase/supabase-js' in root.text
+          assert "connect-src 'self'" in root.headers['content-security-policy']
+          assert len(ASSETS) >= 30
+          for asset in ASSETS:
+              response = c.get('/' + asset)
+              assert response.status_code == 200, asset
+              assert 'formulador-cultural-api.onrender.com' not in response.text, asset
+          for path in ['/backend/main.py','/README.md','/AGENTS.md','/.env','/docs','/openapi.json','/projects']:
+              assert c.get(path).status_code in (404,405), path
+          assert c.post('/projects',json={}).status_code in (404,405)
+          assert c.post('/assistant/knowledge',json={'section':'S01','question':'Qué es un indicador'}).status_code == 401
+          assert 'Object.freeze({auth:stageAuthClient.auth})' in c.get('/app.js').text
+          assert "async function save(){saveLocal();}" in c.get('/app.js').text
+          assert "vt-staging-evidence-v1" in c.get('/evidence.js').text
+          assert not c.get('/assistant/status').json()['external_ai_available']
+          print('STAGING_ISOLATION_PASS', len(ASSETS), health['candidate'])
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save --no-package-lock --ignore-scripts @playwright/test@1.56.1
+          npx playwright install chromium
+      - name: Browser smoke — isolated local draft
+        run: |
+          (cd backend && python -m uvicorn staging_preview:app --host 127.0.0.1 --port 8765) > /tmp/staging.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          curl --retry 15 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:8765/health
+          node <<'JS'
+          const { chromium }=require('@playwright/test');
+          (async()=>{const browser=await chromium.launch();
+            try {
+              const page=await browser.newPage({viewport:{width:1440,height:900}});
+              const blocked=[],errors=[];
+              page.on('pageerror',e=>errors.push(e.message));
+              await page.route('**/*',route=>{
+                const url=new URL(route.request().url());
+                if(url.origin==='http://127.0.0.1:8765'||url.hostname==='cdn.jsdelivr.net')return route.continue();
+                blocked.push(url.hostname);return route.abort();
+              });
+              await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
+              await page.locator('#vtWelcome').waitFor();
+              await page.locator('#vtIntro').waitFor();
+              await page.locator('#vtIntro button').click();
+              await page.locator('#vtIntro').waitFor({state:'hidden'});
+              if(await page.locator('#panel').isVisible())throw Error('workspace visible behind welcome');
+              if(!await page.locator('#vtStart').isDisabled())throw Error('empty idea accepted');
+              const example=page.locator('[data-vt-example]').first();
+              await example.hover();
+              await page.waitForTimeout(250);
+              if(await example.evaluate(el=>getComputedStyle(el).boxShadow)==='none')throw Error('hover not illuminated');
+              await page.keyboard.press('Tab');
+              await example.click();
+              const original=await page.locator('#vtIdea').inputValue();
+              if(!original.includes('formación musical'))throw Error('example not editable');
+              const typed=original+' Caso sintético.';
+              await page.locator('#vtIdea').fill(typed);
+              await page.locator('#vtStart').click();
+              await page.locator('#vtWelcome').waitFor({state:'hidden'});
+              await page.locator('#fields [data-field="idea_inicial_usuario"]').waitFor();
+              if(await page.locator('#fields [data-field="idea_inicial_usuario"]').inputValue()!==typed)throw Error('original idea changed');
+              await page.locator('.vt-home-button').click();
+              await page.locator('#vtResume').waitFor();
+              if(await page.locator('#vtNewIdea').isVisible())throw Error('existing draft can be overwritten');
+              await page.locator('#vtResume').click();
+              if(await page.locator('#fields [data-field="idea_inicial_usuario"]').inputValue()!==typed)throw Error('resume changed idea');
+              await page.locator('#guidedJourney .guided-subsection[data-code="S01"]').waitFor();
+              if(await page.locator('#guidedJourney .guided-subsection[data-code]').count()!==16)throw Error('navigation count');
+              await page.locator('#guidedJourney [data-code="S01"]').click();
+              const field=page.locator('#fields [data-field="nombre_del_proyecto"]');
+              await field.fill('QA staging — synthetic');
+              await page.locator('#save').click();
+              await page.reload({waitUntil:'domcontentloaded'});
+              await page.locator('#guidedJourney [data-code="S01"]').click();
+              if(await field.inputValue()!=='QA staging — synthetic')throw Error('local draft did not persist');
+              if(!await page.locator('#passwordLoginBtn').isVisible())throw Error('existing-account login absent');
+              for(const selector of ['#signupBtn','#syncBtn','#setPasswordBtn','#loginBtn'])if(await page.locator(selector).isVisible())throw Error('cloud operation visible: '+selector);
+              await page.locator('#guidedJourney [data-code="S04"]').click();
+              await page.locator('#evTitle').fill('Registro sintético QA');
+              await page.locator('#evText').fill('Observación de prueba; no verificada');
+              await page.locator('#evSave').click();
+              await page.locator('#evidenceList').getByText('Registro sintético QA').waitFor();
+              await page.reload({waitUntil:'domcontentloaded'});
+              await page.locator('#guidedJourney [data-code="S04"]').click();
+              await page.locator('#evidenceList').getByText('Registro sintético QA').waitFor();
+              // Verify real downloaded deliverables from the same isolated draft after reload.
+              await page.locator('#guidedJourney [data-code="S16"]').click();
+              const fs=require('node:fs');
+              const path=require('node:path');
+              const out='test-results/functional-deliverables';
+              fs.mkdirSync(out,{recursive:true});
+              const beforeExport=await page.evaluate(()=>JSON.stringify(draft));
+              for(const [selector,ext,magic] of [['#expDocx','docx','504b0304'],['#expPdf','pdf','25504446'],['#expXlsx','xlsx','504b0304'],['#expHtml','html','']]){
+                const promise=page.waitForEvent('download',{timeout:90000});
+                await page.locator(selector).click();
+                const download=await promise;
+                if(!download.suggestedFilename().endsWith('.'+ext))throw Error('Unexpected export name '+download.suggestedFilename());
+                const target=path.join(out,'synthetic.'+ext);
+                await download.saveAs(target);
+                const bytes=fs.readFileSync(target);
+                if(bytes.length<300||(magic&&bytes.subarray(0,4).toString('hex')!==magic))throw Error('Invalid export '+ext);
+                if(ext==='html'&&!bytes.toString('utf8').includes('QA staging'))throw Error('HTML missing project title');
+                if(['docx','pdf'].includes(ext)&&!(await page.evaluate(()=>window.fcGetDocumentGeneratorStatus().mode==='python')))throw Error('Professional document fallback '+ext);
+                console.log('DELIVERABLE_PASS',ext,bytes.length);
+              }
+              const afterExport=await page.evaluate(()=>JSON.stringify(draft));
+              if(beforeExport!==afterExport)throw Error('Export modified the draft');
+              await page.reload({waitUntil:'domcontentloaded'});
+              await page.locator('#guidedJourney [data-code="S01"]').click();
+              if(await field.inputValue()!=='QA staging — synthetic')throw Error('Title lost after exports');
+              await page.locator('#guidedJourney [data-code="S04"]').click();
+              await page.locator('#evidenceList').getByText('Registro sintético QA').waitFor();
+              console.log('EXPORT_PERSISTENCE_PASS');
+              if(await page.evaluate(()=>typeof sb.from)!=='undefined')throw Error('cloud data client exposed');
+              if(blocked.length||errors.length)throw Error(JSON.stringify({blocked,errors}));
+              const mobile=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+              await mobile.route('**/*',route=>{const url=new URL(route.request().url());return url.origin==='http://127.0.0.1:8765'||url.hostname==='cdn.jsdelivr.net'?route.continue():route.abort()});
+              await mobile.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
+              await mobile.locator('#vtWelcome').waitFor();
+              await mobile.locator('#vtIntro').waitFor();
+              // Verify the extended temporal contract, including continued visibility at 2.2 s.
+              const began=Date.now();
+              await mobile.waitForTimeout(1250);
+              const frameA=await mobile.locator('#vtIntro canvas').evaluate(c=>c.toDataURL());
+              await mobile.waitForTimeout(1200);
+              const frameB=await mobile.locator('#vtIntro canvas').evaluate(c=>c.toDataURL());
+              if(frameA===frameB)throw Error('canvas frames did not evolve');
+              if(!await mobile.locator('#vtIntro').isVisible())throw Error('cinematic intro ended too early');
+              await mobile.waitForTimeout(3800);
+              if(!await mobile.locator('#vtIntro').isVisible())throw Error('logo hold missing');
+              await mobile.locator('#vtIntro').waitFor({state:'hidden',timeout:2800});
+              const elapsed=Date.now()-began;
+              if(elapsed<7450||elapsed>9800)throw Error('unexpected cinematic duration: '+elapsed);
+              console.log('CINEMATIC_INTRO_DURATION_MS',elapsed);
+              await mobile.reload({waitUntil:'domcontentloaded'});
+              await mobile.locator('#vtIntro').waitFor({state:'visible'});
+              await mobile.locator('#vtIntro button').click();
+              await mobile.locator('#vtIntro').waitFor({state:'hidden'});
+              if(await mobile.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('mobile horizontal overflow');
+              await mobile.locator('#vtContinueTop').click();
+              const scheduleCases=await mobile.evaluate(()=>{
+                const previous11=draft.S11,previous13=draft.S13;
+                try{
+                  const activity=id=>({id,confirmed:true});
+                  const row=activityId=>({activityId,confirmed:true,startDate:'2026-12-01',endDate:'2026-12-02',responsible:'Equipo',dependencyIds:[]});
+                  draft.S11={completion_state:{items:[activity('QA-A'),activity('QA-B')]}};
+                  const check=items=>{draft.S13={schedule_state:{items}};return window.fcSectionStatus('S13')};
+                  return [check([row('QA-A'),row('QA-A')]),check([row('QA-A'),row('QA-X')]),check([row('QA-A'),{...row('QA-B'),startDate:'invalid'}]),check([row('QA-A'),{...row('QA-B'),requiresReview:true}]),check([row('QA-A'),row('QA-B')])];
+                }finally{draft.S11=previous11;draft.S13=previous13}
+              });
+              if(JSON.stringify(scheduleCases)!==JSON.stringify(['progress','progress','progress','progress','complete']))throw Error('S13 coverage regression '+JSON.stringify(scheduleCases));
+              console.log('S13_ACTIVITY_COVERAGE_PASS',JSON.stringify(scheduleCases));
+              const coverageCases=await mobile.evaluate(()=>{
+                const p11=draft.S11,p12=draft.S12;
+                try{
+                  const results=[{id:'R1',confirmed:true},{id:'R2',confirmed:true}];
+                  const activity=(id,resultId)=>({id,resultId,confirmed:true});
+                  const check11=items=>{draft.S11={results_state:{items:results},completion_state:{items}};return window.fcSectionStatus('S11')};
+                  const indicator={id:'I1',linkedType:'Actividad',linkedId:'A1',selected:true,confirmed:true,indicator:'Participación registrada',formula:'Conteo',unidad:'Personas',lineaBase:'0',meta:'10',medioVerificacion:'Registro',periodicidad:'Mensual',responsable:'Equipo',plazo:'Diciembre'};
+                  const check12=items=>{draft.S12={completion_state:{items}};return window.fcSectionStatus('S12')};
+                  return [check11([activity('A1','R1')]),check11([activity('A1','R1'),activity('A2','RX')]),check11([activity('A1','R1'),activity('A2','R2')]),check12([{...indicator,meta:'[POR VERIFICAR]'}]),check12([indicator,{...indicator,id:'I2',confirmed:false}]),check12([indicator])];
+                }finally{draft.S11=p11;draft.S12=p12}
+              });
+              if(JSON.stringify(coverageCases)!==JSON.stringify(['progress','progress','complete','progress','progress','complete']))throw Error('S11/S12 coverage regression '+JSON.stringify(coverageCases));
+              console.log('S11_S12_COVERAGE_PASS',JSON.stringify(coverageCases));
+              const planningCases=await mobile.evaluate(()=>{
+                const old=[draft.S07,draft.S11,draft.S14,draft.S15];
+                try{
+                  draft.S07={tree_state:{nodes:[{id:'C1',zone:'direct_cause'}]}};
+                  draft.S11={results_state:{items:[{id:'R1',confirmed:true}]},completion_state:{items:[{id:'A1',confirmed:true}]}};
+                  const budget=items=>{draft.S14={budget_state:{activityStatus:{A1:'nocost'},items}};return window.fcSectionStatus('S14')};
+                  const targets=['cause:C1','result:R1','activity:A1'].map(id=>({id}));
+                  const assessments=Object.fromEntries(targets.map(t=>[t.id,'no']));
+                  const risk=(ts,items=[])=>{draft.S15={risk_state:{targets:ts,assessments,items}};return window.fcSectionStatus('S15')};
+                  return [budget([]),budget([{id:'B1',activityId:'A1',confirmed:true}]),risk(targets.slice(0,2)),risk(targets,[{targetId:'activity:obsolete',confirmed:true}]),risk(targets)];
+                }finally{[draft.S07,draft.S11,draft.S14,draft.S15]=old}
+              });
+              if(JSON.stringify(planningCases)!==JSON.stringify(['complete','progress','progress','progress','complete']))throw Error('S14/S15 coverage regression '+JSON.stringify(planningCases));
+              console.log('S14_S15_COVERAGE_PASS',JSON.stringify(planningCases));
+              const earlyCases=await mobile.evaluate(()=>{
+                const old=[draft.S06,draft.S07,draft.S08,draft.S09,draft.S10],gate=window.fcS09TransitionStatus;
+                try{
+                  const central={id:'C',zone:'central',text:'Problema'},cause={id:'D',zone:'direct_cause',text:'Causa',parentId:'C'};
+                  const tree=nodes=>{draft.S07={tree_state:{nodes}};return window.fcSectionStatus('S07')};
+                  const out=[tree([central]),tree([central,{...central,id:'X'},cause]),tree([central,cause])];
+                  draft.S08={enunciado:'[POR VERIFICAR]'};out.push(window.fcSectionStatus('S08'));
+                  draft.S06={vester_state:{selected:[{id:'A'},{id:'B'}],relations:{'A>B':{score:0},'B>A':{score:2}}}};
+                  out.push(window.fcSectionStatus('S06'));
+                  draft.S06.vester_state.selected=[{id:'A'},{id:'A'}];out.push(window.fcSectionStatus('S06'));
+                  window.fcS09TransitionStatus=()=>({ok:true});
+                  const objectives=[central,cause].map(x=>({...x,sourceText:x.text,text:'Cambio '+x.id,confirmed:true}));
+                  draft.S09={objectives_state:{items:objectives.slice(0,1)}};out.push(window.fcSectionStatus('S09'));
+                  draft.S09.objectives_state.items=objectives;out.push(window.fcSectionStatus('S09'));
+                  const alt={id:'A1',selected:true,confirmed:true,text:'Estrategia',sourceIds:['D']};
+                  const strategy=items=>{draft.S10={completion_state:{items}};return window.fcSectionStatus('S10')};
+                  out.push(strategy([{...alt,sourceIds:['X']}]),strategy([alt,{...alt,id:'A2'}]),strategy([alt]));
+                  return out;
+                }finally{[draft.S06,draft.S07,draft.S08,draft.S09,draft.S10]=old;window.fcS09TransitionStatus=gate}
+              });
+              if(JSON.stringify(earlyCases)!==JSON.stringify(['progress','progress','complete','missing','complete','progress','progress','complete','progress','progress','complete']))throw Error('S06-S10 regression '+JSON.stringify(earlyCases));
+              console.log('S06_S10_PROVENANCE_PASS',JSON.stringify(earlyCases));
+              const approvalCases=await mobile.evaluate(()=>{
+                const base=window.fcGetProjectSnapshot();
+                const copy=()=>JSON.parse(JSON.stringify(base));
+                const approved=copy();approved.sections.S16={review_state:{confirmed:true,reviewFingerprint:window.fcReviewFingerprint(approved)}};
+                const altered=JSON.parse(JSON.stringify(approved));altered.sections.S01={...(altered.sections.S01||{}),nombre_del_proyecto:'QA changed after review'};
+                return [window.fcAuditReviewApproval(base),window.fcAuditReviewApproval(approved),window.fcAuditReviewApproval(altered)];
+              });
+              if(JSON.stringify(approvalCases)!==JSON.stringify([false,true,false]))throw Error('S16 stale approval regression '+JSON.stringify(approvalCases));
+              console.log('S16_APPROVAL_FINGERPRINT_PASS',JSON.stringify(approvalCases));
+              await mobile.locator('#guidedJourney .guided-subsection[data-code="S01"]').waitFor();
+              await mobile.close();
+              const reduced=await browser.newPage({viewport:{width:1024,height:768},reducedMotion:'reduce'});
+              await reduced.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
+              if(await reduced.locator('#vtIntro').isVisible())throw Error('intro violates reduced motion');
+              const button=reduced.locator('[data-vt-example]').first();
+              await button.focus();
+              if(await button.evaluate(el=>getComputedStyle(el).transitionDuration)!=='0s')throw Error('reduced motion not honored');
+              if(await button.evaluate(el=>getComputedStyle(el).outlineStyle)==='none')throw Error('no keyboard focus');
+              await reduced.close();
+              console.log('WELCOME_INTERACTION_PASS');
+              console.log('STAGING_LOCAL_BROWSER_PASS');
+            } finally {await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)})
+          JS
+          # Capture actual WebGL draw calls and record the opening in an isolated browser.
+          node <<'JS'
+          const {chromium}=require('@playwright/test');
+          const fs=require('node:fs');
+          (async()=>{
+            const browser=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+            const dir='test-results/vertice-intro';fs.mkdirSync(dir,{recursive:true});
+            try{
+              for(const fallback of [false,true]){
+                const context=await browser.newContext({viewport:{width:1280,height:720},deviceScaleFactor:1, ...(fallback?{}:{recordVideo:{dir,size:{width:1280,height:720}}})});
+                await context.addInitScript(({fallback})=>{
+                  window.__introAudit={contexts:0,draws:0,vertices:0,depth:false,errors:[]};
+                  const original=HTMLCanvasElement.prototype.getContext;
+                  HTMLCanvasElement.prototype.getContext=function(type,...args){
+                    if(fallback&&/^webgl/.test(type))return null;
+                    const gl=original.call(this,type,...args);
+                    if(gl&&type==='webgl'){
+                      const a=window.__introAudit;a.contexts++;
+                      const draw=gl.drawArrays.bind(gl);
+                      gl.drawArrays=function(mode,first,count){draw(mode,first,count);a.draws++;a.vertices+=count;a.depth ||= gl.isEnabled(gl.DEPTH_TEST);const err=gl.getError();if(err!==gl.NO_ERROR)a.errors.push(err)};
+                    }return gl;
+                  };
+                },{fallback});
+                const page=await context.newPage();
+                await page.route('**/*',route=>{const u=new URL(route.request().url());return u.origin==='http://127.0.0.1:8765'||u.hostname==='cdn.jsdelivr.net'?route.continue():route.abort()});
+                await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
+                await page.locator('#vtIntro').waitFor();
+                await page.waitForTimeout(1800);
+                const audit=await page.evaluate(()=>window.__introAudit);
+                if(!fallback&&(!audit.contexts||!audit.draws||!audit.vertices||!audit.depth||audit.errors.length))throw Error('WebGL not verified '+JSON.stringify(audit));
+                if(fallback&&(audit.contexts||audit.draws))throw Error('fallback unexpectedly used WebGL');
+                await page.screenshot({path:dir+'/'+(fallback?'fallback':'webgl')+'-assembly.png'});
+                await page.locator('#vtIntro').waitFor({state:'hidden',timeout:10000});
+                fs.writeFileSync(dir+'/'+(fallback?'fallback':'webgl')+'.json',JSON.stringify(audit,null,2));
+                console.log('VERTICE_RENDERER_PASS',fallback?'fallback':'webgl',JSON.stringify(audit));
+                const video=page.video();await context.close();if(video)await video.saveAs(dir+'/vertice-opening.webm');
+              }
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node e2e/unified-workspace.cjs
+          node e2e/integral-closure.cjs
+          node e2e/h01-project-isolation.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unified-workspace-visual-audit
+          path: |
+            test-results/unified-workspace/
+            test-results/vertice-intro/
+            test-results/functional-deliverables/
+          if-no-files-found: ignore
+          retention-days: 7

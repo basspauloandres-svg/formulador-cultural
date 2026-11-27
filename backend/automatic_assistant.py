@@ -23,6 +23,7 @@ from assistant_pilot import AssistantRequest, assist, groq_key, reserve, verifie
 from source_research import ResearchRequest, research
 from source_verifier import validate_pdf_url, MAX_PDF_BYTES, MAX_PAGES
 from municipal_sources import municipal_passages
+from institutional_sources import economic_profile_passages, has_private_contact, institutional_passages
 from national_sources import cultural_registry
 from citation_audit import audit_citations
 from semantic_review import packet, review_one
@@ -79,7 +80,8 @@ GUIDANCE = {
         "Identifica agentes, espacios o celebraciones únicamente si tienen respaldo.",
     ),
     "principales_dinamicas_sociales": (
-        "Identifica condiciones sociales pertinentes para el problema del proyecto.",
+        "Consulta datos demográficos, educación, acceso a actividades culturales y condiciones de participación pertinentes al proyecto.",
+        "Si faltan fuentes, delimita preguntas de investigación; evita atribuir al municipio migración, pobreza o empleo sin respaldo.",
         "Especifica la población vinculada y evita confundir habitantes totales con beneficiarios.",
     ),
     "antecedentes": (
@@ -95,6 +97,7 @@ class GuidedRequest(BaseModel):
     text: str = Field(default="", max_length=1800)
     context: str = Field(min_length=2, max_length=200)
     include_web: bool = True
+    public_topic: str = Field(default="", max_length=90)
     generate: bool = True
 
 
@@ -140,7 +143,7 @@ def passages_from_pdf(content: bytes, field: str, municipality: str = "") -> lis
                 before = lines[index - 1] if index > 0 else ""
                 after = lines[index + 1] if index + 1 < len(lines) else ""
                 passage = " ".join((before, line, after)).strip()[:470]
-                if len(passage) < 35:
+                if len(passage) < 35 or has_private_contact(passage):
                     continue
                 local = bool(municipality and re.search(r"\b" + re.escape(clean_text(municipality)) + r"\b", clean_text(passage)))
                 if municipality and not local:
@@ -253,13 +256,30 @@ async def fetch_document(record: dict, field: str) -> dict | None:
     public_data = await asyncio.shield(task)
     return {**record, **deepcopy(public_data)} if public_data else None
 
+def research_only_input(text: str) -> bool:
+    """Recognize requests for research, not assertions. Conservative full-match.
+    Mixed text retains its original status; this is not semantic classification.
+    """
+    value = re.sub(r"[^a-z0-9 ]+", " ", clean_text(text))
+    value = " ".join(value.split())
+    if len(value) < 10:
+        return True
+    command = r"(?:por favor )?(?:investiga(?:r)?|busca(?:r)?|consulta(?:r)?|averigua(?:r)?|ayudame a investigar)(?: (?:por favor|sobre .+|las? .+|los? .+|informacion .+))?"
+    unknown = r"(?:no conozco|no se|desconozco|no tengo informacion sobre|no tengo datos sobre)(?: (?:las? |los? |el )?[a-z0-9 ]+)?"
+    # Explicit lack of knowledge followed by a research command, or command alone.
+    return bool(re.fullmatch(command, value) or
+                re.fullmatch(unknown + r" (?:por favor )?(?:investiga|busca|consulta|averigua)(?: por favor)?", value) or
+                re.fullmatch(r"(?:no se|no conozco|desconozco|no tengo informacion|no tengo datos)", value))
+
 async def guide(req: GuidedRequest, bearer: str) -> dict:
     if req.section != "S02" or req.field not in GUIDANCE:
         raise HTTPException(422, "La asistencia automática está limitada a S02.")
+    research_only = research_only_input(req.text)
+    participant_text = "" if research_only else req.text
     # research() verifica sesión y consume únicamente la cuota de investigación.
-    search_text = req.text.strip() if len(req.text.strip()) >= 10 else ("Información territorial de " + req.context)
+    search_text = participant_text.strip() if len(participant_text.strip()) >= 10 else ("Información territorial de " + req.context)
     found = await research(ResearchRequest(section="S02", field=req.field,
-        text=search_text, context=req.context, include_web=req.include_web), bearer)
+        text=search_text, context=req.context, include_web=req.include_web, public_topic=req.public_topic), bearer)
     territorial_result = await resolve_territory(req.context)
     identity = territorial_result.get("identity")
     key = ((territory_normalized(identity["municipality"]),
@@ -307,6 +327,11 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     if re.search(r"music|banda|orquesta|agrupacion", text_normalized):
         topics.add("PRACTICAS_MUSICALES")
     local_references = await municipal_passages(key, topics) if key and topics else []
+    if req.include_web and key and req.field in {'caracteristicas_culturales', 'antecedentes'}:
+        regional = await institutional_passages(key, topics, found['sources'])
+        local_references = regional + local_references
+    if req.include_web and key:
+        local_references = await economic_profile_passages(key, req.public_topic or req.text) + local_references
     live_passages = [p for p in local_references
                     if p.get("passage_status") == "EXCERPT_FOUND_CLAIM_UNVERIFIED"
                     and p.get("sha256") and p.get("excerpt")]
@@ -350,35 +375,38 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
                 "locator":identity["divipola"],"scope":"RECORD_EXISTENCE_ONLY"})
         for doc in docs[:1]:
             for passage in doc["passages"][:3]:
-                excerpts.append(f"[F1, p.{passage['page']}] {passage['excerpt']}")
+                excerpts.append(f"[F1, p.{passage['page']}] Fecha del documento: {doc.get('year') or 'no determinada'}. Extracto: {passage['excerpt']}")
                 provenance.append({"citation":f"F1, p.{passage['page']}","kind":"pdf",
                     "url":doc["url"],"sha256":doc.get("document_sha256"),
-                    "locator":passage["page"],"divipola":identity["divipola"],
+                    "locator":passage["page"],"publication_year":doc.get("year"),"divipola":identity["divipola"],
                     "scope":"EXCERPT_UNVERIFIED"})
         for i, passage in enumerate(live_passages[:2], 1):
             provenance.append({"citation":f"M{i}","kind":"municipal_html",
                 "url":passage["url"],"sha256":passage["sha256"],
-                "locator":passage["locator"],"divipola":identity["divipola"],
+                "locator":passage["locator"],"publication_date":passage.get("publication_date"),"divipola":identity["divipola"],
                 "scope":"EXCERPT_UNVERIFIED"})
             excerpts.append(
                 f"[M{i}] Fuente: {passage['publisher']}; "
                 f"{passage['title']}; {passage['url']}; "
-                f"{passage['locator']}; Extracto: {passage['excerpt']}"
+                f"{passage['locator']}; fecha: {passage.get('publication_date') or 'no determinada'}; Extracto: {passage['excerpt']}"
             )
         selected = []
-        for excerpt, source in zip(excerpts, provenance, strict=True):
+        # Preserve N1 first for the existing citation contract; dated HTML ahead of historical PDF.
+        pairs = list(zip(excerpts, provenance, strict=True))
+        pairs.sort(key=lambda pair: (0 if pair[1]['kind']=='administrative_registry' else 1 if pair[1].get('publication_date') else 2))
+        for excerpt, source in pairs:
             # Do not change an excerpt after hashing/manifest creation.
             if contains_directive(excerpt):
                 flags.append(quarantine_flag())
                 continue
             if not re.fullmatch(r"[0-9a-f]{64}", source.get("sha256") or ""):
                 continue
-            if len("\n".join(selected + [excerpt])) <= 1400:
+            if len("\n".join(selected + [excerpt])) <= 2200:
                 selected.append(excerpt)
                 evidence_manifest.append({**source, "prompt_excerpt":excerpt,
                     "excerpt_sha256":sha256(excerpt.encode("utf-8")).hexdigest()})
         evidence = "\n".join(selected) or None
-        if len(req.text.strip()) < 10 and not evidence:
+        if research_only and not evidence:
             blocked = True
             flags.append({"type": "NO_RECOVERED_EVIDENCE", "status": "INSUFFICIENT_EVIDENCE",
                           "instruction": "La búsqueda no recuperó pasajes pertinentes. Revisa las fuentes candidatas antes de formular afirmaciones."})
@@ -386,7 +414,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             if blocked:
                 raise HTTPException(503, "Sin evidencia recuperada")
             generative = await assist(AssistantRequest(section="S02", field=req.field,
-                text=req.text, context=req.context, action="redactar"), bearer,
+                text=participant_text, context=req.context, action="redactar"), bearer,
                 evidence=evidence)
             suggestion = generative["suggestion"] or None
             suggestion_origin = generative.get("suggestion_origin", "MODEL_DRAFT_UNVERIFIED") if suggestion else None
@@ -403,7 +431,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
             invalid_national = any(n != "1" or not evidence or not evidence.startswith("[N1]")
                                    for n in national_citations)
             if (invalid_national or invalid_municipal or any(page not in allowed_pages for page in cited_pages)
-                    or (len(req.text.strip()) < 10 and suggestion and not (cited_pages or indexed_citations or national_citations))):
+                    or (research_only and suggestion and not (cited_pages or indexed_citations or national_citations))):
                 suggestion = None
                 blocked = True
                 flags.append({"type": "UNVERIFIED_CITATION",
@@ -419,7 +447,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
     # A registry-only input supports one narrow administrative proposition.
     # Retain the model output only if it exactly matches that proposition;
     # otherwise offer a deterministic statement, never attributed to the model.
-    if (suggestion and not blocked and len(req.text.strip()) < 10 and
+    if (suggestion and not blocked and research_only and
             evidence_manifest and all(item["kind"] == "administrative_registry" for item in evidence_manifest) and
             any(item["status"] == "INSUFFICIENT_EVIDENCE" for item in claim_audit) and
             not any(item["status"] == "INVALID_PROVENANCE" for item in claim_audit)):
@@ -450,6 +478,13 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
                 flags.append({"type":"MODEL_CONTRADICTION_REVIEW_REQUIRED","status":"INSUFFICIENT_EVIDENCE",
                               "instruction":"Una segunda evaluación detectó posible contradicción con el extracto. Revisa la cita antes de incorporar."})
             break
+    # For pure research, every proposed factual sentence needs documentary
+    # provenance. Merely adding a hypothesis marker does not supply evidence.
+    if research_only and suggestion and any(not item.get("citations") for item in claim_audit):
+        suggestion = None
+        blocked = True
+        flags.append({"type":"RESEARCH_UNSUPPORTED_ADDITION","status":"INSUFFICIENT_EVIDENCE",
+                      "instruction":"La consulta solicitó investigación, no hipótesis nuevas. La propuesta se retiene hasta disponer de respaldo documental."})
     if any(item["status"] == "INSUFFICIENT_EVIDENCE" for item in claim_audit):
         flags.append({"type":"CLAIM_SUPPORT_UNRESOLVED","status":"INSUFFICIENT_EVIDENCE",
                       "instruction":"Revisa cada afirmación sin correspondencia documental suficiente antes de incorporarla al proyecto."})
@@ -463,6 +498,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         "territory_resolution": territorial_result["status"],
         "territory_candidates": territorial_result.get("candidates", []),
         "territory_context": req.context,
+        "input_role": "RESEARCH_REQUEST" if research_only else "PARTICIPANT_TEXT_UNVERIFIED",
         "territory_conflicts": national_conflicts,
         "guidance": list(GUIDANCE[req.field]),
         "sources": docs,
@@ -477,6 +513,7 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
                                   else "NO_LIVE_PASSAGES"),
         "candidate_sources": found["sources"],
         "errors": found["errors"],
+        "web_extended_enabled": found.get("web_extended_enabled"),
         "suggestion": suggestion,
         "suggestion_origin": suggestion_origin if suggestion else None,
         "blocked_for_evidence": blocked,
