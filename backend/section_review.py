@@ -64,7 +64,7 @@ class SectionReviewRequest(BaseModel):
     section: str = Field(min_length=3, max_length=3)
     field: str = Field(min_length=2, max_length=100)
     text: str = Field(min_length=1, max_length=1800)
-    context: str = Field(min_length=2, max_length=200)
+    context: str = Field(default="", max_length=200)
     include_web: bool = True
     public_topic: str = Field(default="", max_length=90)
     compose: bool = False
@@ -145,7 +145,7 @@ def edit_user_contribution(req: SectionReviewRequest, claims: list[dict]) -> dic
         # Only normalize a known nominal opening; do not alter internal names,
         # quantities, negations or qualifications.
         match = re.match(r"^(niños y niñas|niñas y niños|estudiantes|jóvenes|personas|familias)\b", value, re.I)
-        if match and not re.search(r"[!?;\n]|\b(?:pero|aunque|excepto|sin embargo)\b", value, re.I):
+        if match and not re.search(r"[.!?;\n]|\b(?:pero|aunque|excepto|sin embargo|son|están|participan|tienen|pueden|no)\b", value, re.I):
             label = "participante" if req.field == "poblacion_participante" else "afectada"
             articles = {"niños y niñas":"los niños y las niñas", "niñas y niños":"las niñas y los niños", "estudiantes":"los estudiantes", "jóvenes":"los jóvenes", "personas":"las personas", "familias":"las familias"}
             body = articles[match.group(0).casefold()] + value[match.end():]
@@ -171,6 +171,8 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
     claims = [classify_claim(s) for s in split_claims(req.text)]
     if req.operation == 'edit':
         return edit_user_contribution(req, claims)
+    if len(req.context.strip()) < 2:
+        raise HTTPException(422, "Registra primero el municipio para investigar.")
     territorial_result = await resolve_territory(req.context)
     identity = territorial_result.get("identity")
     key = ((territory_normalized(identity["municipality"]),
