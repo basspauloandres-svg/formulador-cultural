@@ -206,3 +206,71 @@ def test_cultural_assumptions_still_require_evidence_even_in_territorial_field()
     assert result["verified_claims"]==[]
     assert result["evidence_status"]=="INSUFFICIENT_EVIDENCE"
     search.assert_awaited_once()
+
+
+def test_h02_population_editorial_no_external_calls():
+    original = "Niños y niñas del colegio Liceo Nacional Max Seidel que pertenecen al proceso de bandas"
+    req = review.SectionReviewRequest(section="S03", field="poblacion_participante",
+        text=original, operation="edit", compose=True)
+    with patch.object(review, "verified_user", new=AsyncMock(return_value="synthetic")), \
+         patch.object(review, "research", new=AsyncMock()) as search, \
+         patch.object(review, "resolve_territory", new=AsyncMock()) as territory, \
+         patch.object(review, "compose_section_draft", new=AsyncMock()) as model:
+        result = asyncio.run(review.review_section(req, "Bearer synthetic"))
+    search.assert_not_awaited()
+    territory.assert_not_awaited()
+    model.assert_not_awaited()
+    assert result["suggestion"] == "Según el aporte del docente, la población participante comprende los niños y las niñas del colegio Liceo Nacional Max Seidel que pertenecen al proceso de bandas."
+    assert result["verified_claims"] == []
+    assert result["evidence_status"] == "INSUFFICIENT_EVIDENCE"
+    assert result["requires_approval"]
+    assert result["methodological_guidance"]["route"] == "REFERENCED_GUIDANCE"
+    assert result["methodological_guidance"]["references"][0]["publisher"] == "DNP / MapaInversiones"
+    assert result["external_queries"] == result["model_calls"] == 0
+
+
+@pytest.mark.parametrize("original", [
+    "Investiga cuántos estudiantes tiene el colegio",
+    "No conozco la cantidad de participantes",
+    "¿Cuántos estudiantes participan?",
+])
+def test_h02_factual_request_not_recast_as_contribution(original):
+    req = review.SectionReviewRequest(section="S03", field="poblacion_participante",
+        text=original, operation="edit")
+    result = review.edit_user_contribution(req, [])
+    assert result["suggestion"] is None
+    assert result["draft_status"] == "REQUIRES_USER_CONTRIBUTION"
+
+
+@pytest.mark.parametrize("original", [
+    "Estudiantes de grado 7, excepto quienes no se inscribieron.",
+    "Niños y niñas son participantes potenciales.",
+    "Estudiantes no inscritos",
+    "Familias de la zona rural. La cifra es desconocida.",
+])
+def test_h02_preserves_qualifications(original):
+    req = review.SectionReviewRequest(section="S03", field="poblacion_participante",
+        text=original, operation="edit")
+    assert review.edit_user_contribution(req, [])["suggestion"] == original
+
+
+def test_h02_requires_authentication():
+    req = review.SectionReviewRequest(section="S03", field="poblacion_participante",
+        text="Estudiantes del colegio", operation="edit")
+    with patch.object(review, "verified_user", new=AsyncMock(side_effect=HTTPException(401))), \
+         patch.object(review, "edit_user_contribution") as edit:
+        with pytest.raises(HTTPException) as exc:
+            asyncio.run(review.review_section(req, ""))
+    assert exc.value.status_code == 401
+    edit.assert_not_called()
+
+
+def test_h02_research_still_requires_context():
+    req = review.SectionReviewRequest(section="S03", field="poblacion_participante",
+        text="Estudiantes del colegio")
+    with patch.object(review, "verified_user", new=AsyncMock(return_value="synthetic")), \
+         patch.object(review, "research", new=AsyncMock()) as search:
+        with pytest.raises(HTTPException) as exc:
+            asyncio.run(review.review_section(req, "Bearer synthetic"))
+    assert exc.value.status_code == 422
+    search.assert_not_awaited()
