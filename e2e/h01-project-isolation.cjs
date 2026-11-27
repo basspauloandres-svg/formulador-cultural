@@ -87,7 +87,7 @@ const assert=require('node:assert/strict');
   let release,arrived;const gate=new Promise(resolve=>release=resolve),started=new Promise(resolve=>arrived=resolve);
   await page.route('**/assistant/s02/guide',async route=>{
     arrived();await gate;
-    await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({section:'S02',field:'territorio_o_lugar_de_intervencion',territory_context:'Neira',suggestion:'Respuesta sintética exclusiva de Neira',suggestion_origin:'SYNTHETIC_TEST',claims:[],evidence_manifest:[],claim_audit:[]})});
+    await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({section:'S02',field:'territorio_o_lugar_de_intervencion',territory_context:'Neira',suggestion:'Respuesta sintética exclusiva de Neira',suggestion_origin:'SYNTHETIC_TEST',claims:[],evidence_manifest:[{id:'QA-SRC-01',url:'https://example.test/qa',prompt_excerpt:'Pasaje sintético QA-SRC-01'}],claim_audit:[{fragment:'Afirmación ficticia',status:'INSUFFICIENT_EVIDENCE'}]})});
   });
   const panel=page.locator('[data-review-field="territorio_o_lugar_de_intervencion"]');
   await panel.locator('[data-review-action="verify"]').click();await started;
@@ -116,6 +116,22 @@ const assert=require('node:assert/strict');
     await panel.locator('.vt-evidence-draft').waitFor({state:'visible'});
     assert.equal(await panel.locator('.vt-evidence-draft textarea').inputValue(),'Respuesta sintética exclusiva de Neira');
     assert.equal(await field.inputValue(),'Observación sintética de Neira');
+    await panel.getByText('Pasaje sintético QA-SRC-01', {exact:true}).waitFor();
+    const approve=panel.locator('[data-review-action="approve"]');
+    page.once('dialog',dialog=>dialog.dismiss());
+    await approve.click();
+    assert.equal(await field.inputValue(),'Observación sintética de Neira');
+    page.once('dialog',dialog=>dialog.accept());
+    await approve.click();
+    assert.equal(await field.inputValue(),'Respuesta sintética exclusiva de Neira');
+    await page.reload({waitUntil:'domcontentloaded'});
+    await field.waitFor({state:'visible'});
+    assert.equal(await field.inputValue(),'Respuesta sintética exclusiva de Neira');
+    const review=await page.evaluate(()=>draft.S02.evidence_review_state.fields.territorio_o_lugar_de_intervencion);
+    assert.equal(review.status,'ACCEPTED_UNVERIFIED');
+    assert.equal(review.manifest[0].id,'QA-SRC-01');
+    assert.equal(review.claim_audit[0].status,'INSUFFICIENT_EVIDENCE');
+    console.log('H01_SYNTHETIC_APPROVAL_AND_PROVENANCE_PASS');
     console.log('H01_07_SYNTHETIC_DEFERRED_REVIEW_PASS');
   }finally{release();await next.close()}
 
@@ -146,7 +162,7 @@ const assert=require('node:assert/strict');
   const setOwner=async id=>{
     identity=id;
     await p.evaluate(id=>window.fcH01SetAuthenticatedOwner(id),id);
-    await p.waitForFunction(expected=>window.fcH01LocalOwner?.()===(expected||'guest'),id);
+    await p.waitForFunction(expected=>typeof storeKey==='string'&&window.fcH01LocalOwner?.()===(expected||'guest'),id);
   };
   const mark=async text=>{
     const field=p.locator('#fields [data-field="nombre_del_proyecto"]');
@@ -178,7 +194,7 @@ const assert=require('node:assert/strict');
   const bId=await p.evaluate(()=>window.fcLocalProjectId());
   assert.equal(new Set([guestId,aId,bId]).size,3);
   await p.goto('http://127.0.0.1:8765/?project='+aId,{waitUntil:'domcontentloaded'});
-  await p.waitForFunction(id=>window.fcLocalProjectId?.()===id,bId);
+  await p.waitForFunction(id=>typeof storeKey==='string'&&window.fcLocalProjectId?.()===id,bId);
   assert.equal(await read(),'Proyecto privado B');
   assert.ok(!(await p.evaluate(()=>JSON.stringify(window.fcLocalProjects()))).includes(aId));
   await setOwner('synthetic-account-A');
