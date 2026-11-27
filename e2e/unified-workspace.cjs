@@ -51,6 +51,15 @@ async function inspect(page,code,viewport){
      await page.screenshot({path:OUT+'/'+viewport.width+'-'+code+'.png'});
     }
    }
+   await page.getByRole('button',{name:/Inicio de VÉRTICE/}).click();
+   assert.ok(await page.locator('#vtNewIdea').isVisible(),'Visiting empty sections must preserve the option to start with an idea');
+   await page.getByRole('button',{name:'Formación artística'}).click();
+   const idea=await page.locator('#vtIdea').inputValue();
+   assert.ok(idea.trim());
+   await page.locator('#vtStart').click();
+   await page.waitForFunction(expected=>document.querySelector('#idea_inicial_usuario')?.value===expected,idea);
+   await page.getByRole('button',{name:/Inicio de VÉRTICE/}).click();
+   assert.ok(await page.locator('#vtExistingDraft').isVisible(),'The registered idea must be recognized as a draft');
    if(errors.length||blocked.length)problems.push({viewport:viewport.width,errors,blocked});
    await page.close();
   }
