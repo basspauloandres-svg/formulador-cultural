@@ -51,4 +51,34 @@ const assert=require('node:assert/strict');
  const invalidated=await page.evaluate(()=>[window.fcReviewApprovalCurrent(),window.fcSectionStatus('S16'),window.fcGetDocumentStatus()]);
  assert.deepEqual(invalidated,[false,'progress','Proyecto en revisión']);
  console.log('INTEGRAL_CLOSURE_PASS');
+
+ // W02. Start from a project with records in all sections and evidence in the local register.
+ const original=await page.evaluate(()=>{
+  const evidenceKey='vt-staging-evidence-v1';
+  localStorage.setItem(evidenceKey,JSON.stringify([{id:'qa-integral-evidence',title:'Soporte sintético del proyecto original'}]));
+  return {id:window.fcLocalProjectId(),sections:JSON.parse(localStorage.getItem(storeKey)),evidence:localStorage.getItem(evidenceKey)};
+ });
+ await page.locator('#h01New').click();
+ await page.waitForFunction(id=>typeof draft!=='undefined'&&window.fcLocalProjectId()!==id,original.id);
+ for(let i=1;i<=16;i++){
+  const code='S'+String(i).padStart(2,'0');
+  await page.locator(`#guidedJourney [data-code="${code}"]`).click();
+  await page.waitForFunction(expected=>active===expected,code);
+  const fields=await page.locator('#fields [data-field]').evaluateAll(elements=>elements.map(element=>element.value));
+  assert.ok(fields.every(value=>!value.trim()),`${code} inherited a form value`);
+ }
+ assert.match(await page.locator('#h01ActiveProject').innerText(),/0\/16 secciones con registro/);
+ assert.equal(await page.evaluate(()=>window.fcReviewApprovalCurrent()),false);
+ assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('vt-staging-evidence-v1')||'[]')),[]);
+
+ await page.locator('#h01ProjectSelect').selectOption(original.id);
+ await page.locator('#h01Continue').click();
+ await page.waitForFunction(id=>typeof draft!=='undefined'&&window.fcLocalProjectId()===id,original.id);
+ const restored=await page.evaluate(()=>({sections:JSON.parse(localStorage.getItem(storeKey)),evidence:localStorage.getItem('vt-staging-evidence-v1')}));
+ for(let i=1;i<=16;i++){
+  const code='S'+String(i).padStart(2,'0');
+  assert.deepEqual(restored.sections[code],original.sections[code],`${code} of the original changed`);
+ }
+ assert.equal(restored.evidence,original.evidence);
+ console.log('W02_NEW_PROJECT_ALL_SECTIONS_ISOLATED_PASS');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
