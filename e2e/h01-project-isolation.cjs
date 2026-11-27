@@ -108,4 +108,55 @@ const assert=require('node:assert/strict');
 
  }finally{await other.close()}
 
+ // Emulate the auth lifecycle with synthetic identities, never real accounts.
+ // Keep the synthetic getSession result across reloads by replacing the served
+ // auth client method in the intercepted app script, only in this test context.
+ const accountContext=await browser.newContext({reducedMotion:'reduce'});
+ try{
+  let identity=null;
+  await accountContext.route('**/*',async route=>{
+    const u=new URL(route.request().url());
+    if(u.origin==='http://127.0.0.1:8765'&&u.pathname==='/app.js'){
+      const response=await route.fetch();
+      const source=await response.text();
+      const marker='let stagingSession=null;';
+      assert.ok(source.includes(marker));
+      const session=identity?{user:{id:identity},access_token:'synthetic-test-token'}:null;
+      const injection='\nif(sb){sb.auth.getSession=async()=>({data:{session:'+JSON.stringify(session)+'}});sb.auth.onAuthStateChange=()=>({data:{subscription:{unsubscribe(){}}}});}\n';
+      await route.fulfill({response,body:source.replace(marker,marker+injection)});return;
+    }
+    if(u.origin==='http://127.0.0.1:8765'||u.hostname==='cdn.jsdelivr.net')return route.continue();
+    return route.abort();
+  });
+  const p=await accountContext.newPage();
+  await p.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
+  const setOwner=async id=>{
+    identity=id;
+    await p.evaluate(id=>window.fcH01SetAuthenticatedOwner(id),id);
+    await p.waitForFunction(expected=>window.fcH01LocalOwner?.()===(expected||'guest'),id);
+  };
+  const mark=async text=>p.evaluate(value=>{draft.S01={...(draft.S01||{}),nombre_del_proyecto:value};localStorage.setItem(storeKey,JSON.stringify(draft))},text);
+  const read=()=>p.evaluate(()=>JSON.parse(localStorage.getItem(storeKey)||'{}').S01?.nombre_del_proyecto||'');
+  await mark('Borrador invitado');
+  const guestId=await p.evaluate(()=>window.fcLocalProjectId());
+  await setOwner('synthetic-account-A');
+  assert.equal(await read(),'');
+  await mark('Proyecto privado A');
+  const aId=await p.evaluate(()=>window.fcLocalProjectId());
+  await setOwner(null);assert.equal(await read(),'Borrador invitado');
+  assert.equal(await p.evaluate(()=>window.fcLocalProjectId()),guestId);
+  await setOwner('synthetic-account-B');assert.equal(await read(),'');
+  await mark('Proyecto privado B');
+  const bId=await p.evaluate(()=>window.fcLocalProjectId());
+  assert.equal(new Set([guestId,aId,bId]).size,3);
+  await p.goto('http://127.0.0.1:8765/?project='+aId,{waitUntil:'domcontentloaded'});
+  await p.waitForFunction(id=>window.fcLocalProjectId?.()===id,bId);
+  assert.equal(await read(),'Proyecto privado B');
+  assert.ok(!(await p.evaluate(()=>JSON.stringify(window.fcLocalProjects()))).includes(aId));
+  await setOwner('synthetic-account-A');
+  assert.equal(await read(),'Proyecto privado A');
+  assert.equal(await p.evaluate(()=>window.fcLocalProjectId()),aId);
+  console.log('H01_06_08_SYNTHETIC_LOCAL_ACCOUNT_PASS');
+ }finally{await accountContext.close()}
+
  }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
