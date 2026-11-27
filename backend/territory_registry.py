@@ -132,7 +132,12 @@ def resolve_from_records(context: str, records: list[dict]) -> dict:
     for record in records:
         municipality = _strip_prefix(record["municipality"])
         department = normalized(record["department"])
-        if value == municipality or value == f"{municipality} {department}" or value == record["divipola"]:
+        # Reviewed alias, scoped to the official code and department. Preserve
+        # ambiguity detection if another registry record matches the same input.
+        aliases = {"tumaco", "tumaco narino"} if (
+            record["divipola"] == "52835" and department == "narino"
+            and municipality == "san andres de tumaco") else set()
+        if value == municipality or value == f"{municipality} {department}" or value == record["divipola"] or value in aliases:
             options.append(record)
     if len(options) == 1:
         return {"status": "FOUND", "identity": options[0]}
