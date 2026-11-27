@@ -72,6 +72,12 @@ def rows(value: Any) -> list[dict[str, Any]]:
     return value if isinstance(value, list) else []
 
 
+def _risk_origin(risk: dict[str, Any]) -> str:
+    kind = clean(risk.get("linkedObjectType"))
+    reference = clean(risk.get("linkedObjectId"))
+    return kind if reference == POR_VERIFICAR else f"{kind} · {reference}"
+
+
 def _sentence_chunks(value: Any, max_sentences: int = 4, max_words: int = 95) -> list[str]:
     """Split prose into balanced paragraphs while preserving the original wording."""
     text = clean(value)
@@ -715,7 +721,7 @@ def generate_docx(payload: dict[str, Any]) -> bytes:
                 doc.add_heading("13.1 Soportes de recursos", level=2),
                 _docx_resource_entries(doc, p["budget"])
             )),
-            ("14. Riesgos y respuestas", lambda: _docx_table(doc, ["Origen", "Riesgo", "Probabilidad", "Impacto", "Nivel", "Prevención", "Contingencia", "Responsable"], [[r.get("linkedObjectType"), r.get("event"), r.get("probability"), r.get("impact"), r.get("riskLevel"), r.get("preventiveResponse"), r.get("contingencyResponse"), r.get("owner")] for r in p["risks"]])),
+            ("14. Riesgos y respuestas", lambda: _docx_table(doc, ["Origen", "Riesgo", "Probabilidad", "Impacto", "Nivel", "Prevención", "Contingencia", "Responsable"], [[_risk_origin(r), r.get("event"), r.get("probability"), r.get("impact"), r.get("riskLevel"), r.get("preventiveResponse"), r.get("contingencyResponse"), r.get("owner")] for r in p["risks"]])),
             ("15. Coherencia y trazabilidad", lambda: _docx_coherence_section(doc, p["coherence"])),
             ("16. Fuentes y anexos", lambda: _docx_source_entries(doc, p["sources"])),
             ("17. Advertencias de integridad", lambda: _docx_table(doc, ["Sección", "Tipo", "ID", "Referencia"], [[i.get("section"),i.get("kind"),i.get("id"),i.get("reference")] for i in p["integrity_issues"]]) if p["integrity_issues"] else _docx_body_paragraph(doc, "No se detectaron relaciones huérfanas.")),
@@ -971,7 +977,7 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
         story.append(Paragraph("13.1 Soportes de recursos", styles["FC_H2"]))
         _pdf_resource_entries(story, p["budget"], styles)
         add_h1("14. Riesgos y respuestas")
-        story.append(_pdf_table(["Origen","Riesgo","Prob.","Impacto","Nivel","Prevención","Contingencia","Responsable"], [[r.get("linkedObjectType"),r.get("event"),r.get("probability"),r.get("impact"),r.get("riskLevel"),r.get("preventiveResponse"),r.get("contingencyResponse"),r.get("owner")] for r in p["risks"]], [18*mm,34*mm,14*mm,14*mm,14*mm,30*mm,30*mm,20*mm]))
+        story.append(_pdf_table(["Origen","Riesgo","Prob.","Impacto","Nivel","Prevención","Contingencia","Responsable"], [[_risk_origin(r),r.get("event"),r.get("probability"),r.get("impact"),r.get("riskLevel"),r.get("preventiveResponse"),r.get("contingencyResponse"),r.get("owner")] for r in p["risks"]], [18*mm,34*mm,14*mm,14*mm,14*mm,30*mm,30*mm,20*mm]))
         add_h1("15. Coherencia y trazabilidad"); _pdf_coherence_section(story, p["coherence"], styles)
         add_h1("16. Fuentes y anexos"); _pdf_source_entries(story, p["sources"], styles)
         add_h1("17. Advertencias de integridad")
