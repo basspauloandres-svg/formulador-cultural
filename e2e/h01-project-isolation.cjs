@@ -137,12 +137,19 @@ const assert=require('node:assert/strict');
   };
   const mark=async text=>{
     const field=p.locator('#fields [data-field="nombre_del_proyecto"]');
-    await field.waitFor({state:'attached'});
-    // Drive the real form and save path, not a draft object behind stale inputs.
-    await field.fill(text,{force:true});
-    await p.evaluate(()=>saveLocal());
-    assert.equal(await field.inputValue(),text);
-    assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem(storeKey)||'{}').S01?.nombre_del_proyecto),text);
+    // Enter through the actual welcome screen, never type through an overlay.
+    if(await p.locator('#vtWelcome').isVisible()){
+      await p.locator('#vtContinueTop').click();
+    }
+    await p.locator('#vtWelcome').waitFor({state:'hidden'});
+    await field.waitFor({state:'visible'});
+    await field.fill(text);
+    assert.equal(await field.inputValue(),text,'Rendered S01 title after fill');
+    await p.locator('#save').click();
+    assert.equal(await field.inputValue(),text,'Rendered S01 title after save');
+    assert.equal(await p.evaluate(()=>draft.S01?.nombre_del_proyecto),text,'In-memory S01 after save');
+    assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem(storeKey)||'{}').S01?.nombre_del_proyecto),text,'Persisted S01 after save');
+    console.log('H01_ACCOUNT_FORM_SAVE_PASS',await p.evaluate(()=>window.fcH01LocalOwner()));
   };
   const read=()=>p.evaluate(()=>JSON.parse(localStorage.getItem(storeKey)||'{}').S01?.nombre_del_proyecto||'');
   await mark('Borrador invitado');
