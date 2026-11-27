@@ -55,6 +55,7 @@ def sample_payload():
         }],
         "risks": [{
             "linkedObjectType": "Actividad",
+            "linkedObjectId": "A1",
             "event": "Retraso documental",
             "probability": "Media",
             "impact": "Alto",
@@ -101,6 +102,7 @@ def test_docx_has_all_sections_footer_and_graphics():
         assert "Registro sintético de situaciones observadas." in xml
         assert "Clasificación" in xml
         assert "Pasivo" in xml
+        assert "Actividad · A1" in xml
         assert "11. Indicadores y metas" in xml
         assert "12. Cronograma" in xml
         assert "13. Recursos y presupuesto" in xml
