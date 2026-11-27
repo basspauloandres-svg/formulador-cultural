@@ -1,0 +1,7 @@
+# VÉRTICE · Consulta abierta
+
+Candidato QA `34bc339b11da85f85df1afd1aaf545059f6baee7`. Groq conserva su función de redacción. El panel común incorpora búsqueda web cuyo tema no depende del campo ni de una lista de municipios. Permite usar el municipio y departamento de S01 o marcar búsqueda nacional. Las acciones de investigación de los campos disponibles admiten un tema público opcional para orientar el descubrimiento. Sin tema explícito se conserva el comportamiento anterior. Para consultar proveedores externos se utilizan solo el territorio y las palabras clave públicas de la consulta, no el párrafo del proyecto.
+
+Los resultados del catálogo, Wikipedia y Brave cuando esté configurado se clasifican como candidatos. Se conservan los controles de lectura de documentos ya existentes. El nuevo modo transversal todavía no extrae automáticamente pasajes de cualquier sitio encontrado. La disponibilidad para 1.100+ municipios no implica cobertura documental uniforme. El cambio no habilita ni contrata servicios nuevos.
+
+Verificación: 65 pruebas focalizadas aprobadas. El nuevo caso prueba movilidad fluvial en Tumaco, Nariño, el mismo tema a escala nacional, rechazo de un candidato de otro municipio en consulta local y separación entre candidatos y evidencia. Sintaxis JavaScript y diff comprobados. Falta comprobar en navegador autenticado el flujo completo, incluidas búsquedas en otro municipio y otro sector con fuentes reales. La versión desplegada continúa siendo la del ajuste de Aguadas.
