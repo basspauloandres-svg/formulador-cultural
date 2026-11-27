@@ -32,3 +32,11 @@ Chromium 131, perfiles de navegador aislados y proyectos de prueba sintéticos. 
 La primera corrida del cotejo documental completo mezcló en un mismo flujo el arranque con una idea desde la interfaz y la carga directa del caso de prueba. Esa corrida no completó la aprobación S16. Se separaron las dos precondiciones, se repitió el cotejo integral y quedaron aprobadas las ocho descargas. El flujo desde una idea tuvo su propia corrida satisfactoria. No se cambió el candidato para hacer pasar la prueba.
 
 **Balance:** 25 PASS en el alcance indicado, 7 BLOCKED, 6 SIMULATED y 2 PARTIAL. H01 sigue **OPEN_CRITICAL**. La [matriz histórica de b981a90](H01_WORK_EVIDENCE_b981a90.md) y la [referencia de recuperación](H01_RENDER_PREFLIGHT_20261127.md) se conservan. Producción fuera del ensayo.
+
+## Comprobación directa en Chrome
+
+27 de noviembre, aproximadamente 08:04 de Colombia. Se abrió la URL pública de staging en Chrome, sin intercepción de respuestas, y Render confirmó que el mismo despliegue seguía activo. El navegador mostró el espacio de ensayo y la animación de entrada, incluidos el fondo turquesa, las partículas y el control «Omitir animación». Se observó la bienvenida después de la entrada. La comparación final de la identidad visual con el referente aprobado sigue pendiente (W37).
+
+Se recorrió el inicio como invitado con un borrador nuevo de prueba. El selector mostró 0/16 secciones y la identificación vacía. El ejemplo «Formación artística» habilitó «Construir mi proyecto» y trasladó el texto a «Idea inicial (aporte del usuario)» en S01. Se guardó el caso sintético `QA H01 · Ensayo de formación musical`, con Neira y Caldas. En S16 apareció «Proyecto en revisión» y se ofreció «Guardar revisión con pendientes», junto a los cuatro formatos. Queda pendiente la experiencia de un participante independiente (W40).
+
+S16 mostró también «No hay pendientes concretos en indicadores, resultados → actividades ni tratamiento financiero» en este borrador inicial. El mensaje tiene un alcance acotado y el resumen general sí indicó que faltaba completar secciones. Conviene incluir esta diferencia en la revisión de claridad con participantes. El balance W01–W40 se conserva. La limitación de conectividad directa de la corrida automatizada anterior ya no aplica a este recorrido focalizado.
