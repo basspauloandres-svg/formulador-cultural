@@ -22,6 +22,12 @@ SEEDS = {("neira", "caldas"): (
     ("https://caldas.gov.co/noticias-gobernacion/15213-con-alegria-y-mucho-orgullo-neira-recibio-a-la-banda-sinfonica-que-gano-el-festi-band-en-republica-dominicana-gobernacion-anuncio-recursos-para-impulsarla", "Gobernación de Caldas"),
 )}
 HOSTS = {"educacion.caldas.gov.co", "caldas.gov.co", "www.caldas.gov.co", "mincultura.gov.co", "www.mincultura.gov.co"}
+ECONOMIC_PROFILES = {("aguadas", "caldas"): (
+    "https://caldas.gov.co/index.php/component/k2/item/4-municipio-de-aguadas",
+    "Gobernación de Caldas", "Municipio de Aguadas",
+)}
+ECONOMIC_PROFILE_URLS = frozenset(profile[0] for profile in ECONOMIC_PROFILES.values())
+ECONOMIC_TERMS = re.compile(r"\b(?:econom\w*|agropecuari\w*|agricultur\w*|ganader\w*|cultiv\w*|aguacat\w*|cafe\w*|inversion\w*|produccion)\b")
 TERMS = ("banda", "music", "artist", "cultur", "danza", "teatro", "biblioteca", "patrimonio", "festival")
 MAX_BYTES = 2_500_000
 TTL = 3600
@@ -39,6 +45,8 @@ def safe_url(url, article=True):
             return False
         if not article:
             return any(url==u for u,_ in NATIONAL_PORTALS) or any(url==u for values in PORTALS.values() for u,_ in values)
+        if url in ECONOMIC_PROFILE_URLS:
+            return True
         if p.hostname in {"mincultura.gov.co","www.mincultura.gov.co"}:
             return bool(re.fullmatch(r"/noticias/Paginas/(?!default\.aspx$)[a-zA-Z0-9-]+\.aspx",p.path))
         return bool(re.fullmatch(r"/sala-de-prensa/articles-category-blog/[a-z0-9-]+",p.path)
@@ -140,6 +148,33 @@ def parse(data):
     page=Page()
     page.feed(data.decode("utf-8",errors="replace"))
     return page
+
+async def economic_profile_passages(key, text):
+    profile = ECONOMIC_PROFILES.get(key)
+    if not profile or not ECONOMIC_TERMS.search(normalized(text)):
+        return []
+    url, publisher, title = profile
+    data = await public_html(url)
+    if not data:
+        return []
+    page = parse(data)
+    date = date_from(page)
+    if not date or normalized(title) not in normalized(" ".join(page.visible)):
+        return []
+    for number, paragraph in enumerate(page.paragraphs, 1):
+        if has_private_contact(paragraph) or contains_directive(paragraph):
+            continue
+        for sentence in re.split(r"(?<=[.!?])\s+", paragraph):
+            text = normalized(sentence)
+            if 45 <= len(sentence) <= 420 and "actividad economica" in text and ECONOMIC_TERMS.search(text):
+                return [{"source_id": "official-" + sha256(url.encode()).hexdigest()[:16],
+                    "title": title, "publisher": publisher, "url": url,
+                    "locator": f"Párrafo HTML {number}", "sha256": sha256(data).hexdigest(),
+                    "excerpt": sentence, "category": "PERFIL_ECONOMICO",
+                    "passage_status": "EXCERPT_FOUND_CLAIM_UNVERIFIED",
+                    "scope_warning": "Perfil fechado; no acredita por sí solo cambios recientes, cifras vigentes ni origen de inversiones.",
+                    "publication_date": date, "publication_year": int(date[:4])}]
+    return []
 
 def article_passages(data,url,publisher,city,department=None):
     page=parse(data); date=date_from(page)
