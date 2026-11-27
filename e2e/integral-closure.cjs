@@ -43,7 +43,12 @@ const assert=require('node:assert/strict');
  const persisted=await page.evaluate(()=>JSON.parse(localStorage.getItem(storeKey)).S16.review_state.confirmed);
  assert.equal(persisted,true);
  // A later edit must revoke review and professional document status.
- const invalidated=await page.evaluate(()=>{draft.S01.nombre_del_proyecto+=' editado';return [window.fcReviewApprovalCurrent(),window.fcSectionStatus('S16'),window.fcGetDocumentStatus()]});
+ await page.locator('#guidedJourney [data-code="S01"]').click();
+ await page.locator('#nombre_del_proyecto').fill('QA integral — editado desde el formulario');
+ await page.locator('#save').click();
+ await page.reload({waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>draft.S01?.nombre_del_proyecto==='QA integral — editado desde el formulario');
+ const invalidated=await page.evaluate(()=>[window.fcReviewApprovalCurrent(),window.fcSectionStatus('S16'),window.fcGetDocumentStatus()]);
  assert.deepEqual(invalidated,[false,'progress','Proyecto en revisión']);
  console.log('INTEGRAL_CLOSURE_PASS');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
