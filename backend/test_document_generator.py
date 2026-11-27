@@ -15,6 +15,7 @@ def sample_payload():
         "context": "Contexto territorial del proyecto.",
         "population": "Población participante.",
         "evidence": "Evidencia confirmada.",
+        "observed_situations": "Registro sintético de situaciones observadas.",
         "sources": "Fuente institucional.",
         "problem": "Problema central.",
         "objective_general": "Mejorar la condición central.",
@@ -97,6 +98,9 @@ def test_docx_has_all_sections_footer_and_graphics():
         assert "1. Contexto territorial, cultural y social" in xml
         assert "2. Resumen ejecutivo" in xml
         assert "5. Priorización de situaciones" in xml
+        assert "Registro sintético de situaciones observadas." in xml
+        assert "Clasificación" in xml
+        assert "Pasivo" in xml
         assert "11. Indicadores y metas" in xml
         assert "12. Cronograma" in xml
         assert "13. Recursos y presupuesto" in xml
