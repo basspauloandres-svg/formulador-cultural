@@ -34,6 +34,7 @@ function mount(){
    panel.dataset.reviewField=field.dataset.field;
    const button=node('button',active==='S02'?'Investigar y generar propuesta':'Investigar y preparar redacción');
    button.type='button';button.dataset.reviewAction='verify';
+   const edit=node('button','Mejorar redacción sin investigar');edit.type='button';edit.dataset.reviewAction='edit';
    const topicLabel=node('label','Tema público de búsqueda (opcional, sin datos personales) ');
    const topic=node('input');topic.type='text';topic.maxLength=90;
    topic.placeholder='Ej. movilidad rural o infraestructura educativa';
@@ -52,12 +53,12 @@ function mount(){
    const savedReview=node('p','','vt-evidence-detail');savedReview.hidden=true;
    const savedSources=node('details','','vt-saved-evidence');savedSources.hidden=true;
    let renderedManifest='';
-   panel.append(topicLabel,button,status,savedReview,savedSources,results,proposal);
+   panel.append(edit,topicLabel,button,status,savedReview,savedSources,results,proposal);
    host.appendChild(panel);
-   let seq=0,lastContext=territory(),sourceValue='',sourceContext='',sourceSection='',sourceDraft='',needsReview=false,pendingAudit=null;
+   let seq=0,lastContext=territory(),sourceValue='',sourceContext='',sourceSection='',sourceDraft='',needsReview=false,pendingAudit=null,sourceProject=null;
    function showSavedReview(){
-     const record=draft?.S02?.evidence_review_state?.fields?.[field.dataset.field];
-     if(active!=='S02'||!record){savedReview.hidden=true;savedSources.hidden=true;return;}
+     const record=draft?.[active]?.evidence_review_state?.fields?.[field.dataset.field];
+     if(!record){savedReview.hidden=true;savedSources.hidden=true;return;}
      savedReview.hidden=false;
      const message=record.context!==territory()?'Cotejo anterior de otro territorio. Investiga de nuevo.':record.accepted_text!==field.value?'Texto modificado después de la revisión. Requiere nuevo cotejo.':'Borrador incorporado el '+String(record.accepted_at||'').slice(0,10)+'; '+(record.status==='EDITED_UNREVIEWED'?'edición posterior a la auditoría.':'afirmaciones pendientes de cotejo.')+' Fuentes registradas: '+String(record.manifest?.length||0)+'.';
      if(savedReview.textContent!==message)savedReview.textContent=message;
@@ -90,6 +91,31 @@ function mount(){
      return true;
    }
    panel.vtReviewInvalidate=clearIfChanged;
+   edit.onclick=async()=>{
+     clearIfChanged();
+     const input=field.value.trim(),context=territory(),section=active,fieldId=field.dataset.field,projectId=window.fcLocalProjectId?.(),request=++seq;
+     if(!input){status.textContent='Escribe primero tu aporte.';return;}
+     proposal.hidden=true;pendingAudit=null;results.replaceChildren();results.hidden=true;
+     edit.disabled=true;button.disabled=true;status.textContent='Preparando redacción desde tu aporte…';
+     const current=()=>request===seq&&field.isConnected&&active===section&&field.value.trim()===input&&territory()===context&&window.fcLocalProjectId?.()===projectId;
+     try{
+       const session=(await sb.auth.getSession())?.data?.session;
+       if(!session?.access_token){if(current())status.textContent='Inicia sesión para preparar la redacción.';return;}
+       const response=await fetch(API+'/assistant/section/review',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({section,field:fieldId,text:input,context,operation:'edit',compose:true,include_web:false})});
+       const data=await response.json();
+       if(!current())return;
+       if((await sb.auth.getSession())?.data?.session?.user?.id!==session.user?.id||!current())return;
+       if(!response.ok||data.section!==section||data.field!==fieldId||data.operation!=='edit'){status.textContent='No se pudo preparar la redacción. Tu aporte permanece intacto.';return;}
+       if(!data.suggestion){status.textContent=data.note||'Escribe un aporte concreto para redactar.';return;}
+       sourceValue=field.value;sourceContext=context;sourceSection=section;sourceProject=projectId;sourceDraft=data.suggestion;needsReview=true;
+       pendingAudit={context,origin:'USER_CONTRIBUTION_EDITORIAL',manifest:[],claim_audit:data.claims||[],methodological_guidance:data.methodological_guidance||null,reviewed_text:sourceDraft,original_input:input};
+       results.appendChild(node('p','Procedencia: aporte del docente. Verificación documental pendiente.','vt-evidence-detail'));
+       const g=data.methodological_guidance;
+       if(g?.answer){results.appendChild(node('p',g.answer,'vt-evidence-detail'));if(g.source)results.appendChild(node('p',g.source,'vt-evidence-detail'));for(const ref of (g.references||[])){if(typeof ref.url==='string'&&ref.url.startsWith('https://')){const a=node('a',String(ref.title||'Referencia metodológica')+' · '+String(ref.locator||''));a.href=ref.url;a.target='_blank';a.rel='noopener noreferrer';results.appendChild(a);}}}
+       results.hidden=false;proposalText.value=sourceDraft;proposal.hidden=false;status.textContent=sourceDraft===input?'Se conserva tu aporte; puedes editarlo antes de incorporarlo.':'Redacción preparada desde tu aporte. Revisa y confirma.';
+     }catch{if(current())status.textContent='No se pudo preparar la redacción. Tu aporte permanece intacto.';}
+     finally{edit.disabled=false;button.disabled=false;}
+   };
    button.onclick=async()=>{
      clearIfChanged();
      const context=territory(),input=field.value.trim(),publicTopic=topic.value.trim(),request=++seq,requestedSection=active;
@@ -118,7 +144,7 @@ function mount(){
          if(currentOwner!==ownerId)return;
          window.fcH01StoreReview?.({projectId,ownerId,section:requestedSection,field:fieldId,requestId,input,context,data,receivedAt:new Date().toISOString()});
        }
-       if(request!==seq||active!==requestedSection||!field.isConnected||field.value.trim()!==input||territory()!==context)return;
+       if(request!==seq||active!==requestedSection||!field.isConnected||field.value.trim()!==input||territory()!==context||window.fcLocalProjectId?.()!==projectId)return;
        const claims=Array.isArray(data.claims)?data.claims:[];
        if(claims.length||!isS02)results.appendChild(node('strong','Afirmaciones detectadas · evaluación preliminar'));
        if(!claims.length&&!isS02)results.appendChild(node('p','No se identificaron oraciones completas; amplía la descripción.'));
@@ -218,7 +244,7 @@ function mount(){
          pendingAudit=isS02?{context,divipola:data.territory?.divipola||null,
            origin:data.suggestion_origin||'UNKNOWN',manifest,claim_audit:audited,semantic_support_status:data.semantic_support_status||'NOT_ASSESSED',
            reviewed_text:suggestion}:null;
-         sourceValue=field.value;sourceContext=context;sourceSection=requestedSection;sourceDraft=suggestion;needsReview=isS02;
+         sourceValue=field.value;sourceContext=context;sourceSection=requestedSection;sourceProject=projectId;sourceDraft=suggestion;needsReview=isS02;
          proposalText.value=suggestion;
          proposal.hidden=false;
          status.textContent=data.suggestion_origin==='DETERMINISTIC_REGISTRY_FACT'?'Propuesta construida directamente a partir del registro administrativo; no corresponde a una redacción del modelo. Revisa su alcance antes de incorporar.':data.suggestion_origin==='USER_TEXT_FALLBACK'?'Se conserva el aporte original porque el modelo añadió contenido sin respaldo.':'Redacción preparada. Verifica los datos y aprueba para incorporarla al campo y guardarla.';
@@ -243,7 +269,7 @@ function mount(){
        if(!field.isConnected||entry.section!==active||entry.input!==field.value.trim()||entry.context!==territory()){status.textContent='La consulta corresponde a una versión anterior del campo o territorio; requiere una nueva revisión.';return}
        const d=entry.data,suggestion=!d.blocked_for_evidence&&typeof d.suggestion==='string'?d.suggestion.trim():'';
        if(!suggestion){status.textContent='La consulta recuperada no contiene una propuesta utilizable.';return}
-       sourceValue=field.value;sourceContext=entry.context;sourceSection=entry.section;sourceDraft=suggestion;needsReview=entry.section==='S02';
+       sourceValue=field.value;sourceContext=entry.context;sourceSection=entry.section;sourceProject=entry.projectId;sourceDraft=suggestion;needsReview=entry.section==='S02';
        pendingAudit=needsReview?{context:entry.context,divipola:d.territory?.divipola||null,origin:d.suggestion_origin||'UNKNOWN',manifest:d.evidence_manifest||[],claim_audit:d.claim_audit||[],semantic_support_status:d.semantic_support_status||'NOT_ASSESSED',reviewed_text:suggestion}:null;
        proposalText.value=suggestion;proposal.hidden=false;
        results.replaceChildren(node('p','Consulta recuperada del proyecto de origen. Las afirmaciones requieren cotejo.','vt-evidence-detail'));
@@ -254,7 +280,7 @@ function mount(){
    }
    approve.onclick=()=>{
      if(clearIfChanged())return;
-     if(proposal.hidden||!field.isConnected||active!==sourceSection||territory()!==sourceContext||field.value!==sourceValue ){
+     if(proposal.hidden||!field.isConnected||active!==sourceSection||territory()!==sourceContext||field.value!==sourceValue||window.fcLocalProjectId?.()!==sourceProject ){
        status.textContent='Cambió el campo o el municipio. Repite la investigación antes de incorporar la redacción.';return;
      }
      const edited=proposalText.value.trim();
@@ -262,9 +288,9 @@ function mount(){
      if(needsReview&&!window.confirm(edited!==sourceDraft?'Editaste la propuesta después de la auditoría. Las nuevas afirmaciones no se han evaluado. ¿Incorporar como borrador pendiente de cotejo?':'La propuesta contiene afirmaciones pendientes de cotejo. ¿Incorporar como borrador sin declarar los hechos verificados?'))return;
      if(needsReview&&pendingAudit){
        const acceptedAt=new Date().toISOString();
-       draft.S02=draft.S02||{};
-       const previous=draft.S02.evidence_review_state||{};
-       draft.S02.evidence_review_state={updatedAt:acceptedAt,fields:{...previous.fields,
+       draft[sourceSection]=draft[sourceSection]||{};
+       const previous=draft[sourceSection].evidence_review_state||{};
+       draft[sourceSection].evidence_review_state={updatedAt:acceptedAt,fields:{...previous.fields,
          [field.dataset.field]:{...pendingAudit,accepted_text:edited,accepted_at:acceptedAt,
            status:edited===sourceDraft?'ACCEPTED_UNVERIFIED':'EDITED_UNREVIEWED'}}};
      }
