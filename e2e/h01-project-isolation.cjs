@@ -27,6 +27,19 @@ const assert=require('node:assert/strict');
  await switchTo(b);assert.equal(await title.inputValue(),'Talleres Villamaría');
  assert.equal(await page.evaluate(()=>window.fcLocalProjects().length),3);
  console.log('H01_LOCAL_BROWSER_PASS H01-01 H01-02 H01-03 H01-04 H01-05 H01-12 H01-13');
+ const activeProject=page.locator('#h01ActiveProject');
+ assert.match(await activeProject.innerText(),/1\/16 secciones con registro/);
+ for(let i=2;i<=16;i++){
+   const code='S'+String(i).padStart(2,'0');
+   await page.locator(`#guidedJourney [data-code="${code}"]`).click();
+   await page.waitForFunction(expected=>active===expected,code);
+ }
+ assert.match(await activeProject.innerText(),/1\/16 secciones con registro/);
+ await page.locator('#guidedJourney [data-code="S02"]').click();
+ await page.locator('#territorio_o_lugar_de_intervencion').fill('Contexto sintético de Villamaría');
+ await page.locator('#guidedJourney [data-code="S01"]').click();
+ assert.match(await activeProject.innerText(),/2\/16 secciones con registro/);
+ console.log('H01_PROJECT_SECTION_COUNT_PASS');
  const exportHtml=async expected=>{await page.locator('#guidedJourney [data-code="S16"]').click();const download=page.waitForEvent('download');await page.locator('#expHtml').click();const file=await download;const fs=require('node:fs');const html=fs.readFileSync(await file.path(),'utf8');assert.ok(html.includes(expected));return html};
  const htmlB=await exportHtml('Talleres Villamaría');assert.ok(!htmlB.includes('Neira histórico'));
  await page.locator('#guidedJourney [data-code="S01"]').click();
