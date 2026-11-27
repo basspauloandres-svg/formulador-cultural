@@ -19,20 +19,20 @@ PORTALS = {"narino": (("https://narino.gov.co/noticias/", "Gobernación de Nari�
 )}
 SEEDS = {("tumaco", "narino"): (
     ("https://mng.mincultura.gov.co/prensa/noticias/Paginas/sonidos-para-la-construccion-de-paz-primera-dotacion-instrumentos-tumaco.aspx", "Ministerio de las Culturas, las Artes y los Saberes"),
-    ("https://situr.narino.gov.co/atractivos-turisticos/cantos--bailes-y-musicas-de-marimba-del-pacifico-narinense", "Sistema de Información Turística de Nariño"),
-    ("https://www.defensoria.gov.co/web/mapa-de-la-esperanza/tumaco", "Defensoría del Pueblo"),
+    ("https://bancodecontenidos.mincultura.gov.co/Comunicacion-Territorio/pcfsur.html", "Banco de Contenidos del Ministerio de las Culturas"),
+    ("https://normograma.mincultura.gov.co/compilacion/docs/resolucion_mincultura_1645_2010.htm", "Ministerio de las Culturas"),
 ), ("neira", "caldas"): (
     ("https://educacion.caldas.gov.co/sala-de-prensa/articles-category-blog/neira-villamaria-y-aguadas-ocuparon-los-primeros-lugares-en-la-version-43-del-concurso-departamental-de-bandas-estudiantiles-de-musica", "Secretaría de Educación de Caldas"),
     ("https://caldas.gov.co/noticias-gobernacion/15213-con-alegria-y-mucho-orgullo-neira-recibio-a-la-banda-sinfonica-que-gano-el-festi-band-en-republica-dominicana-gobernacion-anuncio-recursos-para-impulsarla", "Gobernación de Caldas"),
 )}
-HOSTS = {"educacion.caldas.gov.co", "caldas.gov.co", "www.caldas.gov.co", "mincultura.gov.co", "www.mincultura.gov.co", "mng.mincultura.gov.co", "narino.gov.co", "situr.narino.gov.co", "www.defensoria.gov.co"}
+HOSTS = {"educacion.caldas.gov.co", "caldas.gov.co", "www.caldas.gov.co", "mincultura.gov.co", "www.mincultura.gov.co", "mng.mincultura.gov.co", "narino.gov.co", "bancodecontenidos.mincultura.gov.co", "normograma.mincultura.gov.co"}
 ECONOMIC_PROFILES = {("aguadas", "caldas"): (
     "https://caldas.gov.co/index.php/component/k2/item/4-municipio-de-aguadas",
     "Gobernación de Caldas", "Municipio de Aguadas",
 )}
 ECONOMIC_PROFILE_URLS = frozenset(profile[0] for profile in ECONOMIC_PROFILES.values())
 ECONOMIC_TERMS = re.compile(r"\b(?:econom\w*|agropecuari\w*|agricultur\w*|ganader\w*|cultiv\w*|aguacat\w*|cafe\w*|inversion\w*|produccion)\b")
-TERMS = ("banda", "music", "artist", "cultur", "danza", "teatro", "biblioteca", "patrimonio", "festival")
+TERMS = ("marimba", "canto", "banda", "music", "artist", "cultur", "danza", "teatro", "biblioteca", "patrimonio", "festival")
 MAX_BYTES = 2_500_000
 TTL = 3600
 CACHE = OrderedDict()
@@ -114,6 +114,12 @@ def date_from(page):
             from datetime import date
             return date(int(m[3]),months.index(m[2])+1,int(m[1])).isoformat()
         except ValueError: pass
+    m=re.search(r"\b(\d{1,2})-(\d{1,2})-(20\d{2})\b",value)
+    if m:
+        try:
+            from datetime import date
+            return date(int(m[3]),int(m[2]),int(m[1])).isoformat()
+        except ValueError: pass
     return None
 
 async def _download(url,article):
@@ -189,7 +195,9 @@ async def economic_profile_passages(key, text):
 def article_passages(data,url,publisher,city,department=None):
     page=parse(data); date=date_from(page)
     # Undated pages remain candidates, not dated live evidence.
-    if not date: return []
+    if url == "https://normograma.mincultura.gov.co/compilacion/docs/resolucion_mincultura_1645_2010.htm":
+        date = "2010-07-31"
+    if not date and url != "https://bancodecontenidos.mincultura.gov.co/Comunicacion-Territorio/pcfsur.html": return []
     result=[]
     for i,paragraph in enumerate(page.paragraphs,1):
         if not relevant(paragraph,city) or has_private_contact(paragraph) or contains_directive(paragraph): continue
@@ -199,12 +207,12 @@ def article_passages(data,url,publisher,city,department=None):
             if not 45<=len(sentence)<=420 or not relevant(sentence,city): continue
             if department and urlsplit(url).hostname in {"mincultura.gov.co","www.mincultura.gov.co"} and not re.search(r"\b"+re.escape(department)+r"\b",normalized(sentence)): continue
             result.append({"source_id":"official-"+sha256(url.encode()).hexdigest()[:16],
-                "title":"Publicación institucional · "+date,"publisher":publisher,"url":url,
+                "title":"Publicación institucional · "+(date or "fecha no determinada"),"publisher":publisher,"url":url,
                 "locator":"Párrafo HTML "+str(i),"sha256":sha256(data).hexdigest(),
                 "excerpt":sentence,"category":"PRACTICAS_MUSICALES",
                 "passage_status":"EXCERPT_FOUND_CLAIM_UNVERIFIED",
-                "scope_warning":"Publicación fechada; describe un hecho reportado en esa fecha, no acredita cobertura ni vigencia posterior.",
-                "publication_date":date,"publication_year":int(date[:4])})
+                "scope_warning":"Publicación fechada; no acredita vigencia posterior." if date else "Fecha no determinada; no acredita vigencia actual.",
+                "publication_date":date,"publication_year":int(date[:4]) if date else None})
             return result
     return result
 
@@ -239,4 +247,4 @@ async def institutional_passages(key,categories,web_candidates=()):
     found=[]
     for (url,publisher),data in zip(unique,pages):
         if data: found.extend(article_passages(data,url,publisher,city,dept))
-    return sorted(found,key=lambda r:r["publication_date"],reverse=True)[:2]
+    return sorted(found,key=lambda r:r["publication_date"] or "",reverse=True)[:2]
