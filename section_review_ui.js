@@ -93,9 +93,13 @@ function mount(){
      if(!context){status.textContent='Completa el municipio en S01 para contextualizar la revisión.';return}
      if(!input&&active!=='S02'){status.textContent='Escribe una observación o afirmación en este campo para contrastarla.';return}
      button.disabled=true;status.textContent='Contrastando afirmaciones y preparando un borrador editable...';
+     const projectId=window.fcLocalProjectId?.(),fieldId=field.dataset.field;
+     const requestId=window.fcH01BeginReview?.(requestedSection,fieldId);
+     let ownerId=null;
      try{
        const sessionResult=await sb.auth.getSession();
        const token=sessionResult?.data?.session?.access_token;
+       ownerId=sessionResult?.data?.session?.user?.id||null;
        if(!token){status.textContent='Inicia sesión para revisar fuentes.';return}
        const isS02=requestedSection==='S02';
        const response=await fetch(API+(isS02?'/assistant/s02/guide':'/assistant/section/review'),{
@@ -103,9 +107,14 @@ function mount(){
          body:JSON.stringify({section:requestedSection,field:field.dataset.field,text:input,context,include_web:true,compose:true,generate:true})
        });
        const data=await response.json();
-       if(request!==seq||active!==requestedSection||!field.isConnected||field.value.trim()!==input||territory()!==context)return;
        if(!response.ok){status.textContent=String(data.detail||'No se pudo completar la revisión.').slice(0,220);return}
        if(data.section!==requestedSection||(isS02&&(data.territory_context!==context||data.field!==field.dataset.field))){status.textContent='La respuesta no corresponde al campo o territorio solicitado. Repite la consulta.';return;}
+       if(requestId&&ownerId&&projectId&&window.fcLocalProjectId?.()===projectId){
+         const currentOwner=(await sb.auth.getSession())?.data?.session?.user?.id;
+         if(currentOwner!==ownerId)return;
+         window.fcH01StoreReview?.({projectId,ownerId,section:requestedSection,field:fieldId,requestId,input,context,data,receivedAt:new Date().toISOString()});
+       }
+       if(request!==seq||active!==requestedSection||!field.isConnected||field.value.trim()!==input||territory()!==context)return;
        const claims=Array.isArray(data.claims)?data.claims:[];
        if(claims.length||!isS02)results.appendChild(node('strong','Afirmaciones detectadas · evaluación preliminar'));
        if(!claims.length&&!isS02)results.appendChild(node('p','No se identificaron oraciones completas; amplía la descripción.'));
@@ -216,8 +225,27 @@ function mount(){
          status.textContent=data.blocked_for_evidence?'Evidencia insuficiente para formular una propuesta sustentada. Revisa las fuentes disponibles.':'La consulta no produjo un borrador utilizable. El campo permanece intacto.';
        }
      }catch{status.textContent='La consulta no respondió. El texto original sigue intacto.'}
-     finally{button.disabled=false}
+     finally{if(requestId)window.fcH01EndReview?.(requestId);button.disabled=false}
    };
+   if(window.fcH01GetReview){
+     const restore=node('button','Recuperar consulta pendiente');restore.type='button';restore.dataset.reviewAction='restore';
+     panel.insertBefore(restore,status);
+     restore.onclick=async()=>{
+       const entry=window.fcH01GetReview?.(active,field.dataset.field);
+       const owner=(await sb?.auth?.getSession())?.data?.session?.user?.id;
+       if(!entry||!owner||entry.ownerId!==owner||entry.projectId!==window.fcLocalProjectId?.()){status.textContent='No hay consulta pendiente disponible para esta cuenta y proyecto.';return}
+       if(!field.isConnected||entry.section!==active||entry.input!==field.value.trim()||entry.context!==territory()){status.textContent='La consulta corresponde a una versión anterior del campo o territorio; requiere una nueva revisión.';return}
+       const d=entry.data,suggestion=!d.blocked_for_evidence&&typeof d.suggestion==='string'?d.suggestion.trim():'';
+       if(!suggestion){status.textContent='La consulta recuperada no contiene una propuesta utilizable.';return}
+       sourceValue=field.value;sourceContext=entry.context;sourceSection=entry.section;sourceDraft=suggestion;needsReview=entry.section==='S02';
+       pendingAudit=needsReview?{context:entry.context,divipola:d.territory?.divipola||null,origin:d.suggestion_origin||'UNKNOWN',manifest:d.evidence_manifest||[],claim_audit:d.claim_audit||[],semantic_support_status:d.semantic_support_status||'NOT_ASSESSED',reviewed_text:suggestion}:null;
+       proposalText.value=suggestion;proposal.hidden=false;
+       results.replaceChildren(node('p','Consulta recuperada del proyecto de origen. Las afirmaciones requieren cotejo.','vt-evidence-detail'));
+       for(const item of (d.claim_audit||[])){results.appendChild(node('p',String(item.fragment||'')+' · '+String(item.status||'INSUFFICIENT_EVIDENCE'),'vt-evidence-detail'))}
+       for(const item of (d.evidence_manifest||[])){const div=node('div','','vt-evidence-passages');div.appendChild(node('p',String(item.prompt_excerpt||''),'vt-evidence-detail'));if(typeof item.url==='string'&&item.url.startsWith('https://')){const a=node('a','Consultar fuente original');a.href=item.url;a.target='_blank';a.rel='noopener noreferrer';div.appendChild(a)}results.appendChild(div)}
+       results.hidden=false;status.textContent='Respuesta recuperada. Pendiente de revisión y aprobación.';
+     };
+   }
    approve.onclick=()=>{
      if(clearIfChanged())return;
      if(proposal.hidden||!field.isConnected||active!==sourceSection||territory()!==sourceContext||field.value!==sourceValue ){
@@ -237,11 +265,13 @@ function mount(){
      field.value=edited;
      field.dispatchEvent(new Event('input',{bubbles:true}));
      field.dispatchEvent(new Event('change',{bubbles:true}));
+     window.fcH01ClearReview?.(sourceSection,field.dataset.field);
      proposal.hidden=true;
      status.textContent='Redacción incorporada al campo. Se solicitó guardar el proyecto.';
      const save=document.getElementById('save');if(save)save.click();
    };
    discard.onclick=()=>{
+     window.fcH01ClearReview?.(active,field.dataset.field);
      proposal.hidden=true;pendingAudit=null;
      status.textContent='Propuesta descartada. El texto original continúa intacto.';
    };
