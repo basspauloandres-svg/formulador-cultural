@@ -32,3 +32,21 @@ def test_national_web_candidates_retrieved_not_snippets():
     assert len(rows)==1
     assert "Texto del buscador" not in rows[0]["excerpt"]
     assert rows[0]["passage_status"]=="EXCERPT_FOUND_CLAIM_UNVERIFIED"
+
+
+def test_economic_profile_is_scoped_dated_and_retrieved():
+    html = ('<meta property="article:published_time" content="2021-03-03">'
+            '<h1>Municipio de Aguadas</h1>'
+            '<p>La actividad económica del caso sintético incluye agricultura y ganadería.</p>').encode()
+    with patch.object(s, "public_html", new=AsyncMock(return_value=html)) as fetch:
+        assert not asyncio.run(s.economic_profile_passages(("aguadas", "otra"), "agricultura"))
+        assert not asyncio.run(s.economic_profile_passages(("aguadas", "caldas"), "música"))
+        fetch.assert_not_awaited()
+        rows = asyncio.run(s.economic_profile_passages(("aguadas", "caldas"), "investiga la ganadería"))
+        assert len(rows) == 1
+        row = rows[0]
+        assert s.safe_url(row["url"])
+        assert row["publication_date"] == "2021-03-03"
+        assert row["locator"] == "Párrafo HTML 1"
+        assert row["passage_status"] == "EXCERPT_FOUND_CLAIM_UNVERIFIED"
+        assert len(row["sha256"]) == 64
