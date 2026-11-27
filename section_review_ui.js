@@ -199,7 +199,9 @@ function mount(){
        details.appendChild(links);
        if(candidates.length)results.appendChild(details);
        else if(!primary.length&&!manifest.length)results.appendChild(node('p','No se recuperaron pasajes institucionales pertinentes. Las decisiones del proyecto pueden continuar; los datos externos siguen pendientes de verificación.','vt-evidence-detail'));
-       results.appendChild(node('p','Los pasajes institucionales identifican fragmentos consultables, pero su coincidencia temática no equivale a corroboración. Las afirmaciones y las observaciones siguen diferenciadas.','vt-evidence-detail'));
+       if(isS02&&data.web_extended_enabled===false)results.appendChild(node('p','La búsqueda web ampliada no está configurada en este entorno. La consulta usa las fuentes públicas disponibles.','vt-evidence-detail'));
+       if(isS02&&Array.isArray(data.errors))data.errors.forEach(message=>results.appendChild(node('p',String(message),'vt-evidence-detail')));
+       if(primary.length||manifest.length)results.appendChild(node('p','La coincidencia temática de un pasaje requiere cotejo antes de usarlo como respaldo de una afirmación.','vt-evidence-detail'));
        results.hidden=false;
        if(isS02&&Array.isArray(data.guidance)&&data.guidance.length){
           const guidance=node('details');guidance.open=!!data.blocked_for_evidence;
