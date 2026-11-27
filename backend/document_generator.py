@@ -128,6 +128,7 @@ def normalized_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "population": clean(payload.get("population")),
         "evidence": clean(payload.get("evidence")),
         "sources": clean(payload.get("sources")),
+        "observed_situations": clean(payload.get("observed_situations")),
         "problem": clean(payload.get("problem")),
         "problem_description": clean(payload.get("problem_description")),
         # The public export endpoint cannot authenticate a browser-side approval.
@@ -678,12 +679,18 @@ def generate_docx(payload: dict[str, Any]) -> bytes:
             "budget": _budget_figure(p["budget"], td / "budget.png"),
         }
 
+        vester_rows = [[r.get("text"), r.get("influence"), r.get("dependence"), r.get("quadrant")]
+                       for r in rows(p["vester"].get("rows"))]
         sections: list[tuple[str, callable]] = [
             ("1. Contexto territorial, cultural y social", lambda: _docx_body_paragraph(doc, p["context"])),
             ("2. Resumen ejecutivo", lambda: (_docx_body_paragraph(doc, p["document_status"]), _docx_body_paragraph(doc, p["summary"]))),
             ("3. Población", lambda: _docx_body_paragraph(doc, p["population"])),
             ("4. Evidencia y antecedentes", lambda: (_docx_body_paragraph(doc, p["evidence"]), _docx_body_paragraph(doc, p["sources"], "Fuentes: "))),
-            ("5. Priorización de situaciones · Matriz Vester", lambda: _docx_add_figure(doc, figures["vester"], "Figura 1. Plano de influencia y dependencia de la matriz Vester.")),
+            ("5. Priorización de situaciones · Matriz Vester", lambda: (
+                _docx_body_paragraph(doc, p["observed_situations"], "Situaciones registradas en S05. "),
+                _docx_add_figure(doc, figures["vester"], "Figura 1. Plano de influencia y dependencia de la matriz Vester."),
+                _docx_table(doc, ["Situación", "Influencia", "Dependencia", "Clasificación"], vester_rows) if vester_rows else None,
+            )),
             ("6. Planteamiento del problema", lambda: (_docx_body_paragraph(doc, p["problem"]), _docx_body_paragraph(doc, p["problem_description"], "Descripción sustentada: "), _docx_add_figure(doc, figures["problem"], "Figura 2. Árbol de problemas.", width_inches=6.45, standalone=False))),
             ("7. Objetivos", lambda: (
                 _docx_body_paragraph(doc, p["objective_general"], "Objetivo general: "),
@@ -929,7 +936,9 @@ def generate_pdf(payload: dict[str, Any]) -> bytes:
         add_h1("3. Población"); add_body(p["population"])
         add_h1("4. Evidencia y antecedentes"); add_body(p["evidence"]); add_body("Fuentes: " + p["sources"])
         story.append(PageBreak())
-        add_h1("5. Priorización de situaciones · Matriz Vester"); add_img(figs["vester"], "Figura 1. Plano de influencia y dependencia de la matriz Vester.")
+        add_h1("5. Priorización de situaciones · Matriz Vester")
+        add_body("Situaciones registradas en S05. " + p["observed_situations"])
+        add_img(figs["vester"], "Figura 1. Plano de influencia y dependencia de la matriz Vester.")
         if rows(p["vester"].get("rows")):
             story.append(_pdf_table(["Situación", "Influencia", "Dependencia", "Clasificación"],
                                     [[r.get("text"), r.get("influence"), r.get("dependence"), r.get("quadrant")] for r in p["vester"]["rows"]],
