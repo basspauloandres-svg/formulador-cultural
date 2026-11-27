@@ -13,15 +13,19 @@ from prompt_boundary import contains_directive
 
 # Reviewed entry points, not an exhaustive directory or a stored factual answer.
 NATIONAL_PORTALS = (("https://www.mincultura.gov.co/", "Ministerio de las Culturas, las Artes y los Saberes"),)
-PORTALS = {"caldas": (
+PORTALS = {"narino": (("https://narino.gov.co/noticias/", "Gobernación de Nariño"),), "caldas": (
     ("https://educacion.caldas.gov.co/sala-de-prensa/articles-category-blog", "Secretaría de Educación de Caldas"),
     ("https://caldas.gov.co/noticias-gobernacion/149-educacion", "Gobernación de Caldas"),
 )}
-SEEDS = {("neira", "caldas"): (
+SEEDS = {("tumaco", "narino"): (
+    ("https://mng.mincultura.gov.co/prensa/noticias/Paginas/sonidos-para-la-construccion-de-paz-primera-dotacion-instrumentos-tumaco.aspx", "Ministerio de las Culturas, las Artes y los Saberes"),
+    ("https://situr.narino.gov.co/atractivos-turisticos/cantos--bailes-y-musicas-de-marimba-del-pacifico-narinense", "Sistema de Información Turística de Nariño"),
+    ("https://www.defensoria.gov.co/web/mapa-de-la-esperanza/tumaco", "Defensoría del Pueblo"),
+), ("neira", "caldas"): (
     ("https://educacion.caldas.gov.co/sala-de-prensa/articles-category-blog/neira-villamaria-y-aguadas-ocuparon-los-primeros-lugares-en-la-version-43-del-concurso-departamental-de-bandas-estudiantiles-de-musica", "Secretaría de Educación de Caldas"),
     ("https://caldas.gov.co/noticias-gobernacion/15213-con-alegria-y-mucho-orgullo-neira-recibio-a-la-banda-sinfonica-que-gano-el-festi-band-en-republica-dominicana-gobernacion-anuncio-recursos-para-impulsarla", "Gobernación de Caldas"),
 )}
-HOSTS = {"educacion.caldas.gov.co", "caldas.gov.co", "www.caldas.gov.co", "mincultura.gov.co", "www.mincultura.gov.co"}
+HOSTS = {"educacion.caldas.gov.co", "caldas.gov.co", "www.caldas.gov.co", "mincultura.gov.co", "www.mincultura.gov.co", "mng.mincultura.gov.co", "narino.gov.co", "situr.narino.gov.co", "www.defensoria.gov.co"}
 ECONOMIC_PROFILES = {("aguadas", "caldas"): (
     "https://caldas.gov.co/index.php/component/k2/item/4-municipio-de-aguadas",
     "Gobernación de Caldas", "Municipio de Aguadas",
@@ -45,6 +49,12 @@ def safe_url(url, article=True):
             return False
         if not article:
             return any(url==u for u,_ in NATIONAL_PORTALS) or any(url==u for values in PORTALS.values() for u,_ in values)
+        if any(url == u for key, entries in SEEDS.items() if key != ("neira", "caldas") for u, _ in entries):
+            return True
+        if p.hostname == "narino.gov.co":
+            return bool(re.fullmatch(r"/noticias/[a-z0-9-]+/?", p.path))
+        if p.hostname == "mng.mincultura.gov.co":
+            return bool(re.fullmatch(r"/prensa/noticias/Paginas/[a-zA-Z0-9-]+\.aspx", p.path))
         if url in ECONOMIC_PROFILE_URLS:
             return True
         if p.hostname in {"mincultura.gov.co","www.mincultura.gov.co"}:
@@ -178,6 +188,7 @@ async def economic_profile_passages(key, text):
 
 def article_passages(data,url,publisher,city,department=None):
     page=parse(data); date=date_from(page)
+    # Undated pages remain candidates, not dated live evidence.
     if not date: return []
     result=[]
     for i,paragraph in enumerate(page.paragraphs,1):
@@ -201,8 +212,10 @@ async def institutional_passages(key,categories,web_candidates=()):
     if not key or "PRACTICAS_MUSICALES" not in categories: return []
     city,dept=key
     portals=NATIONAL_PORTALS+PORTALS.get(dept,())
-    pages=await asyncio.gather(*(public_html(url,False) for url,_ in portals))
     candidates=list(SEEDS.get(key,()))
+    # Known candidate downloads and portal discovery overlap in time.
+    seed_tasks=[asyncio.create_task(public_html(url)) for url,_ in candidates]
+    pages=await asyncio.gather(*(public_html(url,False) for url,_ in portals))
     for (base,publisher),data in zip(portals,pages):
         if not data: continue
         for href,title in parse(data).links:
@@ -218,7 +231,11 @@ async def institutional_passages(key,categories,web_candidates=()):
         elif dept=="caldas":
             candidates.append((url,"Secretaría de Educación de Caldas" if host=="educacion.caldas.gov.co" else "Gobernación de Caldas"))
     unique=list(dict.fromkeys(candidates))[:4]
-    pages=await asyncio.gather(*(public_html(url) for url,_ in unique))
+    seed_data=await asyncio.gather(*seed_tasks)
+    seed_pages=dict(zip(SEEDS.get(key,()),seed_data))
+    async def retrieve(entry):
+        return seed_pages[entry] if entry in seed_pages else await public_html(entry[0])
+    pages=await asyncio.gather(*(retrieve(entry) for entry in unique))
     found=[]
     for (url,publisher),data in zip(unique,pages):
         if data: found.extend(article_passages(data,url,publisher,city,dept))
