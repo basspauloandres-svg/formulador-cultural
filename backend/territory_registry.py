@@ -123,30 +123,46 @@ def _strip_prefix(value: str) -> str:
     return re.sub(r"^(?:municipio de|municipio|distrito de|distrito)\s+", "", normalized(value))
 
 
+# Reviewed aliases are explicit data, never approximate identity assignments.
+# Other shortened names are suggestions requiring confirmation.
+REVIEWED_ALIASES = {
+    "52835": ("san andres de tumaco", "narino", ("tumaco",)),
+    "11001": ("bogota d c", "bogota d c", ("bogota", "bogota dc")),
+}
+
+def territory_names(record: dict) -> tuple[str, ...]:
+    city = _strip_prefix(record["municipality"])
+    dept = normalized(record["department"])
+    entry = REVIEWED_ALIASES.get(record["divipola"])
+    return (city, *entry[2]) if entry and (city, dept) == entry[:2] else (city,)
+
 def resolve_from_records(context: str, records: list[dict]) -> dict:
-    """Match estricto de municipio + departamento; sin aceptar homónimos por azar."""
+    """Exact names/codes and reviewed aliases; ambiguous input never auto-resolves."""
     value = _strip_prefix(context)
     if not value:
         return {"status": "MISSING_TERRITORY", "identity": None}
     options = []
+    suggestions = []
     for record in records:
-        municipality = _strip_prefix(record["municipality"])
+        names = territory_names(record)
         department = normalized(record["department"])
-        # Reviewed alias, scoped to the official code and department. Preserve
-        # ambiguity detection if another registry record matches the same input.
-        aliases = {"tumaco", "tumaco narino"} if (
-            record["divipola"] == "52835" and department == "narino"
-            and municipality == "san andres de tumaco") else set()
-        if value == municipality or value == f"{municipality} {department}" or value == record["divipola"] or value in aliases:
+        if value == record["divipola"] or any(
+                value in (name, f"{name} {department}") for name in names):
             options.append(record)
+        elif len(value) >= 4 and any(
+                name.endswith(" " + value) or name.endswith(" " + value.removesuffix(" " + department))
+                and value.endswith(" " + department) for name in names):
+            suggestions.append(record)
+    def candidates(rows):
+        return [{k:r[k] for k in ("municipality","department","divipola","territory_type")} for r in rows[:12]]
     if len(options) == 1:
         return {"status": "FOUND", "identity": options[0]}
     if len(options) > 1:
         return {"status": "AMBIGUOUS_MUNICIPALITY", "identity": None,
-                "candidates": [
-                    {"municipality": r["municipality"], "department": r["department"],
-                     "divipola": r["divipola"], "territory_type": r["territory_type"]}
-                    for r in options[:12]]}
+                "candidates": candidates(options)}
+    if suggestions:
+        return {"status": "CONFIRM_TERRITORY", "identity": None,
+                "candidates": candidates(suggestions)}
     return {"status": "NOT_FOUND", "identity": None}
 
 
