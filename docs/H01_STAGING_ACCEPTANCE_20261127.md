@@ -40,3 +40,11 @@ La primera corrida del cotejo documental completo mezcló en un mismo flujo el a
 Se recorrió el inicio como invitado con un borrador nuevo de prueba. El selector mostró 0/16 secciones y la identificación vacía. El ejemplo «Formación artística» habilitó «Construir mi proyecto» y trasladó el texto a «Idea inicial (aporte del usuario)» en S01. Se guardó el caso sintético `QA H01 · Ensayo de formación musical`, con Neira y Caldas. En S16 apareció «Proyecto en revisión» y se ofreció «Guardar revisión con pendientes», junto a los cuatro formatos. Queda pendiente la experiencia de un participante independiente (W40).
 
 S16 mostró también «No hay pendientes concretos en indicadores, resultados → actividades ni tratamiento financiero» en este borrador inicial. El mensaje tiene un alcance acotado y el resumen general sí indicó que faltaba completar secciones. Conviene incluir esta diferencia en la revisión de claridad con participantes. El balance W01–W40 se conserva. La limitación de conectividad directa de la corrida automatizada anterior ya no aplica a este recorrido focalizado.
+
+## Corrección posterior del mensaje de S16
+
+Candidato `ffeac38f76a1ef23c12a8227b16b021de79ec470` en QA. En borradores con secciones pendientes y sin tarjetas de ajuste específico, S16 pide completar las secciones y enlaza con la primera incompleta. Si todas las secciones están completas y la revisión todavía está pendiente, remite al diagnóstico de ausencias y coherencia. La vista de un caso listo para revisión conserva el resumen específico.
+
+En Chromium contra la copia editorial local, se comprobó el enlace a S01 en un proyecto vacío y el enlace a S02 tras completar S01. El caso completo pudo aprobarse, la aprobación se revocó al editar y el proyecto original conservó sus datos tras alternar al nuevo. Evidencia: `S16_INCOMPLETE_PROJECT_GUIDANCE_PASS`, `INTEGRAL_CLOSURE_PASS` y `W02_NEW_PROJECT_ALL_SECTIONS_ISOLATED_PASS`.
+
+El ajuste aún no está desplegado. La matriz de aceptación anterior corresponde a `11fe3de`; su balance no se incrementa con la prueba local. W40 y la aceptación humana siguen pendientes.
