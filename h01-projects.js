@@ -4,7 +4,12 @@
 if(!window.FC_LOCAL_PROJECTS)return;
 const storage=localStorage, proto=Storage.prototype;
 const get=proto.getItem,set=proto.setItem,remove=proto.removeItem,key=proto.key;
-const registryKey='vt:h01:registry:v1',activeKey='vt:h01:active:v1',prefix='vt:h01:project:';
+// Device-local segregation, not a substitute for server-side authorization.
+const ownerKey='vt:h01:owner:v1';
+const owner=get.call(storage,ownerKey)||'guest';
+const suffix=owner==='guest'?'':':account:'+encodeURIComponent(owner);
+const registryKey='vt:h01:registry:v1'+suffix,activeKey='vt:h01:active:v1'+suffix,prefix=owner==='guest'?'vt:h01:project:':'vt:h01:account:'+encodeURIComponent(owner)+':project:';
+
 const draftKey='formulador-cultural-prototipo-v1';
 const managed=k=>typeof k==='string'&&(k.startsWith('formulador-cultural-')||k.startsWith('fc_')||k==='vt-staging-evidence-v1');
 const rawGet=k=>get.call(storage,k),rawSet=(k,v)=>set.call(storage,k,v);
@@ -16,7 +21,7 @@ let id=registry.some(p=>p.id===requested)?requested:rawGet(activeKey);
 const uuid=()=>crypto.randomUUID();
 const ns=(p,k)=>prefix+p+':'+k;
 if(!registry.some(p=>p.id===id)){
- const oldKeys=[];for(let i=0;i<storage.length;i++){const k=key.call(storage,i);if(managed(k))oldKeys.push(k)}
+ const oldKeys=[];for(let i=0;i<storage.length;i++){const k=key.call(storage,i);if(owner==='guest'&&managed(k))oldKeys.push(k)}
  id=uuid();
  // Copy, never delete historical keys. Publish registry only after successful copy.
  for(const k of oldKeys)rawSet(ns(id,k),rawGet(k));
@@ -74,6 +79,27 @@ const create=()=>{
  rawSet(registryKey,JSON.stringify(list));rawSet(activeKey,next);openProject(next);
 };
 window.fcLocalProjectId=()=>current;
+window.fcH01LocalOwner=()=>owner;
+let ownerChanging=false;
+window.fcH01SetAuthenticatedOwner=userId=>{
+ const next=typeof userId==='string'&&userId.trim()?userId:'guest';
+ if(next===owner||ownerChanging)return;
+ // Save to the old immutable namespace before selecting the new one.
+ ownerChanging=true;
+ try{
+   flush();rawSet(ownerKey,next);
+   const url=new URL(location.href);url.searchParams.delete('project');
+   location.replace(url.href);
+ }catch(e){ownerChanging=false;throw e}
+};
+window.addEventListener('storage',event=>{
+ if(event.key===ownerKey&&(event.newValue||'guest')!==owner&&!ownerChanging){
+   // Do not allow an old tab to continue exposing an account's workspace.
+   ownerChanging=true;
+   try{flush()}finally{document.body?.replaceChildren();location.reload()}
+ }
+});
+
 window.fcLocalProjects=()=>parse(rawGet(registryKey),[]).map(p=>({...p}));
 window.fcCreateLocalProject=create;
 window.fcSwitchLocalProject=switchTo;
