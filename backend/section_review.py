@@ -63,6 +63,7 @@ class SectionReviewRequest(BaseModel):
     text: str = Field(min_length=1, max_length=1800)
     context: str = Field(min_length=2, max_length=200)
     include_web: bool = True
+    public_topic: str = Field(default="", max_length=90)
     compose: bool = False
 
 
@@ -137,7 +138,7 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
     # La identificación por DIVIPOLA se verifica en el directorio institucional.
     # Que el proyecto elija el municipio es una declaración del formador,
     # no una estadística cultural que requiera corroboración externa.
-    if administrative_field and identity and territorial_result["status"] == "FOUND":
+    if administrative_field and not req.public_topic and identity and territorial_result["status"] == "FOUND":
         normalized = req.text.casefold()
         is_simple_territory = not re.search(
             r"gastronom|m[uú]sic|banda|poblaci[oó]n|habitantes|"
@@ -182,14 +183,16 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
             }
     mapping_field = mapping[req.field]
     candidates, errors = [], []
+    web_extended_enabled = None
     try:
         found = await research(ResearchRequest(
             section="S02", field=mapping_field,
             text=(req.text if len(req.text) >= 10 else "Información territorial de " + req.context),
-            context=req.context, include_web=req.include_web,
+            context=req.context, include_web=req.include_web, public_topic=req.public_topic,
         ), authorization)
         candidates = found["sources"]
         errors = found["errors"]
+        web_extended_enabled = found.get("web_extended_enabled")
     except HTTPException as exc:
         if exc.status_code not in (429, 502, 503, 504):
             raise
@@ -233,6 +236,7 @@ async def review_section(req: SectionReviewRequest, authorization: str) -> dict:
         "conflicting_municipalities": conflicts,
         "evidence_status": "INSUFFICIENT_EVIDENCE",
         "errors": errors,
+        "web_extended_enabled": web_extended_enabled,
         "requires_approval": True,
         "note": ("Las referencias se vinculan a cada afirmación por categoría. "
                  "Una coincidencia temática o un pasaje localizado no comprueba "
