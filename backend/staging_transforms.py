@@ -39,14 +39,15 @@ let stagingSession=null;""")
     end=source.index("function render(){",start)
     source=source[:start]+"""async function initAuth(){
  if(!sb){q('#authHelp').textContent='Acceso a IA no disponible. Puedes formular localmente.';return}
- const {data}=await sb.auth.getSession();stagingSession=data?.session||null;renderAuth();
- sb.auth.onAuthStateChange((_event,newSession)=>{stagingSession=newSession;renderAuth()});
+ const {data}=await sb.auth.getSession();stagingSession=data?.session||null;
+ window.fcH01SetAuthenticatedOwner?.(stagingSession?.user?.id||null);renderAuth();
+ sb.auth.onAuthStateChange((_event,newSession)=>{stagingSession=newSession;window.fcH01SetAuthenticatedOwner?.(newSession?.user?.id||null);renderAuth()});
 }
 """+source[end:]
     start=source.index("async function save(){")
     end=source.index("async function loadCloud(){",start)
     source=source[:start]+"async function save(){saveLocal();}\n"+source[end:]
-    source=replace_once(source,"await sb.auth.signOut();session=null;cloudProject=null;renderAuth();","await sb.auth.signOut({scope:'local'});stagingSession=null;session=null;cloudProject=null;renderAuth();")
+    source=replace_once(source,"await sb.auth.signOut();session=null;cloudProject=null;renderAuth();","await sb.auth.signOut({scope:'local'});stagingSession=null;session=null;cloudProject=null;window.fcH01SetAuthenticatedOwner?.(null);renderAuth();")
     source=replace_once(source,"q('#loginBtn').onclick=sendMagicLink;q('#passwordLoginBtn').onclick=passwordLogin;q('#signupBtn').onclick=signupWithPassword;q('#setPasswordBtn').onclick=setPassword;",
         "q('#loginBtn').disabled=true;q('#passwordLoginBtn').onclick=passwordLogin;q('#signupBtn').disabled=true;q('#setPasswordBtn').disabled=true;")
     start=source.index("q('#syncBtn').onclick=")
