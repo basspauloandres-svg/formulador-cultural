@@ -27,6 +27,42 @@ def test_vwe_rejects_unapproved_destinations_and_unrelated_passages():
     assert not s.article_passages(b'<p>En Tumaco existe una banda musical.</p>',"https://narino.gov.co/noticias/example","test","tumaco","narino")
     assert not s.article_passages(b'<meta property="article:published_time" content="2024-04-20"><p>En Pasto existe una banda musical con estudiantes.</p>',"https://narino.gov.co/noticias/example","test","tumaco","narino")
 
+async def diagnose():
+    import httpx
+    from urllib.parse import urljoin
+    entries = [(u,p,True) for u,p in s.SEEDS[("tumaco","narino")]] + [(u,p,False) for u,p in s.NATIONAL_PORTALS+s.PORTALS["narino"]]
+    async def probe(url,publisher,article):
+        info={"url":url,"allowed":s.safe_url(url,article)}
+        if not info["allowed"]: return info
+        try:
+            async with httpx.AsyncClient(timeout=8,follow_redirects=False,trust_env=False) as client:
+                async with client.stream("GET",url,headers={"Accept":"text/html","User-Agent":"VerticeResearchAssistant/0.5"}) as response:
+                    info.update(http=response.status_code,content_type=response.headers.get("content-type"),redirect_present=bool(response.headers.get("location")),encoding=response.encoding)
+                    if response.is_redirect:
+                        target=urljoin(url,response.headers["location"])
+                        info["redirect_allowed"]=s.safe_url(target,article)
+                    data=bytearray()
+                    async for chunk in response.aiter_bytes():
+                        data.extend(chunk)
+                        if len(data)>s.MAX_BYTES:
+                            info["reason"]="SIZE_LIMIT"
+                            return info
+            info["bytes"]=len(data)
+            if info["http"] != 200:
+                info["reason"]="HTTP_STATUS"
+                return info
+            page=s.parse(bytes(data))
+            info.update(paragraphs=len(page.paragraphs),visible_chunks=len(page.visible),date=s.date_from(page),
+                        matching_paragraphs=sum(s.relevant(p,"tumaco") for p in page.paragraphs),
+                        matching_visible=sum(s.relevant(p,"tumaco") for p in page.visible),
+                        passages=len(s.article_passages(bytes(data),url,publisher,"tumaco","narino")) if article else None)
+            info["reason"]="PARSED"
+        except (httpx.HTTPError,TimeoutError,ValueError) as exc:
+            info["reason"]=type(exc).__name__
+        return info
+    for result in await asyncio.gather(*(probe(*entry) for entry in entries)):
+        print("VWE_SOURCE_DIAGNOSTIC "+json.dumps(result,ensure_ascii=False),flush=True)
+
 async def benchmark():
     key=("tumaco","narino")
     categories={"PRACTICAS_MUSICALES"}
@@ -50,4 +86,5 @@ async def benchmark():
     if not cold["passages"]: raise SystemExit(1)
 
 if __name__=="__main__":
+    asyncio.run(diagnose())
     asyncio.run(benchmark())
