@@ -135,7 +135,15 @@ const assert=require('node:assert/strict');
     await p.evaluate(id=>window.fcH01SetAuthenticatedOwner(id),id);
     await p.waitForFunction(expected=>window.fcH01LocalOwner?.()===(expected||'guest'),id);
   };
-  const mark=async text=>p.evaluate(value=>{draft.S01={...(draft.S01||{}),nombre_del_proyecto:value};localStorage.setItem(storeKey,JSON.stringify(draft))},text);
+  const mark=async text=>{
+    const field=p.locator('#fields [data-field="nombre_del_proyecto"]');
+    await field.waitFor({state:'attached'});
+    // Drive the real form and save path, not a draft object behind stale inputs.
+    await field.fill(text,{force:true});
+    await p.evaluate(()=>saveLocal());
+    assert.equal(await field.inputValue(),text);
+    assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem(storeKey)||'{}').S01?.nombre_del_proyecto),text);
+  };
   const read=()=>p.evaluate(()=>JSON.parse(localStorage.getItem(storeKey)||'{}').S01?.nombre_del_proyecto||'');
   await mark('Borrador invitado');
   const guestId=await p.evaluate(()=>window.fcLocalProjectId());
