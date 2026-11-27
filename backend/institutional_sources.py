@@ -199,7 +199,14 @@ def article_passages(data,url,publisher,city,department=None):
         date = "2010-07-31"
     if not date and url != "https://bancodecontenidos.mincultura.gov.co/Comunicacion-Territorio/pcfsur.html": return []
     result=[]
-    for i,paragraph in enumerate(page.paragraphs,1):
+    blocks = [(f"Párrafo HTML {i}", p) for i,p in enumerate(page.paragraphs,1)]
+    # SharePoint articles can place editorial content directly in div/span nodes.
+    # Restrict fallback to the reviewed article, not generic portal navigation.
+    if url == SEEDS[("tumaco","narino")][0][0]:
+        blocks.extend((f"Nodo de texto HTML {i}", p.strip())
+                      for i,p in enumerate(page.visible,1)
+                      if 45 <= len(p.strip()) <= 1500)
+    for locator,paragraph in blocks:
         if not relevant(paragraph,city) or has_private_contact(paragraph) or contains_directive(paragraph): continue
         # Complete sentences only, never manufacture a quotation by redacting words.
         sentences=re.split(r"(?<=[.!?])\s+",paragraph)
@@ -208,7 +215,7 @@ def article_passages(data,url,publisher,city,department=None):
             if department and urlsplit(url).hostname in {"mincultura.gov.co","www.mincultura.gov.co"} and not re.search(r"\b"+re.escape(department)+r"\b",normalized(sentence)): continue
             result.append({"source_id":"official-"+sha256(url.encode()).hexdigest()[:16],
                 "title":"Publicación institucional · "+(date or "fecha no determinada"),"publisher":publisher,"url":url,
-                "locator":"Párrafo HTML "+str(i),"sha256":sha256(data).hexdigest(),
+                "locator":locator,"sha256":sha256(data).hexdigest(),
                 "excerpt":sentence,"category":"PRACTICAS_MUSICALES",
                 "passage_status":"EXCERPT_FOUND_CLAIM_UNVERIFIED",
                 "scope_warning":"Publicación fechada; no acredita vigencia posterior." if date else "Fecha no determinada; no acredita vigencia actual.",
