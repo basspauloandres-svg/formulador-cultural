@@ -1,5 +1,8 @@
 """H03: exercise actual territorial resolution and S02 routing, no private data."""
 import asyncio
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from unittest.mock import AsyncMock, patch
 import territory_registry as tr
 import automatic_assistant as a
