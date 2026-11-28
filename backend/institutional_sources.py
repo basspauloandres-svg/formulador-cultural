@@ -13,6 +13,7 @@ from prompt_boundary import contains_directive
 
 # Reviewed entry points, not an exhaustive directory or a stored factual answer.
 NATIONAL_PORTALS = (("https://www.mincultura.gov.co/", "Ministerio de las Culturas, las Artes y los Saberes"),)
+NATIONAL_ARTICLE_HOSTS = frozenset({"mincultura.gov.co", "www.mincultura.gov.co", "mng.mincultura.gov.co"})
 PORTALS = {"narino": (("https://narino.gov.co/noticias/", "Gobernación de Nariño"),), "caldas": (
     ("https://educacion.caldas.gov.co/sala-de-prensa/articles-category-blog", "Secretaría de Educación de Caldas"),
     ("https://caldas.gov.co/noticias-gobernacion/149-educacion", "Gobernación de Caldas"),
@@ -200,9 +201,9 @@ def article_passages(data,url,publisher,city,department=None):
     if not date and url != "https://bancodecontenidos.mincultura.gov.co/Comunicacion-Territorio/pcfsur.html": return []
     result=[]
     blocks = [(f"Párrafo HTML {i}", p) for i,p in enumerate(page.paragraphs,1)]
-    # SharePoint articles can place editorial content directly in div/span nodes.
-    # Restrict fallback to the reviewed article, not generic portal navigation.
-    if url == SEEDS[("tumaco","narino")][0][0]:
+    # Shared extraction strategy for approved national article paths; never portal pages.
+    # Require both territorial names in the extracted sentence below.
+    if safe_url(url) and urlsplit(url).hostname in NATIONAL_ARTICLE_HOSTS and department:
         blocks.extend((f"Nodo de texto HTML {i}", p.strip())
                       for i,p in enumerate(page.visible,1)
                       if 45 <= len(p.strip()) <= 1500)
@@ -212,7 +213,7 @@ def article_passages(data,url,publisher,city,department=None):
         sentences=re.split(r"(?<=[.!?])\s+",paragraph)
         for sentence in sentences:
             if not 45<=len(sentence)<=420 or not relevant(sentence,city): continue
-            if department and urlsplit(url).hostname in {"mincultura.gov.co","www.mincultura.gov.co"} and not re.search(r"\b"+re.escape(department)+r"\b",normalized(sentence)): continue
+            if department and urlsplit(url).hostname in NATIONAL_ARTICLE_HOSTS and not re.search(r"\b"+re.escape(department)+r"\b",normalized(sentence)): continue
             result.append({"source_id":"official-"+sha256(url.encode()).hexdigest()[:16],
                 "title":"Publicación institucional · "+(date or "fecha no determinada"),"publisher":publisher,"url":url,
                 "locator":locator,"sha256":sha256(data).hexdigest(),
@@ -241,11 +242,18 @@ async def institutional_passages(key,categories,web_candidates=()):
         url=item.get("url","")
         if not safe_url(url) or not relevant(item.get("title","")+" "+item.get("summary",""),city): continue
         host=urlsplit(url).hostname
-        if host in {"mincultura.gov.co","www.mincultura.gov.co"}:
+        if host in NATIONAL_ARTICLE_HOSTS:
             candidates.append((url,NATIONAL_PORTALS[0][1]))
-        elif dept=="caldas":
+        elif dept=="narino" and host=="narino.gov.co":
+            candidates.append((url,"Gobernación de Nariño"))
+        elif dept=="caldas" and host in {"educacion.caldas.gov.co","caldas.gov.co","www.caldas.gov.co"}:
             candidates.append((url,"Secretaría de Educación de Caldas" if host=="educacion.caldas.gov.co" else "Gobernación de Caldas"))
-    unique=list(dict.fromkeys(candidates))[:4]
+    # Deduplicate by URL, not by publisher label; prefer one discovered candidate
+    # even when reviewed seed lists fill the budget.
+    seeds=list(SEEDS.get(key,()))
+    discovered=[entry for entry in candidates if entry[0] not in {u for u,_ in seeds}]
+    ordered=discovered[:1]+seeds+discovered[1:]
+    unique=list({u:(u,p) for u,p in reversed(ordered)}.values())[::-1][:4]
     seed_data=await asyncio.gather(*seed_tasks)
     seed_pages=dict(zip(SEEDS.get(key,()),seed_data))
     async def retrieve(entry):
