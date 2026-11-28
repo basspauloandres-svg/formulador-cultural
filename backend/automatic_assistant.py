@@ -28,7 +28,7 @@ from national_sources import cultural_registry
 from citation_audit import audit_citations
 from semantic_review import packet, review_one
 from prompt_boundary import contains_directive, quarantine_flag
-from territory_registry import resolve_territory, normalized as territory_normalized, cached_explicit_conflicts
+from territory_registry import resolve_territory, normalized as territory_normalized, cached_explicit_conflicts, territory_names
 
 # Registro provisional de documentos institucionales identificados por municipio.
 # La existencia de una URL no implica accesibilidad ni validez de su contenido.
@@ -328,7 +328,9 @@ async def guide(req: GuidedRequest, bearer: str) -> dict:
         topics.add("PRACTICAS_MUSICALES")
     local_references = await municipal_passages(key, topics) if key and topics else []
     if req.include_web and key and req.field in {'caracteristicas_culturales', 'antecedentes'}:
-        regional = await institutional_passages(key, topics, found['sources'])
+        # Source discovery aliases are bound to verified administrative codes.
+        institutional_key = (territory_names(identity)[-1], key[1])
+        regional = await institutional_passages(institutional_key, topics, found['sources'])
         local_references = regional + local_references
     if req.include_web and key:
         local_references = await economic_profile_passages(key, req.public_topic or req.text) + local_references
